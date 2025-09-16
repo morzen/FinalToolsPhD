@@ -37,3 +37,6 @@ Thumbs.db
 # LFS tracking should handle large files, but exclude really temporary stuff
 *.tmp
 *.temp
+4.Attention-Based_MIL/apt_similarity_model_complete.pth
+5.RF_FeatureEngineering/apt_similarity_model.joblib
+1.NewDatabase_BayesianNetwork/complete_model.pkl
