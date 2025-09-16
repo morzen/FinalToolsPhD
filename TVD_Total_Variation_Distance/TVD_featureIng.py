@@ -1,6 +1,11 @@
 import pandas as pd
 import numpy as np
 from collections import defaultdict
+import matplotlib.pyplot as plt
+import seaborn as sns
+from itertools import islice
+import random
+import math
 
 # Load data files
 pwd = "./DataForTVD/"
@@ -195,98 +200,59 @@ feature_weights = {
     'pulse': 0.7
 }
 
-# Example evidence (for Lazarus Group)
-# evidence = {
-#     'techniques_str': ['T1001.002', 'T1003.002', 'T1003.004', 'T1003.006', 'T1005', 'T1016.001', 'T1018', 'T1021.001', 
-#                     'T1021.002', 'T1021.006', 'T1021.007', 'T1027.001', 'T1027.002', 'T1027.003', 'T1027.006', 
-#                     'T1036.004', 'T1036.005', 'T1037', 'T1037.004', 'T1047', 'T1048.002', 'T1053.005', 'T1057', 
-#                     'T1059.001', 'T1059.003', 'T1059.005', 'T1059.006', 'T1059.009', 'T1068', 'T1069.002', 
-#                     'T1070.004', 'T1070.006', 'T1070.008', 'T1071.001', 'T1074.002', 'T1078', 'T1078.002', 
-#                     'T1078.003', 'T1078.004', 'T1082', 'T1083', 'T1087.002', 'T1087.004', 'T1090.001', 'T1090.002', 
-#                     'T1090.003', 'T1090.004', 'T1098.001', 'T1098.002', 'T1098.003', 'T1098.005', 'T1102.002', 
-#                     'T1105', 'T1110.001', 'T1110.003', 'T1114.002', 'T1133', 'T1136.003', 'T1140', 'T1190', 
-#                     'T1195.002', 'T1199', 'T1203', 'T1204.001', 'T1204.002', 'T1213', 'T1213.003', 'T1218.005', 
-#                     'T1218.011', 'T1482', 'T1484.002', 'T1505.003', 'T1528', 'T1539', 'T1546.003', 'T1546.008', 
-#                     'T1547.001', 'T1548.002', 'T1550.001', 'T1550.003', 'T1550.004', 'T1552.004', 'T1553.002', 
-#                     'T1553.005', 'T1555.003', 'T1556.007', 'T1558.003', 'T1560.001', 'T1562.001', 'T1562.002', 
-#                     'T1562.004', 'T1562.008', 'T1566.001', 'T1566.002', 'T1566.003', 'T1568', 'T1573', 'T1583.001', 
-#                     'T1583.006', 'T1584.001', 'T1585.001', 'T1586.002', 'T1586.003', 'T1587.001', 'T1587.003', 
-#                     'T1588.002', 'T1589.001', 'T1595.002', 'T1606.001', 'T1606.002', 'T1621', 'T1649', 'T1651', 
-#                     'T1665'],
-#     'software_str': ['S0037', 'S0559', 'S0633', 'S0002', 'S0046', 'S0050', 'S0154', 'S0357', 'S0677', 'S0048', 
-#                     'S0512', 'S0514', 'S0515', 'S0634', 'S0661', 'S0597', 'S0039', 'S0521', 'S0552', 'S0684', 
-#                     'S0029', 'S0053', 'S0513', 'S0565', 'S0588', 'S0139', 'S0511', 'S0518', 'S0560', 'S0562', 
-#                     'S0589', 'S1084', 'S0516', 'S0049', 'S0057', 'S0150', 'S0195', 'S0051', 'S0052', 'S0054', 
-#                     'S0635', 'S0636', 'S0682', 'S0096', 'S0183', 'S0175', 'S0637', 'S0100'],
-#     'CAPEC_ID': ['CAPEC-204', 'CAPEC-37', 'CAPEC-545', 'CAPEC-647', 'CAPEC-292', 'CAPEC-561', 'CAPEC-572', 'CAPEC-655', 
-#                 'CAPEC-35', 'CAPEC-504', 'CAPEC-543', 'CAPEC-616', 'CAPEC-564', 'CAPEC-573', 'CAPEC-560', 'CAPEC-70', 
-#                 'CAPEC-312', 'CAPEC-313', 'CAPEC-580', 'CAPEC-127', 'CAPEC-497', 'CAPEC-465', 'CAPEC-481', 'CAPEC-49', 
-#                 'CAPEC-565', 'CAPEC-555', 'CAPEC-186', 'CAPEC-443', 'CAPEC-523', 'CAPEC-669', 'CAPEC-673', 'CAPEC-678', 
-#                 'CAPEC-691', 'CAPEC-150', 'CAPEC-650', 'CAPEC-21', 'CAPEC-31', 'CAPEC-558', 'CAPEC-593', 'CAPEC-645', 
-#                 'CAPEC-60', 'CAPEC-474', 'CAPEC-485', 'CAPEC-639', 'CAPEC-206', 'CAPEC-473', 'CAPEC-68', 'CAPEC-509', 
-#                 'CAPEC-578', 'CAPEC-268', 'CAPEC-571', 'CAPEC-163', 'CAPEC-542', 'CAPEC-464'],
-#     'CWE_ID': ['CWE-524', 'CWE-311', 'CWE-1258', 'CWE-226', 'CWE-312', 'CWE-318', 'CWE-1278', 'CWE-285', 'CWE-200', 
-#             'CWE-522', 'CWE-294', 'CWE-521', 'CWE-94', 'CWE-272', 'CWE-59', 'CWE-282', 'CWE-270', 'CWE-1021', 
-#             'CWE-284', 'CWE-307', 'CWE-798', 'CWE-204', 'CWE-208', 'CWE-425', 'CWE-288', 'CWE-732', 'CWE-276', 
-#             'CWE-693', 'CWE-441', 'CWE-923', 'CWE-257', 'CWE-494', 'CWE-552', 'CWE-287', 'CWE-290', 'CWE-302', 
-#             'CWE-346', 'CWE-539', 'CWE-384', 'CWE-664', 'CWE-602', 'CWE-113', 'CWE-20', 'CWE-472', 'CWE-488', 
-#             'CWE-330', 'CWE-327', 'CWE-325', 'CWE-117', 'CWE-451', 'CWE-359'],
-#     'CVE_ID': ['CVE-2021-44228', 'wfagaed'],
-#     'Pulse_ID': ['676652f78bbff8f3a7dcb4c3']
-# }
-
+# Evidence data (same as PSL code)
 evidence = {
-        'techniques_str': [
-            'T0865', 'T1001.003', 'T1005', 'T1008', 'T1010', 'T1012', 'T1016', 
-            'T1021.001', 'T1021.002', 'T1021.004', 'T1027.002', 'T1027.007', 
-            'T1027.013', 'T1033', 'T1036.003', 'T1036.004', 'T1036.005', 
-            'T1036.008', 'T1041', 'T1046', 'T1047', 'T1048.003', 'T1049', 
-            'T1053.005', 'T1055.001', 'T1056.001', 'T1057', 'T1059.001', 
-            'T1059.003', 'T1059.005', 'T1070', 'T1070.003', 'T1070.004', 
-            'T1070.006', 'T1071.001', 'T1074.001', 'T1078', 'T1082', 'T1083', 
-            'T1087.002', 'T1090.001', 'T1090.002', 'T1098', 'T1102.002', 
-            'T1104', 'T1105', 'T1106', 'T1110.003', 'T1124', 'T1132.001', 
-            'T1134.002', 'T1140', 'T1189', 'T1202', 'T1203', 'T1204.001', 
-            'T1204.002', 'T1218', 'T1218.005', 'T1218.010', 'T1218.011', 
-            'T1220', 'T1221', 'T1485', 'T1489', 'T1491.001', 'T1497.001', 
-            'T1497.003', 'T1505.004', 'T1529', 'T1534', 'T1542.003', 
-            'T1543.003', 'T1547.001', 'T1547.009', 'T1553.002', 'T1557.001', 
-            'T1560', 'T1560.001', 'T1560.002', 'T1560.003', 'T1561.001', 
-            'T1561.002', 'T1562.001', 'T1562.004', 'T1564.001', 'T1566.001', 
-            'T1566.002', 'T1566.003', 'T1567.002', 'T1571', 'T1573.001', 
-            'T1574.002', 'T1574.013', 'T1583.001', 'T1583.004', 'T1583.006', 
-            'T1584.001', 'T1584.004', 'T1585.001', 'T1585.002', 'T1587.001', 
-            'T1587.002', 'T1588.002', 'T1588.003', 'T1588.004', 'T1589.002', 
-            'T1591', 'T1591.004', 'T1593.001', 'T1608.001', 'T1608.002', 
-            'T1614.001', 'T1620', 'T1622', 'T1656'
-        ],
-        'software_str': [
-            'S0181', 'S0239', 'S0245', 'S0246', 'S0586', 'S0238', 'S0498', 
-            'S0520', 'S0567', 'S0665', 'S0694', 'S0376', 'S0431', 'S0180', 
-            'S0241', 'S0103', 'S0271', 'S0366', 'S0678', 'S0263', 'S0347', 
-            'S0497', 'S0584', 'S0593', 'S0364', 'S0174', 'S0108'
-        ],
-        'CAPEC_ID': [
-            'CAPEC-204', 'CAPEC-37', 'CAPEC-545', 'CAPEC-647', 'CAPEC-309', 
-            'CAPEC-561', 'CAPEC-577', 'CAPEC-165', 'CAPEC-504', 'CAPEC-543', 
-            'CAPEC-616', 'CAPEC-300', 'CAPEC-568', 'CAPEC-573', 'CAPEC-268', 
-            'CAPEC-560', 'CAPEC-70', 'CAPEC-312', 'CAPEC-313', 'CAPEC-580', 
-            'CAPEC-127', 'CAPEC-497', 'CAPEC-465', 'CAPEC-565', 'CAPEC-295', 
-            'CAPEC-196', 'CAPEC-698', 'CAPEC-163', 'CAPEC-552', 'CAPEC-478', 
-            'CAPEC-132', 'CAPEC-206', 'CAPEC-473', 'CAPEC-68', 'CAPEC-578', 
-            'CAPEC-641', 'CAPEC-640', 'CAPEC-542'
-        ],
-        'CWE_ID': [
-            'CWE-524', 'CWE-311', 'CWE-1258', 'CWE-226', 'CWE-312', 'CWE-318', 
-            'CWE-1278', 'CWE-285', 'CWE-200', 'CWE-522', 'CWE-294', 'CWE-521', 
-            'CWE-1021', 'CWE-117', 'CWE-307', 'CWE-798', 'CWE-204', 'CWE-208', 
-            'CWE-425', 'CWE-288', 'CWE-732', 'CWE-276', 'CWE-693', 'CWE-441', 
-            'CWE-384', 'CWE-664', 'CWE-829', 'CWE-451', 'CWE-284', 'CWE-59', 
-            'CWE-20', 'CWE-327', 'CWE-290', 'CWE-325', 'CWE-706', 'CWE-114'
-        ],
-        'CVE_ID': [],  # No CVE data provided in the original
-        'Pulse_ID': []  # No Pulse data provided in the original
-    }
+    'techniques_str': [
+        'T0865', 'T1001.003', 'T1005', 'T1008', 'T1010', 'T1012', 'T1016', 
+        'T1021.001', 'T1021.002', 'T1021.004', 'T1027.002', 'T1027.007', 
+        'T1027.013', 'T1033', 'T1036.003', 'T1036.004', 'T1036.005', 
+        'T1036.008', 'T1041', 'T1046', 'T1047', 'T1048.003', 'T1049', 
+        'T1053.005', 'T1055.001', 'T1056.001', 'T1057', 'T1059.001', 
+        'T1059.003', 'T1059.005', 'T1070', 'T1070.003', 'T1070.004', 
+        'T1070.006', 'T1071.001', 'T1074.001', 'T1078', 'T1082', 'T1083', 
+        'T1087.002', 'T1090.001', 'T1090.002', 'T1098', 'T1102.002', 
+        'T1104', 'T1105', 'T1106', 'T1110.003', 'T1124', 'T1132.001', 
+        'T1134.002', 'T1140', 'T1189', 'T1202', 'T1203', 'T1204.001', 
+        'T1204.002', 'T1218', 'T1218.005', 'T1218.010', 'T1218.011', 
+        'T1220', 'T1221', 'T1485', 'T1489', 'T1491.001', 'T1497.001', 
+        'T1497.003', 'T1505.004', 'T1529', 'T1534', 'T1542.003', 
+        'T1543.003', 'T1547.001', 'T1547.009', 'T1553.002', 'T1557.001', 
+        'T1560', 'T1560.001', 'T1560.002', 'T1560.003', 'T1561.001', 
+        'T1561.002', 'T1562.001', 'T1562.004', 'T1564.001', 'T1566.001', 
+        'T1566.002', 'T1566.003', 'T1567.002', 'T1571', 'T1573.001', 
+        'T1574.002', 'T1574.013', 'T1583.001', 'T1583.004', 'T1583.006', 
+        'T1584.001', 'T1584.004', 'T1585.001', 'T1585.002', 'T1587.001', 
+        'T1587.002', 'T1588.002', 'T1588.003', 'T1588.004', 'T1589.002', 
+        'T1591', 'T1591.004', 'T1593.001', 'T1608.001', 'T1608.002', 
+        'T1614.001', 'T1620', 'T1622', 'T1656'
+    ],
+    'software_str': [
+        'S0181', 'S0239', 'S0245', 'S0246', 'S0586', 'S0238', 'S0498', 
+        'S0520', 'S0567', 'S0665', 'S0694', 'S0376', 'S0431', 'S0180', 
+        'S0241', 'S0103', 'S0271', 'S0366', 'S0678', 'S0263', 'S0347', 
+        'S0497', 'S0584', 'S0593', 'S0364', 'S0174', 'S0108'
+    ],
+    'CAPEC_ID': [
+        'CAPEC-204', 'CAPEC-37', 'CAPEC-545', 'CAPEC-647', 'CAPEC-309', 
+        'CAPEC-561', 'CAPEC-577', 'CAPEC-165', 'CAPEC-504', 'CAPEC-543', 
+        'CAPEC-616', 'CAPEC-300', 'CAPEC-568', 'CAPEC-573', 'CAPEC-268', 
+        'CAPEC-560', 'CAPEC-70', 'CAPEC-312', 'CAPEC-313', 'CAPEC-580', 
+        'CAPEC-127', 'CAPEC-497', 'CAPEC-465', 'CAPEC-565', 'CAPEC-295', 
+        'CAPEC-196', 'CAPEC-698', 'CAPEC-163', 'CAPEC-552', 'CAPEC-478', 
+        'CAPEC-132', 'CAPEC-206', 'CAPEC-473', 'CAPEC-68', 'CAPEC-578', 
+        'CAPEC-641', 'CAPEC-640', 'CAPEC-542'
+    ],
+    'CWE_ID': [
+        'CWE-524', 'CWE-311', 'CWE-1258', 'CWE-226', 'CWE-312', 'CWE-318', 
+        'CWE-1278', 'CWE-285', 'CWE-200', 'CWE-522', 'CWE-294', 'CWE-521', 
+        'CWE-1021', 'CWE-117', 'CWE-307', 'CWE-798', 'CWE-204', 'CWE-208', 
+        'CWE-425', 'CWE-288', 'CWE-732', 'CWE-276', 'CWE-693', 'CWE-441', 
+        'CWE-384', 'CWE-664', 'CWE-829', 'CWE-451', 'CWE-284', 'CWE-59', 
+        'CWE-20', 'CWE-327', 'CWE-290', 'CWE-325', 'CWE-706', 'CWE-114'
+    ],
+    'CVE_ID': [],  # No CVE data provided in the original
+    'Pulse_ID': []  # No Pulse data provided in the original
+}
 
 # Process evidence
 clean_evidence = sanitize_evidence(evidence, df_mapping)
@@ -319,13 +285,6 @@ for rank, (apt_name, score) in enumerate(ranked_results, 1):
     # Truncate long APT names to fit column width
     display_name = (apt_name[:27] + '..') if len(apt_name) > 29 else apt_name
     print(f"{rank:<5} | {display_name:<30} | {apt_data['encoded_id']:<10} | {score:.4f} | {common_features['techniques']:<10} | {common_features['software']:<8} | {common_features['capec']:<6} | {common_features['cwe']:<4} | {common_features['cve']:<4} | {common_features['pulse']:<5}")
-
-
-
-
-# Add these imports at the top of the script if not already present
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 # ==============================================
 # SIMILARITY MATRIX GENERATION
@@ -411,17 +370,28 @@ display_names = [apt_name_dict[apt_profiles[apt]['encoded_id']] for apt in apt_p
 plt.figure(figsize=(16, 14))
 sns.set(font_scale=0.7)
 
+# Create custom green-to-red colormap (reversed YlOrRd)
+from matplotlib.colors import LinearSegmentedColormap
+colors = ["red", "yellow", "green"]  # Red for low, green for high
+n_bins = 100
+cmap = LinearSegmentedColormap.from_list("red_green", colors, N=n_bins)
+
 ax = sns.heatmap(
     tvd_similarity_matrix,
-    cmap="YlOrRd",
+    cmap=cmap,
+    vmin=0,  # Minimum similarity value
+    vmax=1,  # Maximum similarity value
+    center=0.5,  # Center the colormap
     xticklabels=display_names,
     yticklabels=display_names,
     annot=False,  # Don't show values to avoid clutter
-    square=True
+    square=True,
+    cbar_kws={'label': 'Similarity Score', 'shrink': 0.8}
 )
 
 # Adjust layout
-plt.title("APT Group Similarity Matrix (Total Variation Distance)", fontsize=14)
+plt.title("APT Group Similarity Matrix (Total Variation Distance)\nGreen = High Similarity, Red = Low Similarity", 
+          fontsize=14, fontweight='bold')
 plt.xticks(rotation=90, fontsize=8)
 plt.yticks(rotation=0, fontsize=8)
 plt.tight_layout()
@@ -443,12 +413,152 @@ for i in range(10):
         print(f"{tvd_similarity_matrix[i,j]:.2f}  ", end="")
     print()
 
+# Convert the numpy array to a DataFrame
+similarity_df = pd.DataFrame(
+    tvd_similarity_matrix,
+    index=display_names,
+    columns=display_names
+)
+
 # ==============================================
-# EVIDENCE SIMILARITY RESULTS (existing code remains unchanged)
+# EVALUATION FUNCTIONS
 # ==============================================
 
-# The rest of your existing code for evidence processing and similarity calculation can remain the same
-# This includes:
-# - The evidence processing (sanitize_evidence and translate_to_encoded)
-# - The TVD similarity calculation for evidence
-# - The results display
+def evaluate_similarity_matrix(similarity_df, top_x_values=[1, 5, 10, 20]):
+    """Evaluate if each APT appears in its own top-X most similar APTs"""
+    print("Using 100% of profile data (full similarity matrix)")
+    
+    apt_names = similarity_df.index.tolist()
+    resultdict = {}
+    
+    # For each APT, get its similarity scores from the matrix
+    for target_apt_name in apt_names:
+        similarities = similarity_df[target_apt_name].to_dict()
+        resultdict[target_apt_name] = similarities
+    
+    # Evaluate for multiple top-X values
+    for topX in top_x_values:
+        lengthResultDict = len(resultdict)
+        success = 0
+        failure = 0
+        
+        # Iterate through each APT's results
+        for target_apt, similarities in resultdict.items():
+            # Sort by similarity score (descending)
+            sorted_similarities = dict(sorted(similarities.items(), key=lambda x: x[1], reverse=True))
+            
+            # Get top X most similar APTs
+            top_x_similar = dict(islice(sorted_similarities.items(), topX))
+            
+            # Check if target APT is in its own top X most similar
+            if target_apt in top_x_similar:
+                success = success + 1
+            else:
+                failure = failure + 1
+        
+        print(f"Top {topX}: {success}/{failure} (Success rate: {(success/lengthResultDict)*100:.2f}%)")
+
+def evaluate_profile_division(apt_profiles, apt_name_dict, df_mapping, divider=2, top_x_values=[1, 5, 10, 20]):
+    """Evaluate model performance with divided profile data"""
+    print(f"Using {100/divider:.1f}% of profile data")
+    
+    resultdict = {}
+    apt_names = list(apt_profiles.keys())
+    
+    # Show progress
+    total_apts = len(apt_names)
+    print(f"Processing {total_apts} APTs...")
+    
+    # For each APT, create divided profile and calculate similarities
+    for i, target_apt_name in enumerate(apt_names):
+        if (i + 1) % 20 == 0:
+            print(f"Processed {i + 1}/{total_apts} APTs...")
+            
+        target_data = apt_profiles[target_apt_name]
+        
+        # Create evidence with divided data for each feature type
+        divided_evidence = {}
+        
+        for feature_type, evidence_key in [('techniques', 'techniques_str'),
+                                         ('software', 'software_str'),
+                                         ('capec', 'CAPEC_ID'),
+                                         ('cwe', 'CWE_ID'),
+                                         ('cve', 'CVE_ID'),
+                                         ('pulse', 'Pulse_ID')]:
+            
+            if feature_type in target_data and target_data[feature_type]:
+                feature_list = target_data[feature_type].copy()
+                random.shuffle(feature_list)
+                division_size = max(1, len(feature_list) // divider)
+                divided_features = feature_list[:division_size]
+                
+                # Convert encoded features back to original format for sanitization
+                if feature_type == 'techniques':
+                    mapping = dict(zip(df_mapping['techniques_Encoded'], df_mapping['techniques_Origin']))
+                    divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
+                elif feature_type == 'software':
+                    mapping = dict(zip(df_mapping['software_Encoded'], df_mapping['software_Origin']))
+                    divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
+                elif feature_type == 'capec':
+                    mapping = dict(zip(df_mapping['CAPEC_ID_Encoded'], df_mapping['CAPEC_ID_Origin']))
+                    divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
+                elif feature_type == 'cwe':
+                    mapping = dict(zip(df_mapping['CWE_ID_Encoded'], df_mapping['CWE_ID_Origin']))
+                    divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
+                elif feature_type == 'cve':
+                    mapping = dict(zip(df_mapping['CVE_ID_Encoded'], df_mapping['CVE_ID_Origin']))
+                    divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
+                elif feature_type == 'pulse':
+                    mapping = dict(zip(df_mapping['Pulse_ID_Encoded'], df_mapping['Pulse_ID_Origin']))
+                    divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
+        
+        # Process the divided evidence
+        clean_evidence = sanitize_evidence(divided_evidence, df_mapping)
+        encoded_evidence = translate_to_encoded(clean_evidence, df_mapping)
+        
+        # Calculate similarities with divided data using TVD
+        similarities = calculate_tvd_similarity(encoded_evidence, apt_profiles, feature_weights)
+        apt_names_list = list(apt_profiles.keys())
+        similarity_dict = {apt_names_list[i]: similarities[i] for i in range(len(apt_names_list))}
+        
+        resultdict[target_apt_name] = similarity_dict
+    
+    # Evaluate for multiple top-X values
+    print(f"\nResults based on {len(resultdict)} tests:")
+    for topX in top_x_values:
+        success = 0
+        failure = 0
+        
+        # Iterate through each APT's results
+        for target_apt, similarities in resultdict.items():
+            # Sort by similarity score (descending)
+            sorted_similarities = dict(sorted(similarities.items(), key=lambda x: x[1], reverse=True))
+            
+            # Get top X most similar APTs
+            top_x_similar = dict(islice(sorted_similarities.items(), topX))
+            
+            # Check if target APT is in its own top X most similar
+            if target_apt in top_x_similar:
+                success = success + 1
+            else:
+                failure = failure + 1
+        
+        success_rate = (success / len(resultdict)) * 100
+        print(f"Top {topX}: {success_rate:.1f}% success rate")
+
+# ==============================================
+# EVALUATION CALLS
+# ==============================================
+
+print("\n" + "="*80)
+print("EVALUATION WITH FULL PROFILE")
+print("="*80)
+evaluate_similarity_matrix(similarity_df)
+
+print("\n" + "="*80)
+print("EVALUATION WITH DIVIDED PROFILES")
+print("="*80)
+
+# Set your custom divider value here
+CUSTOM_DIVIDER = 2  # Change this to your desired value
+evaluate_profile_division(apt_profiles, apt_name_dict, df_mapping, divider=CUSTOM_DIVIDER)
