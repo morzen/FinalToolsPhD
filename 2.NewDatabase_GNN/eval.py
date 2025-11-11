@@ -22,17 +22,12 @@ class APTSimilarityGNN(nn.Module):
         num_nodes = x.size(0)
         num_features = num_nodes - num_apts
         
-        # Verify edge indices
-        assert edge_index.max() < num_nodes, f"Edge index {edge_index.max()} exceeds node count {num_nodes}"
-        
         # Create mask for edges pointing to feature nodes
         edge_mask = edge_index[1] >= num_apts
         feature_edges = edge_index[:, edge_mask]
         
         # Normalize feature indices to 0-based
         feature_edges[1] -= num_apts
-        assert feature_edges[1].max() < num_features, \
-            f"Feature index {feature_edges[1].max()} exceeds feature count {num_features}"
         
         # Process feature nodes
         feature_x = x[num_apts:].unsqueeze(-1)
@@ -44,10 +39,58 @@ class APTSimilarityGNN(nn.Module):
         
         # Aggregate features for each APT
         apt_feature_indices = edge_index[1, :num_apts] - num_apts
-        assert apt_feature_indices.max() < num_features, \
-            f"Aggregation index {apt_feature_indices.max()} exceeds features {num_features}"
         
         return h_apts + h_features[apt_feature_indices]
+
+def get_weighted_gnn_similarity(query_features, apt_embeddings, apt_profiles, apt_ids, feature_to_idx):
+    """GNN similarity with manual weights for different feature types"""
+    
+    # Manual weights - techniques and software are more important
+    feature_weights = {
+        'techniques': 1.5,
+        'software': 1.3, 
+        'capec': 1.0,
+        'cwe': 1.0,
+        'cve': 0.8,
+        'pulse': 0.7
+    }
+    
+    with torch.no_grad():
+        query_embedding = torch.zeros_like(apt_embeddings[0])
+        total_weight = 0
+        
+        for feature_type in ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']:
+            weight = feature_weights[feature_type]
+            
+            for feature_id in query_features.get(feature_type, []):
+                feature_node = f"{feature_type}_{feature_id}"
+                if feature_node in feature_to_idx:
+                    # Find all APTs that have this feature
+                    apts_with_feature = []
+                    for apt_idx, apt_name in enumerate(apt_ids):
+                        apt_data = apt_profiles[apt_name]
+                        if feature_id in apt_data[feature_type]:
+                            apts_with_feature.append(apt_embeddings[apt_idx])
+                    
+                    if apts_with_feature:
+                        # Average embeddings of APTs that share this feature, weighted by feature importance
+                        feature_embedding = torch.stack(apts_with_feature).mean(dim=0)
+                        query_embedding += feature_embedding * weight
+                        total_weight += weight
+        
+        if total_weight > 0:
+            query_embedding = query_embedding / total_weight
+        else:
+            query_embedding = apt_embeddings.mean(dim=0)
+        
+        # Calculate cosine similarity between weighted query and all APT embeddings
+        similarities = F.cosine_similarity(
+            query_embedding.unsqueeze(0), 
+            apt_embeddings,
+            dim=-1
+        )
+    
+    return similarities
 
 def sanitize_evidence(evidence, df_mapping):
     """Keep only evidence features that exist in our database"""
@@ -121,40 +164,8 @@ def translate_to_encoded(evidence, df_mapping):
     
     return encoded_evidence
 
-def calculate_weighted_similarity(encoded_evidence, apt_profiles, apt_ids):
-    """Calculate weighted similarity scores for all APTs"""
-    feature_weights = {
-        'techniques': 1.5,
-        'software': 1.3,
-        'capec': 1.0,
-        'cwe': 1.0,
-        'cve': 0.8,
-        'pulse': 0.7
-    }
-    
-    similarities = []
-    
-    for apt_name in apt_ids:
-        apt_data = apt_profiles[apt_name]
-        total_score = 0
-        total_weight = 0
-        
-        for feature_type, weight in feature_weights.items():
-            if feature_type in encoded_evidence and feature_type in apt_data:
-                evidence_set = set(encoded_evidence[feature_type])
-                profile_set = set(apt_data[feature_type])
-                common = len(evidence_set & profile_set)
-                
-                total_score += common * weight
-                total_weight += len(encoded_evidence[feature_type]) * weight
-        
-        similarity = total_score / total_weight if total_weight > 0 else 0
-        similarities.append(similarity)
-    
-    return torch.tensor(similarities)
-
 def create_similarity_matrix(apt_embeddings, apt_name_dict, apt_profiles, apt_ids):
-    """Create similarity matrix between all APTs"""
+    """Create similarity matrix between all APTs using GNN embeddings"""
     # Calculate cosine similarity matrix
     similarity_matrix = cosine_similarity(apt_embeddings.detach().numpy())
     
@@ -190,7 +201,7 @@ def plot_similarity_heatmap(similarity_df):
                 yticklabels=True,
                 cbar_kws={'shrink': 0.8, 'label': 'Similarity Score'})
     
-    plt.title("APT Group Similarity Matrix", fontsize=16, fontweight='bold')
+    plt.title("APT Group Similarity Matrix (GNN Embeddings)", fontsize=16, fontweight='bold')
     plt.xticks(rotation=90, fontsize=8)
     plt.yticks(rotation=0, fontsize=8)
     plt.tight_layout()
@@ -210,9 +221,23 @@ def main():
     apt_name_dict = loaded_data['apt_name_dict']
     apt_ids = loaded_data['apt_ids']
     df_mapping = loaded_data['df_mapping']
+    num_apts = loaded_data['num_apts']
     
-    # 1. Create and display similarity matrix for all APTs
-    print("Creating similarity matrix for all APTs...")
+    # Recreate feature_to_idx mapping
+    feature_to_idx = {}
+    current_idx = len(apt_ids)
+    for apt, features in apt_profiles.items():
+        for feature_type in ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']:
+            for feature_id in features[feature_type]:
+                feature_node = f"{feature_type}_{feature_id}"
+                if feature_node not in feature_to_idx:
+                    feature_to_idx[feature_node] = current_idx
+                    current_idx += 1
+
+    print(f"Loaded GNN model with {num_apts} APTs")
+
+    # 1. Create and display similarity matrix for all APTs using GNN embeddings
+    print("Creating similarity matrix for all APTs using GNN embeddings...")
     similarity_df = create_similarity_matrix(apt_embeddings, apt_name_dict, apt_profiles, apt_ids)
     
     print("Similarity DataFrame sample (first 5x5):")
@@ -221,7 +246,7 @@ def main():
     
     # ===== EVALUATE SIMILARITY MATRIX (FULL DATA) =====
     print("\n" + "="*80)
-    print("EVALUATING SIMILARITY MATRIX (FULL DATA)")
+    print("EVALUATING SIMILARITY MATRIX (FULL DATA - GNN EMBEDDINGS)")
     print("="*80)
     
     # Get APT names in order (same as similarity_df index)
@@ -249,19 +274,15 @@ def main():
                 failure += 1
         
         total = len(apt_names)
-        print(f"\nSettings: Top {top_x} (Full Data)")
+        print(f"\nSettings: Top {top_x} (Full Data - GNN Embeddings)")
         print(f"Success/Failure: {success}/{failure} Total: {total}")
         print(f"Success rate: {(success/total)*100:.2f}%")
     
-    # Optional: Save the similarity matrix to CSV
-    # similarity_df.to_csv("./apt_similarity_matrix.csv", index=True)
-    # print(f"Similarity matrix saved to ./apt_similarity_matrix.csv")
-    
     # 2. Plot heatmap
-    print("Plotting similarity heatmap...")
+    print("\nPlotting similarity heatmap...")
     plot_similarity_heatmap(similarity_df)
     
-    # ===== PROPER PROFILE DATA DIVISION EVALUATION =====
+    # ===== PROPER PROFILE DATA DIVISION EVALUATION USING GNN =====
     # Configuration
     divider = 2  # Start with complete profile (divider = 1 means 100% of data)
     top_x_values = [1, 5, 10, 20]
@@ -269,9 +290,11 @@ def main():
     resultdict = {}
     apt_names = [apt_name_dict[apt_profiles[apt]['encoded_id']] for apt in apt_ids]
     
-    print(f"\nEvaluating with divider: {divider} (using {100/divider:.1f}% of profile data)")
+    print(f"\n" + "="*80)
+    print(f"EVALUATING WITH DIVIDER: {divider} (USING {100/divider:.1f}% OF PROFILE DATA - GNN APPROACH)")
+    print("="*80)
     
-    # For each APT, create divided profile and calculate similarities
+    # For each APT, create divided profile and calculate similarities using GNN
     for i, target_apt_name in enumerate(apt_names):
         # Get the target APT's original data
         target_apt_id = next(apt for apt in apt_ids if apt_name_dict[apt_profiles[apt]['encoded_id']] == target_apt_name)
@@ -317,17 +340,19 @@ def main():
         clean_evidence = sanitize_evidence(divided_evidence, df_mapping)
         encoded_evidence = translate_to_encoded(clean_evidence, df_mapping)
         
-        # Calculate similarities with divided data
-        weighted_similarities = calculate_weighted_similarity(encoded_evidence, apt_profiles, apt_ids)
+        # Calculate similarities with divided data using GNN approach
+        gnn_similarities = get_weighted_gnn_similarity(encoded_evidence, apt_embeddings, apt_profiles, apt_ids, feature_to_idx)
         
         # Create ranked results (INCLUDE self this time!)
         ranked_results = {}
-        for idx in weighted_similarities.sort(descending=True).indices:
+        for idx in gnn_similarities.sort(descending=True).indices:
             apt_name = apt_ids[idx]
             apt_real_name = apt_name_dict[apt_profiles[apt_name]['encoded_id']]
-            ranked_results[apt_real_name] = weighted_similarities[idx].item()
+            ranked_results[apt_real_name] = gnn_similarities[idx].item()
         
         resultdict[target_apt_name] = ranked_results
+        
+        
     
     # Evaluate for multiple top-X values
     for topX in top_x_values:
@@ -352,10 +377,12 @@ def main():
                 failure = failure + 1
                 SucessFailDict[target_apt] = "Fail"
         
-        print("\nsettings: Topx: " + str(topX) + " Divider: " + str(divider))
-        print("GNN for this set had a success failure rate of ")
-        print(str(success) + "/" + str(failure) + " Total: " + str(lengthResultDict))
-        print("in percentage success rate: " + str((success/lengthResultDict)*100))
+        print(f"\nSettings: Top {topX}, Divider: {divider} (GNN Approach)")
+        print(f"Success/Failure: {success}/{failure} Total: {lengthResultDict}")
+        print(f"Success rate: {(success/lengthResultDict)*100:.2f}%")
+
+    
+   
 
 if __name__ == "__main__":
     main()

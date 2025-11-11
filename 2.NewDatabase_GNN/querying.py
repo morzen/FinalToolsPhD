@@ -4,10 +4,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
 import pickle
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.metrics.pairwise import cosine_similarity
-import numpy as np
 
 class APTSimilarityGNN(nn.Module):
     def __init__(self, num_apts, hidden_dim=64):
@@ -20,17 +16,12 @@ class APTSimilarityGNN(nn.Module):
         num_nodes = x.size(0)
         num_features = num_nodes - num_apts
         
-        # Verify edge indices
-        assert edge_index.max() < num_nodes, f"Edge index {edge_index.max()} exceeds node count {num_nodes}"
-        
         # Create mask for edges pointing to feature nodes
         edge_mask = edge_index[1] >= num_apts
         feature_edges = edge_index[:, edge_mask]
         
         # Normalize feature indices to 0-based
         feature_edges[1] -= num_apts
-        assert feature_edges[1].max() < num_features, \
-            f"Feature index {feature_edges[1].max()} exceeds feature count {num_features}"
         
         # Process feature nodes
         feature_x = x[num_apts:].unsqueeze(-1)
@@ -42,114 +33,58 @@ class APTSimilarityGNN(nn.Module):
         
         # Aggregate features for each APT
         apt_feature_indices = edge_index[1, :num_apts] - num_apts
-        assert apt_feature_indices.max() < num_features, \
-            f"Aggregation index {apt_feature_indices.max()} exceeds features {num_features}"
         
         return h_apts + h_features[apt_feature_indices]
 
-def sanitize_evidence(evidence, df_mapping):
-    """Keep only evidence features that exist in our database"""
-    sanitized = {}
-    missing = {}
+def get_weighted_gnn_similarity(query_features, apt_embeddings, apt_profiles, apt_ids, feature_to_idx):
+    """GNN similarity with manual weights for different feature types"""
     
-    column_mapping = {
-        'techniques_str': ('techniques_Origin', 'techniques_Encoded'),
-        'software_str': ('software_Origin', 'software_Encoded'),
-        'CAPEC_ID': ('CAPEC_ID_Origin', 'CAPEC_ID_Encoded'),
-        'CWE_ID': ('CWE_ID_Origin', 'CWE_ID_Encoded'),
-        'CVE_ID': ('CVE_ID_Origin', 'CVE_ID_Encoded'),
-        'Pulse_ID': ('Pulse_ID_Origin', 'Pulse_ID_Encoded')
-    }
-    
-    for evidence_key, (origin_col, _) in column_mapping.items():
-        if evidence_key in evidence:
-            valid_values = set(df_mapping[origin_col].dropna())
-            valid_values.discard('')
-            
-            valid = []
-            invalid = []
-            
-            for item in evidence[evidence_key]:
-                if item == '':
-                    continue
-                if str(item) in valid_values:
-                    valid.append(item)
-                else:
-                    invalid.append(item)
-            
-            if valid:
-                sanitized[evidence_key] = valid
-            if invalid:
-                missing[evidence_key] = invalid
-    
-    if missing:
-        print("WARNING: These features were not found in our database:")
-        for feature_type, items in missing.items():
-            print(f"- {feature_type}: {items[:5]}")
-            if len(items) > 5:
-                print(f"  (and {len(items)-5} more)")
-    
-    return sanitized
-
-def translate_to_encoded(evidence, df_mapping):
-    """Convert sanitized evidence to encoded IDs"""
-    encoded_evidence = {}
-    
-    column_mapping = {
-        'techniques_str': ('techniques_Encoded', 'techniques'),
-        'software_str': ('software_Encoded', 'software'), 
-        'CAPEC_ID': ('CAPEC_ID_Encoded', 'capec'),
-        'CWE_ID': ('CWE_ID_Encoded', 'cwe'),
-        'CVE_ID': ('CVE_ID_Encoded', 'cve'),
-        'Pulse_ID': ('Pulse_ID_Encoded', 'pulse')
-    }
-    
-    for evidence_key, (encoded_col, output_key) in column_mapping.items():
-        if evidence_key in evidence:
-            origin_col = encoded_col.replace('_Encoded', '_Origin')
-            mapping = dict(zip(df_mapping[origin_col], df_mapping[encoded_col]))
-            
-            encoded_values = []
-            for val in evidence[evidence_key]:
-                if val in mapping:
-                    encoded_values.append(mapping[val])
-            
-            if encoded_values:
-                encoded_evidence[output_key] = encoded_values
-    
-    return encoded_evidence
-
-def calculate_weighted_similarity(encoded_evidence, apt_profiles, apt_ids):
-    """Calculate weighted similarity scores for all APTs"""
+    # Manual weights - techniques and software are more important
     feature_weights = {
         'techniques': 1.5,
-        'software': 1.3,
+        'software': 1.3, 
         'capec': 1.0,
         'cwe': 1.0,
         'cve': 0.8,
         'pulse': 0.7
     }
     
-    similarities = []
-    
-    for apt_name in apt_ids:
-        apt_data = apt_profiles[apt_name]
-        total_score = 0
+    with torch.no_grad():
+        query_embedding = torch.zeros_like(apt_embeddings[0])
         total_weight = 0
         
-        for feature_type, weight in feature_weights.items():
-            if feature_type in encoded_evidence and feature_type in apt_data:
-                evidence_set = set(encoded_evidence[feature_type])
-                profile_set = set(apt_data[feature_type])
-                common = len(evidence_set & profile_set)
-                
-                total_score += common * weight
-                total_weight += len(encoded_evidence[feature_type]) * weight
+        for feature_type in ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']:
+            weight = feature_weights[feature_type]
+            
+            for feature_id in query_features.get(feature_type, []):
+                feature_node = f"{feature_type}_{feature_id}"
+                if feature_node in feature_to_idx:
+                    # Find all APTs that have this feature
+                    apts_with_feature = []
+                    for apt_idx, apt_name in enumerate(apt_ids):
+                        apt_data = apt_profiles[apt_name]
+                        if feature_id in apt_data[feature_type]:
+                            apts_with_feature.append(apt_embeddings[apt_idx])
+                    
+                    if apts_with_feature:
+                        # Average embeddings of APTs that share this feature, weighted by feature importance
+                        feature_embedding = torch.stack(apts_with_feature).mean(dim=0)
+                        query_embedding += feature_embedding * weight
+                        total_weight += weight
         
-        similarity = total_score / total_weight if total_weight > 0 else 0
-        similarities.append(similarity)
+        if total_weight > 0:
+            query_embedding = query_embedding / total_weight
+        else:
+            query_embedding = apt_embeddings.mean(dim=0)
+        
+        # Calculate cosine similarity between weighted query and all APT embeddings
+        similarities = F.cosine_similarity(
+            query_embedding.unsqueeze(0), 
+            apt_embeddings,
+            dim=-1
+        )
     
-    return torch.tensor(similarities)
+    return similarities
 
 def main():
     # Load trained model and data
@@ -165,13 +100,22 @@ def main():
     apt_name_dict = loaded_data['apt_name_dict']
     apt_ids = loaded_data['apt_ids']
     df_mapping = loaded_data['df_mapping']
+    num_apts = loaded_data['num_apts']
     
-    # Process custom evidence
-    print("\n" + "="*80)
-    print("PROCESSING CUSTOM EVIDENCE")
-    print("="*80)
-    
-    # Define your evidence here
+    # Recreate feature_to_idx mapping
+    feature_to_idx = {}
+    current_idx = len(apt_ids)
+    for apt, features in apt_profiles.items():
+        for feature_type in ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']:
+            for feature_id in features[feature_type]:
+                feature_node = f"{feature_type}_{feature_id}"
+                if feature_node not in feature_to_idx:
+                    feature_to_idx[feature_node] = current_idx
+                    current_idx += 1
+
+    print(f"Loaded GNN model with {num_apts} APTs")
+
+    # Your evidence
     evidence = {
     'techniques_str': ['T1001.002', 'T1003.002', 'T1003.004', 'T1003.006', 'T1005', 'T1016.001', 'T1018', 'T1021.001', 
                       'T1021.002', 'T1021.006', 'T1021.007', 'T1027.001', 'T1027.002', 'T1027.003', 'T1027.006', 
@@ -210,52 +154,71 @@ def main():
     'CVE_ID': ['CVE-2021-44228'],
     'Pulse_ID': ['']
     }
+
+    # Convert evidence to encoded format
+    encoded_evidence = {}
+    column_mapping = {
+        'techniques_str': ('techniques_Encoded', 'techniques'),
+        'software_str': ('software_Encoded', 'software'), 
+        'CAPEC_ID': ('CAPEC_ID_Encoded', 'capec'),
+        'CWE_ID': ('CWE_ID_Encoded', 'cwe'),
+        'CVE_ID': ('CVE_ID_Encoded', 'cve'),
+        'Pulse_ID': ('Pulse_ID_Encoded', 'pulse')
+    }
     
-    # Process evidence
-    print("Processing evidence...")
-    clean_evidence = sanitize_evidence(evidence, df_mapping)
-    encoded_evidence = translate_to_encoded(clean_evidence, df_mapping)
+    for evidence_key, (encoded_col, output_key) in column_mapping.items():
+        if evidence_key in evidence:
+            origin_col = encoded_col.replace('_Encoded', '_Origin')
+            mapping = dict(zip(df_mapping[origin_col], df_mapping[encoded_col]))
+            encoded_values = []
+            for val in evidence[evidence_key]:
+                if val in mapping:
+                    encoded_values.append(mapping[val])
+            if encoded_values:
+                encoded_evidence[output_key] = encoded_values
+
+    print("Calculating weighted GNN similarities...")
+    print("Feature weights: Techniques=1.5, Software=1.3, CAPEC=1.0, CWE=1.0, CVE=0.8, Pulse=0.7")
     
-    print("Evidence processed:")
-    print({k: len(v) for k, v in encoded_evidence.items()})
-    
-    # Calculate similarities
-    weighted_similarities = calculate_weighted_similarity(encoded_evidence, apt_profiles, apt_ids)
-    
-    # Create results
-    full_results = []
-    for idx in weighted_similarities.sort(descending=True).indices:
+    similarities = get_weighted_gnn_similarity(
+        encoded_evidence, apt_embeddings, apt_profiles, apt_ids, feature_to_idx
+    )
+
+    # Create results with feature overlap counts for display
+    results = []
+    for idx in similarities.sort(descending=True).indices:
         apt_name = apt_ids[idx]
         apt_data = apt_profiles[apt_name]
         
-        common_features = {
-            'techniques': len(set(encoded_evidence.get('techniques', [])) & set(apt_data['techniques'])),
-            'software': len(set(encoded_evidence.get('software', [])) & set(apt_data['software'])),
-            'capec': len(set(encoded_evidence.get('capec', [])) & set(apt_data['capec'])),
-            'cwe': len(set(encoded_evidence.get('cwe', [])) & set(apt_data['cwe'])),
-            'cve': len(set(encoded_evidence.get('cve', [])) & set(apt_data['cve'])),
-            'pulse': len(set(encoded_evidence.get('pulse', [])) & set(apt_data['pulse']))
-        }
+        # Calculate feature overlaps for display
+        common_features = {}
+        for feature_type in ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']:
+            evidence_set = set(encoded_evidence.get(feature_type, []))
+            profile_set = set(apt_data[feature_type])
+            common_features[feature_type] = len(evidence_set & profile_set)
         
-        full_results.append({
-            'Rank': len(full_results)+1,
+        results.append({
+            'Rank': len(results)+1,
             'APT': apt_name_dict[apt_data['encoded_id']],
-            'Score': weighted_similarities[idx].item(),
+            'GNN_Similarity': similarities[idx].item(),
             'Encoded_ID': apt_data['encoded_id'],
             **common_features
         })
-    
-    # Display results
-    ranked_apts = pd.DataFrame(full_results)
-    
-    print("\nComplete APT Ranking with Feature Matches:")
-    print("="*110)
-    print(f"{'Rank':<5} | {'APT':<30} | {'Encoded ID':<10} | {'Score':<8} | {'Techniques':<10} | {'Software':<8} | {'CAPEC':<6} | {'CWE':<4} | {'CVE':<4} | {'Pulse':<5}")
-    print("-"*110)
-    
-    for _, row in ranked_apts.iterrows():
+
+    # Display ALL APTs
+    print(f"\n{'Rank':<5} | {'APT':<30} | {'Similarity':<10} | {'Tech':<5} | {'Soft':<5} | {'CAPEC':<6} | {'CWE':<4} | {'CVE':<4} | {'Pulse':<5}")
+    print("-" * 95)
+    for row in results:  # Show ALL APTs
         apt_name = (row['APT'][:27] + '..') if len(row['APT']) > 29 else row['APT']
-        print(f"{row['Rank']:<5} | {apt_name:<30} | {row['Encoded_ID']:<10} | {row['Score']:.4f} | {row['techniques']:<10} | {row['software']:<8} | {row['capec']:<6} | {row['cwe']:<4} | {row['cve']:<4} | {row['pulse']:<5}")
+        print(f"{row['Rank']:<5} | {apt_name:<30} | {row['GNN_Similarity']:.4f} | {row['techniques']:<5} | {row['software']:<5} | {row['capec']:<6} | {row['cwe']:<4} | {row['cve']:<4} | {row['pulse']:<5}")
+
+    # Show summary statistics
+    print(f"\nSummary Statistics:")
+    print(f"Total APTs analyzed: {len(results)}")
+    print(f"Average similarity: {similarities.mean().item():.4f}")
+    print(f"Maximum similarity: {similarities.max().item():.4f}")
+    print(f"Minimum similarity: {similarities.min().item():.4f}")
+    print(f"APTs with similarity > 0: {(similarities > 0).sum().item()}")
 
 if __name__ == "__main__":
     main()
