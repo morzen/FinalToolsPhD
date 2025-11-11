@@ -151,7 +151,7 @@ def train_siamese_model(model, pairs, labels, num_epochs=50, batch_size=32):
         if (epoch + 1) % 10 == 0:
             print(f'Epoch {epoch+1}/{num_epochs}, Loss: {avg_loss:.4f}')
 
-def save_complete_model(model, apt_embeddings, apt_profiles, apt_name_dict, apt_ids, apt_to_idx, df_mapping, save_path="./DataForSiamese/siamese_complete_model.pkl"):
+def save_complete_model(model, apt_embeddings, apt_profiles, apt_name_dict, apt_ids, apt_to_idx, df_mapping, save_path="./siamese_complete_model.pkl"):
     """Save everything in one pickle file"""
     # Create directory if it doesn't exist
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
@@ -192,12 +192,12 @@ def load_complete_model(load_path):
     return model, data
 
 def main():
-    pwd = "./DataForSiamese/"
+    pwd = "../BaseData/"
     
     # Load data
     print("Loading data...")
-    df_encoded = pd.read_csv(pwd + 'data_for_Siamese.csv')
-    df_mapping = pd.read_csv(pwd + 'comparison_Encodedtest_df.csv')
+    df_encoded = pd.read_csv(pwd + 'EncodedData.csv')
+    df_mapping = pd.read_csv(pwd + 'comparison_Encoded_df.csv')
     
     # Create APT name mapping
     apt_name_mapping = df_mapping[['APTnameEncoded', 'APTnameOrigin']].drop_duplicates()
@@ -240,7 +240,7 @@ def main():
         all_embeddings = model.get_all_embeddings().detach()
     
     # Save everything in one file
-    save_path = os.path.join(pwd, 'siamese_complete_model.pkl')
+    save_path = os.path.join('./siamese_complete_model.pkl')
     save_complete_model(model, all_embeddings, apt_profiles, apt_name_dict, apt_ids, apt_to_idx, df_mapping, save_path)
     
     print("Siamese model trained and saved successfully!")
@@ -249,8 +249,7 @@ def main():
 
 def test_similarity():
     """Test the trained model by loading it from the single file"""
-    pwd = "./DataForSiamese/"
-    model_path = os.path.join(pwd, 'siamese_complete_model.pkl')
+    model_path = os.path.join('./siamese_complete_model.pkl')
     
     # Load the complete model
     model, data = load_complete_model(model_path)

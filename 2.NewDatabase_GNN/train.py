@@ -78,11 +78,11 @@ def create_apt_profiles_with_names(df_encoded, name_mapping):
     return profiles
 
 def main():
-    pwd = "./DataForGNN/"
-    
+    pwd = "../BaseData/"
+
     # Load data
-    df_encoded = pd.read_csv(pwd + 'data_for_GNN.csv')
-    df_mapping = pd.read_csv(pwd + 'comparison_Encodedtest_df.csv')
+    df_encoded = pd.read_csv(pwd + 'EncodedData.csv')
+    df_mapping = pd.read_csv(pwd + 'comparison_Encoded_df.csv')
     
     # Create APT name mapping
     apt_name_mapping = df_mapping[['APTnameEncoded', 'APTnameOrigin']].drop_duplicates()
@@ -152,7 +152,7 @@ def main():
         'num_apts': len(apt_ids)  # Save this for model initialization
     }
     
-    with open(pwd + 'trained_model_data.pkl', 'wb') as f:
+    with open('./trained_model_data.pkl', 'wb') as f:
         pickle.dump(save_data, f)
     
     print("Model trained and saved successfully!")

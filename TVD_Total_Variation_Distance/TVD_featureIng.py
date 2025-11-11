@@ -8,9 +8,9 @@ import random
 import math
 
 # Load data files
-pwd = "./DataForTVD/"
-df_encoded = pd.read_csv(pwd+'data_for_TVD.csv')
-df_mapping = pd.read_csv(pwd+'comparison_Encodedtest_df.csv')
+pwd = "../BaseData/"
+df_encoded = pd.read_csv(pwd+'EncodedData.csv')
+df_mapping = pd.read_csv(pwd+'comparison_Encoded_df.csv')
 
 # Create APT name mapping
 apt_name_mapping = df_mapping[['APTnameEncoded', 'APTnameOrigin']].drop_duplicates()
@@ -467,12 +467,9 @@ def evaluate_profile_division(apt_profiles, apt_name_dict, df_mapping, divider=2
     
     # Show progress
     total_apts = len(apt_names)
-    print(f"Processing {total_apts} APTs...")
-    
     # For each APT, create divided profile and calculate similarities
     for i, target_apt_name in enumerate(apt_names):
-        if (i + 1) % 20 == 0:
-            print(f"Processed {i + 1}/{total_apts} APTs...")
+        
             
         target_data = apt_profiles[target_apt_name]
         

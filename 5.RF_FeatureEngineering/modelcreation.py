@@ -6,11 +6,11 @@ import joblib
 import pickle
 
 def create_and_save_model():
-    pwd = "./DataForRF/"
+    pwd = "../BaseData/"
     
     # Load both files
-    df_encoded = pd.read_csv(pwd+'data_for_RF.csv')
-    df_mapping = pd.read_csv(pwd+'comparison_Encodedtest_df.csv')
+    df_encoded = pd.read_csv(pwd+'EncodedData.csv')
+    df_mapping = pd.read_csv(pwd+'comparison_Encoded_df.csv')
 
     # Step 1.1: Create a mapping dictionary for APT names
     apt_name_mapping = df_mapping[['APTnameEncoded', 'APTnameOrigin']].drop_duplicates()

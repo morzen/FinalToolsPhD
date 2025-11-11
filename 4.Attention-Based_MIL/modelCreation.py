@@ -8,9 +8,9 @@ import numpy as np
 import pickle
 
 # Data loading and preprocessing
-pwd = "./DataForMIL/"
-df_encoded = pd.read_csv(pwd+'data_for_MIL.csv')
-df_mapping = pd.read_csv(pwd+'comparison_Encodedtest_df.csv')
+pwd = "../BaseData/"
+df_encoded = pd.read_csv(pwd+'EncodedData.csv')
+df_mapping = pd.read_csv(pwd+'comparison_Encoded_df.csv')
 
 # Create APT name mapping
 apt_name_mapping = df_mapping[['APTnameEncoded', 'APTnameOrigin']].drop_duplicates()
@@ -209,6 +209,6 @@ save_data = {
 import torch.serialization
 torch.serialization.add_safe_globals([np.core.multiarray.scalar])
 
-torch.save(save_data, 'apt_similarity_model_complete.pth')
+torch.save(save_data, './apt_similarity_model_complete.pth')
 
 print("Model and all data saved to apt_similarity_model_complete.pth successfully!")

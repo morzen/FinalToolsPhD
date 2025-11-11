@@ -151,54 +151,9 @@ def calculate_weighted_similarity(encoded_evidence, apt_profiles, apt_ids):
     
     return torch.tensor(similarities)
 
-def create_similarity_matrix(apt_embeddings, apt_name_dict, apt_profiles, apt_ids):
-    """Create similarity matrix between all APTs"""
-    # Calculate cosine similarity matrix
-    similarity_matrix = cosine_similarity(apt_embeddings.detach().numpy())
-    
-    # Get APT names in order
-    apt_names = [apt_name_dict[apt_profiles[apt]['encoded_id']] for apt in apt_ids]
-    
-    # Create DataFrame
-    similarity_df = pd.DataFrame(
-        similarity_matrix,
-        index=apt_names,
-        columns=apt_names
-    )
-    
-    return similarity_df
-
-def plot_similarity_heatmap(similarity_df):
-    """Plot heatmap of similarity matrix with complete square and red-green color scheme"""
-    plt.figure(figsize=(16, 14))
-    
-    # Create custom red-to-green colormap
-    from matplotlib.colors import LinearSegmentedColormap
-    colors = ["red", "yellow", "green"]
-    n_bins = 100
-    cmap = LinearSegmentedColormap.from_list("red_green", colors, N=n_bins)
-    
-    # Plot complete heatmap (no mask)
-    sns.heatmap(similarity_df, 
-                mask=None,  # Remove the triangular mask
-                cmap=cmap,
-                center=0.5,  # Center the colormap at 0.5
-                square=True,
-                xticklabels=True,
-                yticklabels=True,
-                cbar_kws={'shrink': 0.8, 'label': 'Similarity Score'})
-    
-    plt.title("APT Group Similarity Matrix", fontsize=16, fontweight='bold')
-    plt.xticks(rotation=90, fontsize=8)
-    plt.yticks(rotation=0, fontsize=8)
-    plt.tight_layout()
-    plt.show()
-
 def main():
-    pwd = "./DataForGNN/"
-    
     # Load trained model and data
-    with open(pwd + 'trained_model_data.pkl', 'rb') as f:
+    with open('./trained_model_data.pkl', 'rb') as f:
         loaded_data = pickle.load(f)
     
     model = APTSimilarityGNN(loaded_data['num_apts'])
@@ -211,57 +166,7 @@ def main():
     apt_ids = loaded_data['apt_ids']
     df_mapping = loaded_data['df_mapping']
     
-    # 1. Create and display similarity matrix for all APTs
-    print("Creating similarity matrix for all APTs...")
-    similarity_df = create_similarity_matrix(apt_embeddings, apt_name_dict, apt_profiles, apt_ids)
-    
-    print("Similarity DataFrame sample (first 5x5):")
-    print(similarity_df.iloc[:5, :5])
-    print(f"\nMatrix shape: {similarity_df.shape}")
-    
-    # ===== NEW: Evaluate similarity matrix (full data) =====
-    print("\n" + "="*80)
-    print("EVALUATING SIMILARITY MATRIX (FULL DATA)")
-    print("="*80)
-    
-    # Get APT names in order (same as similarity_df index)
-    apt_names = list(similarity_df.index)
-    
-    # Evaluate for multiple top-X values
-    top_x_values = [1, 5, 10, 20]
-    
-    for top_x in top_x_values:
-        success = 0
-        failure = 0
-        
-        # For each APT, check if it appears in its own top X most similar APTs
-        for i, apt_name in enumerate(apt_names):
-            # Get similarity scores for this APT
-            similarities = similarity_df.iloc[i]
-            
-            # Get top X most similar APTs (including self)
-            top_similar = similarities.nlargest(top_x)
-            
-            # Check if the APT itself is in its own top X most similar
-            if apt_name in top_similar.index:
-                success += 1
-            else:
-                failure += 1
-        
-        total = len(apt_names)
-        print(f"\nSettings: Top {top_x} (Full Data)")
-        print(f"Success/Failure: {success}/{failure} Total: {total}")
-        print(f"Success rate: {(success/total)*100:.2f}%")
-    
-    # Optional: Save the similarity matrix to CSV
-    # similarity_df.to_csv("./apt_similarity_matrix.csv", index=True)
-    # print(f"Similarity matrix saved to ./apt_similarity_matrix.csv")
-    
-    # 2. Plot heatmap
-    print("Plotting similarity heatmap...")
-    plot_similarity_heatmap(similarity_df)
-    
-    # 3. Process custom evidence
+    # Process custom evidence
     print("\n" + "="*80)
     print("PROCESSING CUSTOM EVIDENCE")
     print("="*80)
@@ -302,7 +207,7 @@ def main():
               'CWE-693', 'CWE-441', 'CWE-923', 'CWE-257', 'CWE-494', 'CWE-552', 'CWE-287', 'CWE-290', 'CWE-302', 
               'CWE-346', 'CWE-539', 'CWE-384', 'CWE-664', 'CWE-602', 'CWE-113', 'CWE-20', 'CWE-472', 'CWE-488', 
               'CWE-330', 'CWE-327', 'CWE-325', 'CWE-117', 'CWE-451', 'CWE-359'],
-    'CVE_ID': ['CVE-2021-44228'],  # Kept your example CVE
+    'CVE_ID': ['CVE-2021-44228'],
     'Pulse_ID': ['']
     }
     
@@ -351,112 +256,6 @@ def main():
     for _, row in ranked_apts.iterrows():
         apt_name = (row['APT'][:27] + '..') if len(row['APT']) > 29 else row['APT']
         print(f"{row['Rank']:<5} | {apt_name:<30} | {row['Encoded_ID']:<10} | {row['Score']:.4f} | {row['techniques']:<10} | {row['software']:<8} | {row['capec']:<6} | {row['cwe']:<4} | {row['cve']:<4} | {row['pulse']:<5}")
-
-
-
-    
-
-
-
-    # ===== PROPER PROFILE DATA DIVISION EVALUATION =====
-    from itertools import islice
-    import random
-    
-    # Configuration
-    divider = 2  # Start with complete profile (divider = 1 means 100% of data)
-    top_x_values = [1, 5, 10, 20]
-    
-    resultdict = {}
-    apt_names = [apt_name_dict[apt_profiles[apt]['encoded_id']] for apt in apt_ids]
-    
-    print(f"\nEvaluating with divider: {divider} (using {100/divider:.1f}% of profile data)")
-    
-    # For each APT, create divided profile and calculate similarities
-    for i, target_apt_name in enumerate(apt_names):
-        # Get the target APT's original data
-        target_apt_id = next(apt for apt in apt_ids if apt_name_dict[apt_profiles[apt]['encoded_id']] == target_apt_name)
-        target_data = apt_profiles[target_apt_id]
-        
-        # Create evidence with divided data for each feature type
-        divided_evidence = {}
-        
-        for feature_type, evidence_key in [('techniques', 'techniques_str'),
-                                         ('software', 'software_str'),
-                                         ('capec', 'CAPEC_ID'),
-                                         ('cwe', 'CWE_ID'),
-                                         ('cve', 'CVE_ID'),
-                                         ('pulse', 'Pulse_ID')]:
-            
-            if feature_type in target_data and target_data[feature_type]:
-                feature_list = target_data[feature_type].copy()
-                random.shuffle(feature_list)
-                division_size = max(1, len(feature_list) // divider)  # At least 1 item
-                divided_features = feature_list[:division_size]
-                
-                # Convert encoded features back to original format for sanitization
-                if feature_type == 'techniques':
-                    mapping = dict(zip(df_mapping['techniques_Encoded'], df_mapping['techniques_Origin']))
-                    divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
-                elif feature_type == 'software':
-                    mapping = dict(zip(df_mapping['software_Encoded'], df_mapping['software_Origin']))
-                    divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
-                elif feature_type == 'capec':
-                    mapping = dict(zip(df_mapping['CAPEC_ID_Encoded'], df_mapping['CAPEC_ID_Origin']))
-                    divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
-                elif feature_type == 'cwe':
-                    mapping = dict(zip(df_mapping['CWE_ID_Encoded'], df_mapping['CWE_ID_Origin']))
-                    divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
-                elif feature_type == 'cve':
-                    mapping = dict(zip(df_mapping['CVE_ID_Encoded'], df_mapping['CVE_ID_Origin']))
-                    divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
-                elif feature_type == 'pulse':
-                    mapping = dict(zip(df_mapping['Pulse_ID_Encoded'], df_mapping['Pulse_ID_Origin']))
-                    divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
-        
-        # Process the divided evidence
-        clean_evidence = sanitize_evidence(divided_evidence, df_mapping)
-        encoded_evidence = translate_to_encoded(clean_evidence, df_mapping)
-        
-        # Calculate similarities with divided data
-        weighted_similarities = calculate_weighted_similarity(encoded_evidence, apt_profiles, apt_ids)
-        
-        # Create ranked results (INCLUDE self this time!)
-        ranked_results = {}
-        for idx in weighted_similarities.sort(descending=True).indices:
-            apt_name = apt_ids[idx]
-            apt_real_name = apt_name_dict[apt_profiles[apt_name]['encoded_id']]
-            ranked_results[apt_real_name] = weighted_similarities[idx].item()
-        
-        resultdict[target_apt_name] = ranked_results
-    
-    # Evaluate for multiple top-X values
-    for topX in top_x_values:
-        lengthResultDict = len(resultdict)
-        success = 0
-        failure = 0
-        SucessFailDict = {}
-        
-        # Iterate through each APT's results
-        for target_apt, similarities in resultdict.items():
-            # Sort by similarity score (descending)
-            sorted_similarities = dict(sorted(similarities.items(), key=lambda x: x[1], reverse=True))
-            
-            # Get top X most similar APTs
-            top_x_similar = dict(islice(sorted_similarities.items(), topX))
-            
-            # Check if target APT is in its own top X most similar
-            if target_apt in top_x_similar:
-                success = success + 1
-                SucessFailDict[target_apt] = "Pass"
-            else:
-                failure = failure + 1
-                SucessFailDict[target_apt] = "Fail"
-        
-        print("\nsettings: Topx: " + str(topX) + " Divider: " + str(divider))
-        print("GNN for this set had a success failure rate of ")
-        print(str(success) + "/" + str(failure) + " Total: " + str(lengthResultDict))
-        print("in percentage success rate: " + str((success/lengthResultDict)*100))
-        
 
 if __name__ == "__main__":
     main()
