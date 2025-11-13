@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.decomposition import PCA
 import random
 from itertools import islice
 
@@ -248,55 +247,6 @@ def plot_similarity_heatmap(similarity_df):
     plt.savefig('apt_GNN_similarity_matrix.png', dpi=300, bbox_inches='tight')
     plt.show()
 
-def visualize_apt_embeddings(saved_data):
-    """2D visualization of APT embeddings using PCA"""
-    apt_embeddings = saved_data['apt_embeddings']
-    apt_ids = saved_data['apt_ids']
-    profiles = saved_data['profiles']
-    
-    # Load APT name mappings
-    df_mapping = pd.read_csv("../BaseData/comparison_Encoded_df.csv")
-    apt_name_mapping = {}
-    for _, row in df_mapping.iterrows():
-        encoded_id = row['APTnameEncoded']
-        original_name = row['APTnameOrigin']
-        apt_name_mapping[encoded_id] = original_name
-    
-    # Convert embeddings to numpy
-    embeddings = apt_embeddings.detach().numpy()
-    names = [apt_name_mapping.get(apt_id, f"APT{apt_id}") for apt_id in apt_ids]
-    
-    # Reduce to 2D using PCA
-    pca = PCA(n_components=2)
-    embeddings_2d = pca.fit_transform(embeddings)
-    
-    # Create the plot
-    plt.figure(figsize=(14, 10))
-    
-    # Color points by number of techniques (TTPs are KING)
-    technique_counts = [len(profiles[apt_id]['techniques']) for apt_id in apt_ids]
-    
-    scatter = plt.scatter(embeddings_2d[:, 0], embeddings_2d[:, 1], 
-                         c=technique_counts, cmap='viridis', alpha=0.7, s=60)
-    plt.colorbar(scatter, label='Number of Techniques (TTPs)')
-    
-    # Add labels for prominent APTs
-    for i, name in enumerate(names):
-        if technique_counts[i] > 100:  # Label only APTs with many techniques
-            plt.annotate(name, 
-                        (embeddings_2d[i, 0] + 0.02, embeddings_2d[i, 1] + 0.02),
-                        fontsize=8, 
-                        alpha=0.8,
-                        fontweight='bold')
-    
-    plt.title("APT Embeddings Visualization (Colored by TTP Count)", fontsize=16)
-    plt.xlabel("Principal Component 1")
-    plt.ylabel("Principal Component 2")
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.savefig('apt_embeddings_visualization.png', dpi=300, bbox_inches='tight')
-    plt.show()
-
 def evaluate_similarity_matrix(similarity_df, apt_names):
     """Evaluate the similarity matrix for different top-X values"""
     print("\n" + "="*80)
@@ -489,52 +439,6 @@ def evaluate_profile_division(saved_data, divider=2, top_x_values=[1, 5, 10, 20]
         print(f"Success/Failure: {success}/{failure} Total: {lengthResultDict}")
         print(f"Success rate: {(success/lengthResultDict)*100:.2f}%")
 
-def test_sample_queries(saved_data):
-    """Test sample queries to verify the model works correctly"""
-    print("\n" + "="*80)
-    print("TESTING SAMPLE QUERIES")
-    print("="*80)
-    
-    # Test the same evidence as in apt_query.py
-    test_evidence = {
-        'techniques': ["T1001.002", "T1003", "T1558", "T1217"],
-        'software': ["S0672"], 
-        'capec': ["CAPEC-100", "CAPEC-200"],
-        'cwe': ["CWE-79", "CWE-89"],
-        'cves': ["CVE-2024-27894", "CVE-2024-31141"],
-        'pulse': ["PULSE-1", "PULSE-2"]
-    }
-    
-    print("Testing with evidence:")
-    print(f"  Techniques: {test_evidence['techniques']}")
-    print(f"  Software: {test_evidence['software']}")
-    print(f"  CAPEC: {test_evidence['capec']}")
-    print(f"  CWE: {test_evidence['cwe']}")
-    print(f"  CVEs: {test_evidence['cves']}")
-    print(f"  Pulse: {test_evidence['pulse']}")
-    
-    # Convert and query
-    encoded_evidence = convert_evidence_to_encoded(test_evidence)
-    similarities, apt_ids = query_apt_similarity(encoded_evidence, saved_data)
-    
-    # Get top 5 results
-    top5_indices = torch.topk(similarities, 5).indices
-    
-    # Load APT name mappings
-    df_mapping = pd.read_csv("../BaseData/comparison_Encoded_df.csv")
-    apt_name_mapping = {}
-    for _, row in df_mapping.iterrows():
-        encoded_id = row['APTnameEncoded']
-        original_name = row['APTnameOrigin']
-        apt_name_mapping[encoded_id] = original_name
-    
-    print("\nTop 5 most similar APTs:")
-    for i, idx in enumerate(top5_indices):
-        apt_id = apt_ids[idx.item()]
-        apt_name = apt_name_mapping.get(apt_id, f"APT{apt_id}")
-        similarity = similarities[idx].item()
-        print(f"  {i+1}. {apt_name}: {similarity:.4f}")
-
 def main():
     print("🚀 GNN APT SIMILARITY MODEL EVALUATION")
     print("=" * 60)
@@ -552,10 +456,7 @@ def main():
     print(f"   Features: {len(feature_mappings[0])} techniques, {len(feature_mappings[1])} software, "
           f"{len(feature_mappings[2])} CAPEC, {len(feature_mappings[3])} CWE, {len(feature_mappings[4])} CVEs, {len(feature_mappings[5])} Pulse")
     
-    # 1. Test sample queries
-    test_sample_queries(saved_data)
-    
-    # 2. Create and display similarity matrix
+    # 1. Create and display similarity matrix
     print("\n" + "="*80)
     print("CREATING SIMILARITY MATRIX")
     print("="*80)
@@ -566,18 +467,14 @@ def main():
     print(similarity_df.iloc[:5, :5])
     print(f"\nMatrix shape: {similarity_df.shape}")
     
-    # 3. Plot heatmap
+    # 2. Plot heatmap
     print("\nPlotting similarity heatmap...")
     plot_similarity_heatmap(similarity_df)
     
-    # 4. Visualize embeddings
-    print("\nVisualizing APT embeddings...")
-    visualize_apt_embeddings(saved_data)
-    
-    # 5. Evaluate similarity matrix
+    # 3. Evaluate similarity matrix
     evaluate_similarity_matrix(similarity_df, apt_names)
     
-    # 6. Evaluate profile division (only divider 2 with Top 20)
+    # 4. Evaluate profile division (only divider 2 with Top 20)
     print("\n" + "="*80)
     print("EVALUATING PROFILE DIVISION PERFORMANCE")
     print("="*80)
