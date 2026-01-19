@@ -3,6 +3,194 @@ import numpy as np
 import joblib
 from sklearn.metrics.pairwise import cosine_similarity
 
+def analyze_feature_matching_classification(encoded_evidence, results, apt_profiles, apt_name_dict):
+    """ANALYZE FEATURE MATCHING BY CATEGORY - SEPARATE TABLES FOR TTP, SOFTWARE, CVE"""
+    print("\n" + "="*80)
+    print("🔍 FEATURE MATCHING CLASSIFICATION - TOP 5 BY CATEGORY")
+    print("="*80)
+    
+    # Prepare feature matching breakdown
+    techniques = encoded_evidence.get('techniques', [])
+    software = encoded_evidence.get('software', [])
+    cves = encoded_evidence.get('cve', [])
+    
+    # Create a mapping from APT name to profile key
+    apt_name_to_key = {}
+    for result in results:
+        apt_name = result['APT']
+        # Find the apt profile key that matches this APT name
+        for apt_key, profile in apt_profiles.items():
+            if apt_name_dict[profile['encoded_id']] == apt_name:
+                apt_name_to_key[apt_name] = apt_key
+                break
+    
+    # Calculate feature matching scores for all APTs
+    all_feature_scores = []
+    
+    for result in results:
+        apt_name = result['APT']
+        apt_key = apt_name_to_key.get(apt_name)
+        
+        if apt_key and apt_key in apt_profiles:
+            profile = apt_profiles[apt_key]
+            
+            # Calculate individual feature matches
+            tech_matches = len(set(techniques) & set(profile.get('techniques', [])))
+            soft_matches = len(set(software) & set(profile.get('software', [])))
+            cve_matches = len(set(cves) & set(profile.get('cve', [])))
+            
+            # Calculate normalized scores (0-1)
+            # Evidence coverage: how much of the evidence is covered by the APT profile
+            tech_evidence_coverage = tech_matches / max(1, len(techniques))
+            soft_evidence_coverage = soft_matches / max(1, len(software))
+            cve_evidence_coverage = cve_matches / max(1, len(cves))
+            
+            # Profile coverage: how much of the APT profile matches the evidence
+            tech_profile_coverage = tech_matches / max(1, len(profile.get('techniques', [])))
+            soft_profile_coverage = soft_matches / max(1, len(profile.get('software', [])))
+            cve_profile_coverage = cve_matches / max(1, len(profile.get('cve', [])))
+            
+            # Combined score: harmonic mean of both coverages
+            def harmonic_mean(a, b):
+                if a + b == 0:
+                    return 0
+                return (2 * a * b) / (a + b)
+            
+            tech_score = harmonic_mean(tech_evidence_coverage, tech_profile_coverage)
+            soft_score = harmonic_mean(soft_evidence_coverage, soft_profile_coverage)
+            cve_score = harmonic_mean(cve_evidence_coverage, cve_profile_coverage)
+            
+            all_feature_scores.append({
+                'apt_name': apt_name,
+                'apt_key': apt_key,
+                'tech_score': tech_score,
+                'soft_score': soft_score,
+                'cve_score': cve_score,
+                'tech_matches': tech_matches,
+                'soft_matches': soft_matches,
+                'cve_matches': cve_matches,
+                'tech_evidence_coverage': tech_evidence_coverage,
+                'soft_evidence_coverage': soft_evidence_coverage,
+                'cve_evidence_coverage': cve_evidence_coverage,
+                'tech_profile_coverage': tech_profile_coverage,
+                'soft_profile_coverage': soft_profile_coverage,
+                'cve_profile_coverage': cve_profile_coverage,
+                'total_matches': tech_matches + soft_matches + cve_matches
+            })
+    
+    # TABLE 1: TOP 5 TTP MATCHING
+    print("\n🎯 TOP 5 APTs BY TTP MATCHING")
+    print("-" * 85)
+    header = f"{'Rank':<4} {'APT Name':<30} {'Score':<10} {'Evidence':<15} {'Profile':<15} {'Harmonic':<10}"
+    print(header)
+    print("-" * 85)
+    
+    # Sort by TTP score
+    ttp_sorted = sorted(all_feature_scores, key=lambda x: x['tech_score'], reverse=True)[:5]
+    for i, score in enumerate(ttp_sorted, 1):
+        apt_key = score['apt_key']
+        profile = apt_profiles[apt_key]
+        total_techniques = len(profile.get('techniques', []))
+        row = f"{i:<4} {score['apt_name']:<30} {score['tech_score']:.4f}    " \
+              f"{score['tech_matches']:>2}/{len(techniques):<2} ({score['tech_evidence_coverage']:.3f})  " \
+              f"{score['tech_matches']:>2}/{total_techniques:<3} ({score['tech_profile_coverage']:.3f})  " \
+              f"{score['tech_score']:.4f}"
+        print(row)
+    
+    # TABLE 2: TOP 5 SOFTWARE MATCHING
+    print("\n🛠️  TOP 5 APTs BY SOFTWARE MATCHING")
+    print("-" * 85)
+    header = f"{'Rank':<4} {'APT Name':<30} {'Score':<10} {'Evidence':<15} {'Profile':<15} {'Harmonic':<10}"
+    print(header)
+    print("-" * 85)
+    
+    # Sort by Software score
+    sw_sorted = sorted(all_feature_scores, key=lambda x: x['soft_score'], reverse=True)[:5]
+    for i, score in enumerate(sw_sorted, 1):
+        apt_key = score['apt_key']
+        profile = apt_profiles[apt_key]
+        total_software = len(profile.get('software', []))
+        row = f"{i:<4} {score['apt_name']:<30} {score['soft_score']:.4f}    " \
+              f"{score['soft_matches']:>2}/{len(software):<2} ({score['soft_evidence_coverage']:.3f})  " \
+              f"{score['soft_matches']:>2}/{total_software:<3} ({score['soft_profile_coverage']:.3f})  " \
+              f"{score['soft_score']:.4f}"
+        print(row)
+    
+    # TABLE 3: TOP 5 CVE MATCHING
+    print("\n💥 TOP 5 APTs BY CVE MATCHING")
+    print("-" * 85)
+    header = f"{'Rank':<4} {'APT Name':<30} {'Score':<10} {'Evidence':<15} {'Profile':<15} {'Harmonic':<10}"
+    print(header)
+    print("-" * 85)
+    
+    # Sort by CVE score
+    cve_sorted = sorted(all_feature_scores, key=lambda x: x['cve_score'], reverse=True)[:5]
+    for i, score in enumerate(cve_sorted, 1):
+        apt_key = score['apt_key']
+        profile = apt_profiles[apt_key]
+        total_cves = len(profile.get('cve', []))
+        row = f"{i:<4} {score['apt_name']:<30} {score['cve_score']:.4f}    " \
+              f"{score['cve_matches']:>2}/{len(cves):<2} ({score['cve_evidence_coverage']:.3f})  " \
+              f"{score['cve_matches']:>2}/{total_cves:<3} ({score['cve_profile_coverage']:.3f})  " \
+              f"{score['cve_score']:.4f}"
+        print(row)
+    
+    # SUMMARY STATISTICS
+    print("\n📊 FEATURE MATCHING SUMMARY")
+    print("-" * 50)
+    
+    # Calculate averages
+    avg_tech = np.mean([s['tech_score'] for s in all_feature_scores])
+    avg_soft = np.mean([s['soft_score'] for s in all_feature_scores])
+    avg_cve = np.mean([s['cve_score'] for s in all_feature_scores])
+    
+    print(f"Average TTP matching score: {avg_tech:.4f}")
+    print(f"Average Software matching score: {avg_soft:.4f}")
+    print(f"Average CVE matching score: {avg_cve:.4f}")
+    
+    # Identify most distinctive feature
+    max_avg = max(avg_tech, avg_soft, avg_cve)
+    if max_avg == avg_tech:
+        distinctive = "TTPs (Behavioral patterns)"
+    elif max_avg == avg_soft:
+        distinctive = "Software (Tools and malware)"
+    else:
+        distinctive = "CVEs (Vulnerability exploitation)"
+    
+    print(f"Most distinctive feature: {distinctive}")
+    
+    # FALSE FLAG DETECTION
+    print("\n🔎 FALSE FLAG DETECTION ANALYSIS")
+    print("-" * 50)
+    
+    # Check top APTs for inconsistent patterns
+    top_apts_feature_scores = all_feature_scores[:10]  # Top 10 by overall similarity
+    
+    inconsistent_groups = []
+    for score in top_apts_feature_scores:
+        scores = [score['tech_score'], score['soft_score'], score['cve_score']]
+        variance = np.var(scores)
+        
+        # High variance might indicate false flag
+        if variance > 0.05:
+            inconsistent_groups.append({
+                'apt_name': score['apt_name'],
+                'variance': variance,
+                'tech_score': score['tech_score'],
+                'soft_score': score['soft_score'],
+                'cve_score': score['cve_score']
+            })
+    
+    if inconsistent_groups:
+        print("⚠️  POTENTIAL FALSE FLAG INDICATORS:")
+        for group in inconsistent_groups[:3]:
+            print(f"   • {group['apt_name']}: Variance={group['variance']:.4f}")
+            print(f"     TTPs: {group['tech_score']:.4f}, SW: {group['soft_score']:.4f}, CVEs: {group['cve_score']:.4f}")
+    else:
+        print("✅ No strong false flag indicators detected")
+    
+    return all_feature_scores
+
 def load_model():
     """Load the pre-trained model and all necessary data"""
     model_data = joblib.load('apt_similarity_model.joblib')
@@ -17,10 +205,7 @@ def sanitize_evidence(evidence, df_mapping):
     column_mapping = {
         'techniques_str': ('techniques_Origin', 'techniques_Encoded'),
         'software_str': ('software_Origin', 'software_Encoded'),
-        'CAPEC_ID': ('CAPEC_ID_Origin', 'CAPEC_ID_Encoded'),
-        'CWE_ID': ('CWE_ID_Origin', 'CWE_ID_Encoded'),
-        'CVE_ID': ('CVE_ID_Origin', 'CVE_ID_Encoded'),
-        'Pulse_ID': ('Pulse_ID_Origin', 'Pulse_ID_Encoded')
+        'CVE_ID': ('CVE_ID_Origin', 'CVE_ID_Encoded')
     }
     
     for evidence_key, (origin_col, _) in column_mapping.items():
@@ -60,10 +245,7 @@ def translate_to_encoded(evidence, df_mapping):
     column_mapping = {
         'techniques_str': ('techniques_Encoded', 'techniques'),
         'software_str': ('software_Encoded', 'software'), 
-        'CAPEC_ID': ('CAPEC_ID_Encoded', 'capec'),
-        'CWE_ID': ('CWE_ID_Encoded', 'cwe'),
         'CVE_ID': ('CVE_ID_Encoded', 'cve'),
-        'Pulse_ID': ('Pulse_ID_Encoded', 'pulse')
     }
     
     for evidence_key, (encoded_col, output_key) in column_mapping.items():
@@ -108,6 +290,49 @@ def calculate_rf_similarity(evidence_vector, rf_model, X, apt_names):
     
     return similarities
 
+def print_rf_results_table(results, encoded_evidence, apt_profiles, apt_name_dict):
+    """Print results table for RF model"""
+    print("\n📋 QUERY EVIDENCE:")
+    print(f"   Techniques: {len(encoded_evidence.get('techniques', []))} items")
+    print(f"   Software: {len(encoded_evidence.get('software', []))} items")
+    print(f"   CVEs: {len(encoded_evidence.get('cve', []))} items")
+    print()
+    print(f"🎯 RANDOM FOREST SIMILARITY RANKINGS")
+    print("=" * 120)
+    
+    # Header
+    header = f"{'Rank':<4} {'APT Name':<35} {'Similarity':<10} {'Tech':<8} {'Soft':<8} {'CVE':<8} {'Matches':<8} {'Profile'}"
+    print(header)
+    print("-" * 120)
+    
+    for result in results:
+        # Truncate long APT names
+        apt_name = result['APT']
+        if len(apt_name) > 34:
+            apt_name = apt_name[:31] + "..."
+        
+        # Get profile information
+        total_matches = result['techniques'] + result['software'] + result['cve']
+        
+        # Find profile for this APT
+        profile_info = ""
+        for apt_key, profile in apt_profiles.items():
+            if apt_name_dict[profile['encoded_id']] == result['APT']:
+                tech_count = len(profile.get('techniques', []))
+                soft_count = len(profile.get('software', []))
+                cve_count = len(profile.get('cve', []))
+                profile_info = f"{tech_count}T/{soft_count}S/{cve_count}C"
+                break
+        
+        row = (f"{result['Rank']:<4} {apt_name:<35} {result['Score']:.4f}    "
+               f"{result['techniques']}/{len(encoded_evidence.get('techniques', [])):<7} "
+               f"{result['software']}/{len(encoded_evidence.get('software', [])):<7} "
+               f"{result['cve']}/{len(encoded_evidence.get('cve', [])):<7} "
+               f"{total_matches:<8} {profile_info}")
+        print(row)
+    
+    print("-" * 120)
+
 def main():
     # Load the model
     model_data = load_model()
@@ -122,6 +347,11 @@ def main():
     X = model_data['X']
     feature_types = model_data['feature_types']
     df_mapping = model_data['df_mapping']
+    
+    # Process custom evidence
+    print("\n" + "="*80)
+    print("PROCESSING CUSTOM EVIDENCE")
+    print("="*80)
     
     # Define your evidence here
     evidence = {
@@ -146,21 +376,7 @@ def main():
                     'S0029', 'S0053', 'S0513', 'S0565', 'S0588', 'S0139', 'S0511', 'S0518', 'S0560', 'S0562', 
                     'S0589', 'S1084', 'S0516', 'S0049', 'S0057', 'S0150', 'S0195', 'S0051', 'S0052', 'S0054', 
                     'S0635', 'S0636', 'S0682', 'S0096', 'S0183', 'S0175', 'S0637', 'S0100'],
-    'CAPEC_ID': ['CAPEC-204', 'CAPEC-37', 'CAPEC-545', 'CAPEC-647', 'CAPEC-292', 'CAPEC-561', 'CAPEC-572', 'CAPEC-655', 
-                'CAPEC-35', 'CAPEC-504', 'CAPEC-543', 'CAPEC-616', 'CAPEC-564', 'CAPEC-573', 'CAPEC-560', 'CAPEC-70', 
-                'CAPEC-312', 'CAPEC-313', 'CAPEC-580', 'CAPEC-127', 'CAPEC-497', 'CAPEC-465', 'CAPEC-481', 'CAPEC-49', 
-                'CAPEC-565', 'CAPEC-555', 'CAPEC-186', 'CAPEC-443', 'CAPEC-523', 'CAPEC-669', 'CAPEC-673', 'CAPEC-678', 
-                'CAPEC-691', 'CAPEC-150', 'CAPEC-650', 'CAPEC-21', 'CAPEC-31', 'CAPEC-558', 'CAPEC-593', 'CAPEC-645', 
-                'CAPEC-60', 'CAPEC-474', 'CAPEC-485', 'CAPEC-639', 'CAPEC-206', 'CAPEC-473', 'CAPEC-68', 'CAPEC-509', 
-                'CAPEC-578', 'CAPEC-268', 'CAPEC-571', 'CAPEC-163', 'CAPEC-542', 'CAPEC-464'],
-    'CWE_ID': ['CWE-524', 'CWE-311', 'CWE-1258', 'CWE-226', 'CWE-312', 'CWE-318', 'CWE-1278', 'CWE-285', 'CWE-200', 
-              'CWE-522', 'CWE-294', 'CWE-521', 'CWE-94', 'CWE-272', 'CWE-59', 'CWE-282', 'CWE-270', 'CWE-1021', 
-              'CWE-284', 'CWE-307', 'CWE-798', 'CWE-204', 'CWE-208', 'CWE-425', 'CWE-288', 'CWE-732', 'CWE-276', 
-              'CWE-693', 'CWE-441', 'CWE-923', 'CWE-257', 'CWE-494', 'CWE-552', 'CWE-287', 'CWE-290', 'CWE-302', 
-              'CWE-346', 'CWE-539', 'CWE-384', 'CWE-664', 'CWE-602', 'CWE-113', 'CWE-20', 'CWE-472', 'CWE-488', 
-              'CWE-330', 'CWE-327', 'CWE-325', 'CWE-117', 'CWE-451', 'CWE-359'],
-    'CVE_ID': ['CVE-2021-44228'],
-    'Pulse_ID': ['']
+    'CVE_ID': ['CVE-2021-44228', 'patrick', 'CVE-2013-10007']
     }
     
     # Process evidence
@@ -172,6 +388,7 @@ def main():
     print({k: len(v) for k, v in encoded_evidence.items()})
     
     # Calculate similarities using Random Forest
+    print("Calculating similarities...")
     evidence_vector = create_evidence_vector(encoded_evidence, binarizers, all_features, feature_types)
     rf_similarities = calculate_rf_similarity(evidence_vector, rf, X, apt_names)
     
@@ -186,10 +403,7 @@ def main():
         common_features = {
             'techniques': len(set(encoded_evidence.get('techniques', [])) & set(apt_data['techniques'])),
             'software': len(set(encoded_evidence.get('software', [])) & set(apt_data['software'])),
-            'capec': len(set(encoded_evidence.get('capec', [])) & set(apt_data['capec'])),
-            'cwe': len(set(encoded_evidence.get('cwe', [])) & set(apt_data['cwe'])),
-            'cve': len(set(encoded_evidence.get('cve', [])) & set(apt_data['cve'])),
-            'pulse': len(set(encoded_evidence.get('pulse', [])) & set(apt_data['pulse']))
+            'cve': len(set(encoded_evidence.get('cve', [])) & set(apt_data['cve']))
         }
         
         full_results.append({
@@ -200,17 +414,22 @@ def main():
             **common_features
         })
     
-    # Display results
-    ranked_apts = pd.DataFrame(full_results)
+    # PRINT RF RESULTS TABLE (ALL APTs)
+    print_rf_results_table(full_results, encoded_evidence, apt_profiles, apt_name_dict)
     
-    print("\nComplete APT Ranking with Feature Matches:")
-    print("="*110)
-    print(f"{'Rank':<5} | {'APT':<30} | {'Encoded ID':<10} | {'Score':<8} | {'Techniques':<10} | {'Software':<8} | {'CAPEC':<6} | {'CWE':<4} | {'CVE':<4} | {'Pulse':<5}")
-    print("-"*110)
+    # PERFORM FEATURE MATCHING CLASSIFICATION ANALYSIS
+    feature_scores = analyze_feature_matching_classification(
+        encoded_evidence, 
+        full_results, 
+        apt_profiles, 
+        apt_name_dict
+    )
     
-    for _, row in ranked_apts.iterrows():
-        apt_name = (row['APT'][:27] + '..') if len(row['APT']) > 29 else row['APT']
-        print(f"{row['Rank']:<5} | {apt_name:<30} | {row['Encoded_ID']:<10} | {row['Score']:.4f} | {row['techniques']:<10} | {row['software']:<8} | {row['capec']:<6} | {row['cwe']:<4} | {row['cve']:<4} | {row['pulse']:<5}")
+    print(f"\n✅ RANDOM FOREST QUERY COMPLETE!")
+    print(f"🏆 Most similar: {full_results[0]['APT']} (score: {full_results[0]['Score']:.4f})")
+    print(f"💩 Least similar: {full_results[-1]['APT']} (score: {full_results[-1]['Score']:.4f})")
+    print(f"📊 Total APTs ranked: {len(full_results)}")
+    print(f"📊 Using Random Forest with leaf similarity")
 
 if __name__ == "__main__":
     main()

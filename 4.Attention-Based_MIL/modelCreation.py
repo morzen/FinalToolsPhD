@@ -8,9 +8,9 @@ import numpy as np
 import pickle
 
 # Data loading and preprocessing
-pwd = "../BaseData/"
-df_encoded = pd.read_csv(pwd+'EncodedData.csv')
-df_mapping = pd.read_csv(pwd+'comparison_Encoded_df.csv')
+pwd = "../BaseData"
+df_encoded = pd.read_csv(pwd+'/EncodedData.csv')
+df_mapping = pd.read_csv(pwd+'/comparison_Encoded_df.csv')
 
 # Create APT name mapping
 apt_name_mapping = df_mapping[['APTnameEncoded', 'APTnameOrigin']].drop_duplicates()
@@ -28,24 +28,16 @@ def create_apt_profiles_with_names(df_encoded, name_mapping):
                 'encoded_id': apt_encoded,
                 'techniques': set(),
                 'software': set(),
-                'capec': set(),
-                'cwe': set(),
-                'cve': set(),
-                'pulse': set()
+                'cve': set()
             }
         
         if row['techniques_str'] != -1:
             profiles[apt_name]['techniques'].add(row['techniques_str'])
         if row['software_str'] != -1:
             profiles[apt_name]['software'].add(row['software_str'])
-        if row['CAPEC_ID'] != -1:
-            profiles[apt_name]['capec'].add(row['CAPEC_ID'])
-        if row['CWE_ID'] != -1:
-            profiles[apt_name]['cwe'].add(row['CWE_ID'])
         if row['CVE_ID'] != -1:
             profiles[apt_name]['cve'].add(row['CVE_ID'])
-        if row['Pulse_ID'] != -1:
-            profiles[apt_name]['pulse'].add(row['Pulse_ID'])
+
     
     return profiles
 
@@ -54,7 +46,7 @@ apt_profiles = create_apt_profiles_with_names(df_encoded, apt_name_dict)
 # Convert sets to lists and add counts
 for apt_name in apt_profiles:
     profile = apt_profiles[apt_name]
-    for key in ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']:
+    for key in ['techniques', 'software', 'cve']:
         profile[key] = list(profile[key])
         profile[f'{key}_count'] = len(profile[key])
 
@@ -69,35 +61,30 @@ class OptimizedAttentionMILSimilarity(nn.Module):
         # Feature embedding layers
         self.technique_embed = nn.Embedding(10000, hidden_dim)
         self.software_embed = nn.Embedding(10000, hidden_dim)
-        self.capec_embed = nn.Embedding(10000, hidden_dim)
-        self.cwe_embed = nn.Embedding(10000, hidden_dim)
         self.cve_embed = nn.Embedding(10000, hidden_dim)
-        self.pulse_embed = nn.Embedding(10000, hidden_dim)
         
         # Attention networks
         self.attention_nets = nn.ModuleDict({
             'technique': self._build_attention(),
             'software': self._build_attention(),
-            'capec': self._build_attention(),
-            'cwe': self._build_attention(),
-            'cve': self._build_attention(),
-            'pulse': self._build_attention()
+            'cve': self._build_attention()
         })
         
         # Similarity network
+        # In the OptimizedAttentionMILSimilarity class, update the similarity_net:
         self.similarity_net = nn.Sequential(
-            nn.Linear(hidden_dim * 6 * 2 + 6, hidden_dim*4),  # +6 for match ratios
+            nn.Linear(hidden_dim * 3 * 2 + 3, hidden_dim*4),  # Corrected: 256*3*2 + 3 = 1539
             nn.LayerNorm(hidden_dim*4),
             nn.ReLU(),
             nn.Linear(hidden_dim*4, hidden_dim*2),
             nn.LayerNorm(hidden_dim*2),
             nn.ReLU(),
-            nn.Linear(hidden_dim*2, 6),
+            nn.Linear(hidden_dim*2, 3),  # Changed from 6 to 3 (one per feature type)
             nn.Sigmoid()
         )
         
         # Initialize weights with higher technique importance
-        self.feature_weights = nn.Parameter(torch.tensor([0.4, 0.3, 0.15, 0.1, 0.025, 0.025]))
+        self.feature_weights = nn.Parameter(torch.tensor([0.4, 0.3, 0.1]))
         self.perfect_match_boost = 2.0  # Direct score multiplier for perfect matches
         
         self.init_weights()
@@ -111,8 +98,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
 
     def init_weights(self):
         """Initialize weights for embeddings and linear layers"""
-        for embed in [self.technique_embed, self.software_embed, self.capec_embed, 
-                     self.cwe_embed, self.cve_embed, self.pulse_embed]:
+        for embed in [self.technique_embed, self.software_embed, self.cve_embed]:
             nn.init.xavier_uniform_(embed.weight)
         
         for net in self.attention_nets.values():
@@ -129,7 +115,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
     def _calculate_match_ratios(self, apt_dict, evidence_dict):
         ratios = []
         perfect_matches = []
-        feature_types = ['technique', 'software', 'capec', 'cwe', 'cve', 'pulse']
+        feature_types = ['technique', 'software', 'cve']
         
         for feat_type in feature_types:
             dict_key = feat_type + 's' if feat_type != 'software' else feat_type
@@ -169,7 +155,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
 
     def _forward_single(self, x_dict, match_ratios):
         features = []
-        feature_types = ['technique', 'software', 'capec', 'cwe', 'cve', 'pulse']
+        feature_types = ['technique', 'software', 'cve']
         
         for i, feat_type in enumerate(feature_types):
             dict_key = feat_type + 's' if feat_type != 'software' else feat_type
@@ -209,6 +195,6 @@ save_data = {
 import torch.serialization
 torch.serialization.add_safe_globals([np.core.multiarray.scalar])
 
-torch.save(save_data, './apt_similarity_model_complete.pth')
+torch.save(save_data, 'apt_similarity_model_complete.pth')
 
 print("Model and all data saved to apt_similarity_model_complete.pth successfully!")

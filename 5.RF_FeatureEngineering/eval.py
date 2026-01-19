@@ -62,6 +62,7 @@ def plot_similarity_heatmap(similarity_df):
     plt.title("APT Group Similarity Matrix (Random Forest)", fontsize=16, fontweight='bold')
     plt.xticks(rotation=90, fontsize=8)
     plt.yticks(rotation=0, fontsize=8)
+    plt.savefig('apt_RF_featureEngineering_heatmap_matrix.png', dpi=300, bbox_inches='tight')
     plt.tight_layout()
     plt.show()
 
@@ -109,9 +110,6 @@ def evaluate_with_similarity_matrix(similarity_df, top_x_values=[1, 5, 10, 20]):
 
 def evaluate_profile_division(model_data, divider=2, top_x_values=[1, 5, 10, 20]):
     """Evaluate model performance with divided profile data"""
-    # Import querying functions
-    from querying import sanitize_evidence, translate_to_encoded, create_evidence_vector, calculate_rf_similarity
-    
     # Extract components from model data
     apt_profiles = model_data['apt_profiles']
     apt_name_dict = model_data['apt_name_dict']
@@ -139,10 +137,7 @@ def evaluate_profile_division(model_data, divider=2, top_x_values=[1, 5, 10, 20]
         
         for feature_type, evidence_key in [('techniques', 'techniques_str'),
                                          ('software', 'software_str'),
-                                         ('capec', 'CAPEC_ID'),
-                                         ('cwe', 'CWE_ID'),
-                                         ('cve', 'CVE_ID'),
-                                         ('pulse', 'Pulse_ID')]:
+                                         ('cve', 'CVE_ID'),]:
             
             if feature_type in target_data and target_data[feature_type]:
                 feature_list = target_data[feature_type].copy()
@@ -157,20 +152,11 @@ def evaluate_profile_division(model_data, divider=2, top_x_values=[1, 5, 10, 20]
                 elif feature_type == 'software':
                     mapping = dict(zip(df_mapping['software_Encoded'], df_mapping['software_Origin']))
                     divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
-                elif feature_type == 'capec':
-                    mapping = dict(zip(df_mapping['CAPEC_ID_Encoded'], df_mapping['CAPEC_ID_Origin']))
-                    divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
-                elif feature_type == 'cwe':
-                    mapping = dict(zip(df_mapping['CWE_ID_Encoded'], df_mapping['CWE_ID_Origin']))
-                    divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
                 elif feature_type == 'cve':
                     mapping = dict(zip(df_mapping['CVE_ID_Encoded'], df_mapping['CVE_ID_Origin']))
                     divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
-                elif feature_type == 'pulse':
-                    mapping = dict(zip(df_mapping['Pulse_ID_Encoded'], df_mapping['Pulse_ID_Origin']))
-                    divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
         
-        # Process the divided evidence using querying functions
+        # Process the divided evidence
         clean_evidence = sanitize_evidence(divided_evidence, df_mapping)
         encoded_evidence = translate_to_encoded(clean_evidence, df_mapping)
         
@@ -216,6 +202,99 @@ def evaluate_profile_division(model_data, divider=2, top_x_values=[1, 5, 10, 20]
         print(str(success) + "/" + str(failure) + " Total: " + str(lengthResultDict))
         print("in percentage success rate: " + str((success/lengthResultDict)*100))
 
+def sanitize_evidence(evidence, df_mapping):
+    """Keep only evidence features that exist in our database"""
+    sanitized = {}
+    missing = {}
+    
+    column_mapping = {
+        'techniques_str': ('techniques_Origin', 'techniques_Encoded'),
+        'software_str': ('software_Origin', 'software_Encoded'),
+        'CVE_ID': ('CVE_ID_Origin', 'CVE_ID_Encoded')
+    }
+    
+    for evidence_key, (origin_col, _) in column_mapping.items():
+        if evidence_key in evidence:
+            valid_values = set(df_mapping[origin_col].dropna())
+            valid_values.discard('')
+            
+            valid = []
+            invalid = []
+            
+            for item in evidence[evidence_key]:
+                if item == '':
+                    continue
+                if str(item) in valid_values:
+                    valid.append(item)
+                else:
+                    invalid.append(item)
+            
+            if valid:
+                sanitized[evidence_key] = valid
+            if invalid:
+                missing[evidence_key] = invalid
+    
+    if missing:
+        print("WARNING: These features were not found in our database:")
+        for feature_type, items in missing.items():
+            print(f"- {feature_type}: {items[:5]}")
+            if len(items) > 5:
+                print(f"  (and {len(items)-5} more)")
+    
+    return sanitized
+
+def translate_to_encoded(evidence, df_mapping):
+    """Convert sanitized evidence to encoded IDs"""
+    encoded_evidence = {}
+    
+    column_mapping = {
+        'techniques_str': ('techniques_Encoded', 'techniques'),
+        'software_str': ('software_Encoded', 'software'), 
+        'CVE_ID': ('CVE_ID_Encoded', 'cve'),
+    }
+    
+    for evidence_key, (encoded_col, output_key) in column_mapping.items():
+        if evidence_key in evidence:
+            origin_col = encoded_col.replace('_Encoded', '_Origin')
+            mapping = dict(zip(df_mapping[origin_col], df_mapping[encoded_col]))
+            
+            encoded_values = []
+            for val in evidence[evidence_key]:
+                if val in mapping:
+                    encoded_values.append(mapping[val])
+            
+            if encoded_values:
+                encoded_evidence[output_key] = encoded_values
+    
+    return encoded_evidence
+
+def create_evidence_vector(encoded_evidence, binarizers, all_features, feature_types):
+    """Create a feature vector for the evidence"""
+    evidence_vector = []
+    
+    for ft in feature_types:
+        if ft in encoded_evidence:
+            valid_features = [f for f in encoded_evidence[ft] if f in all_features[ft]]
+            binary_vec = binarizers[ft].transform([valid_features]).flatten()
+        else:
+            binary_vec = np.zeros(len(all_features[ft]))
+        evidence_vector.extend(binary_vec)
+    
+    return np.array(evidence_vector)
+
+def calculate_rf_similarity(evidence_vector, rf_model, X, apt_names):
+    """Calculate similarity scores using Random Forest"""
+    evidence_leaves = np.array([tree.apply(evidence_vector.reshape(1, -1)) for tree in rf_model.estimators_]).flatten()
+    
+    apt_leaves = []
+    for tree in rf_model.estimators_:
+        apt_leaves.append(tree.apply(X))
+    apt_leaves = np.array(apt_leaves)
+    
+    similarities = np.mean(apt_leaves == evidence_leaves.reshape(-1, 1), axis=0)
+    
+    return similarities
+
 def main():
     # Load the model
     model_data = load_model()
@@ -226,6 +305,10 @@ def main():
     apt_names = model_data['apt_names']
     apt_name_dict = model_data['apt_name_dict']
     X = model_data['X']
+    df_mapping = model_data['df_mapping']
+    binarizers = model_data['binarizers']
+    all_features = model_data['all_features']
+    feature_types = model_data['feature_types']
     
     # 1. Create and display similarity matrix for all APTs
     print("Creating similarity matrix for all APTs...")

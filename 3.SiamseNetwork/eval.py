@@ -1,360 +1,281 @@
-# siamese_query.py - EVALUATION ONLY (no custom queries)
+# CORRECT siamese_eval.py - Matches XGBoost EXACTLY
 import os
 import pickle
 import pandas as pd
 import numpy as np
 import torch
-import torch.nn.functional as F
-from sklearn.metrics.pairwise import cosine_similarity
-import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
-import seaborn as sns
-from itertools import islice
-import random
-
-# ---------- Recreate the APTSiameseNetwork definition ----------
 import torch.nn as nn
-class APTSiameseNetwork(nn.Module):
-    def __init__(self, num_apts, embedding_dim=64):
+import torch.nn.functional as F
+import matplotlib.pyplot as plt
+import seaborn as sns
+import random
+from itertools import islice
+from matplotlib.colors import LinearSegmentedColormap
+
+# ---------- FeatureEncoder ----------
+class FeatureEncoder(nn.Module):
+    def __init__(self, num_techniques, num_software, num_cves, embed_dim=128):
         super().__init__()
-        self.apt_embedding = nn.Embedding(num_apts, embedding_dim)
+        embed_per_feature = embed_dim // 3
+        self.tech_embed = nn.Embedding(num_techniques+1, embed_per_feature)
+        self.soft_embed = nn.Embedding(num_software+1, embed_per_feature)
+        self.cve_embed = nn.Embedding(num_cves+1, embed_per_feature)
+        total_embed_size = embed_per_feature * 3
+        self.fc1 = nn.Linear(total_embed_size, 64)
+        self.fc2 = nn.Linear(64, embed_dim)
+        self.dropout = nn.Dropout(0.3)
+        self.layer_norm = nn.LayerNorm(embed_dim)
         
-    def forward(self, apt_idx1, apt_idx2):
-        emb1 = self.apt_embedding(apt_idx1)
-        emb2 = self.apt_embedding(apt_idx2)
-        return emb1, emb2
-    
-    def get_similarity(self, emb1, emb2):
-        emb1 = emb1.view(1, -1)
-        emb2 = emb2.view(1, -1)
-        return F.cosine_similarity(emb1, emb2).squeeze()
-    
-    def get_all_embeddings(self):
-        return self.apt_embedding.weight
+    def forward(self, features):
+        tech, soft, cve = features[:, 0], features[:, 1], features[:, 2]
+        t_emb = self.tech_embed(tech.long() + 1)
+        s_emb = self.soft_embed(soft.long() + 1)
+        c_emb = self.cve_embed(cve.long() + 1)
+        x = torch.cat([t_emb, s_emb, c_emb], dim=-1)
+        x = F.relu(self.fc1(x))
+        x = self.dropout(x)
+        x = self.fc2(x)
+        x = self.layer_norm(x)
+        return F.normalize(x, p=2, dim=-1)
 
-# ---------- Helper functions for evaluation ----------
-def sanitize_evidence(evidence, df_mapping):
-    """Keep only evidence features that exist in our database"""
-    sanitized = {}
-    missing = {}
+# ---------- EXACT SAME as XGBoost ----------
+def load_apt_profiles_from_data():
+    """Load APT profiles from EncodedData.csv - EXACTLY like XGBoost"""
+    print("📊 LOADING APT PROFILES FROM EncodedData.csv...")
+    df = pd.read_csv("../BaseData/EncodedData.csv")
     
-    column_mapping = {
-        'techniques_str': ('techniques_Origin', 'techniques_Encoded'),
-        'software_str': ('software_Origin', 'software_Encoded'),
-        'CAPEC_ID': ('CAPEC_ID_Origin', 'CAPEC_ID_Encoded'),
-        'CWE_ID': ('CWE_ID_Origin', 'CWE_ID_Encoded'),
-        'CVE_ID': ('CVE_ID_Origin', 'CVE_ID_Encoded'),
-        'Pulse_ID': ('Pulse_ID_Origin', 'Pulse_ID_Encoded')
-    }
+    profiles = {}
+    for apt_id in df['APTname'].unique():
+        apt_data = df[df['APTname'] == apt_id]
+        profiles[int(apt_id)] = {
+            'techniques': set(apt_data['techniques_str'].dropna().unique()),
+            'software': set(apt_data['software_str'].dropna().unique()),
+            'cve': set(apt_data['CVE_ID'].dropna().unique()),
+            'total_features': len(apt_data)
+        }
     
-    for evidence_key, (origin_col, _) in column_mapping.items():
-        if evidence_key in evidence:
-            valid_values = set(df_mapping[origin_col].dropna().astype(str))
-            valid_values.discard('')
-            
-            valid = []
-            invalid = []
-            for item in evidence[evidence_key]:
-                if item == '':
-                    continue
-                if str(item) in valid_values:
-                    valid.append(item)
-                else:
-                    invalid.append(item)
-            
-            if valid:
-                sanitized[evidence_key] = valid
-            if invalid:
-                missing[evidence_key] = invalid
-    
-    if missing:
-        print("WARNING: These features were not found in our database:")
-        for feature_type, items in missing.items():
-            print(f"- {feature_type}: {items[:5]}")
-            if len(items) > 5:
-                print(f"  (and {len(items)-5} more)")
-    
-    return sanitized
+    print(f"✅ Loaded {len(profiles)} APTs - EXACTLY like XGBoost")
+    return profiles
 
-def translate_to_encoded(evidence, df_mapping):
-    """Convert sanitized evidence (orig values) to encoded IDs expected by apt profiles"""
-    encoded_evidence = {}
-    
-    column_mapping = {
-        'techniques_str': ('techniques_Encoded', 'techniques'),
-        'software_str': ('software_Encoded', 'software'), 
-        'CAPEC_ID': ('CAPEC_ID_Encoded', 'capec'),
-        'CWE_ID': ('CWE_ID_Encoded', 'cwe'),
-        'CVE_ID': ('CVE_ID_Encoded', 'cve'),
-        'Pulse_ID': ('Pulse_ID_Encoded', 'pulse')
-    }
-    
-    for evidence_key, (encoded_col, output_key) in column_mapping.items():
-        if evidence_key in evidence:
-            origin_col = encoded_col.replace('_Encoded', '_Origin')
-            mapping = dict(zip(df_mapping[origin_col].astype(str), df_mapping[encoded_col]))
-            
-            encoded_values = []
-            for val in evidence[evidence_key]:
-                if val in mapping:
-                    encoded_values.append(mapping[val])
-            if encoded_values:
-                encoded_evidence[output_key] = encoded_values
-    
-    return encoded_evidence
-
-def calculate_weighted_similarity(encoded_evidence, apt_profiles, apt_ids):
-    """Calculate weighted similarity scores for all APTs"""
-    feature_weights = {
-        'techniques': 1.5,
-        'software': 1.3,
-        'capec': 1.0,
-        'cwe': 1.0,
-        'cve': 0.8,
-        'pulse': 0.7
-    }
-    
-    similarities = []
-    
-    for apt_name in apt_ids:
-        apt_data = apt_profiles[apt_name]
-        total_score = 0
-        total_weight = 0
-        
-        for feature_type, weight in feature_weights.items():
-            if feature_type in encoded_evidence and feature_type in apt_data:
-                evidence_set = set(encoded_evidence[feature_type])
-                profile_set = set(apt_data[feature_type])
-                common = len(evidence_set & profile_set)
-                
-                total_score += common * weight
-                total_weight += len(encoded_evidence[feature_type]) * weight
-        
-        similarity = total_score / total_weight if total_weight > 0 else 0
-        similarities.append(similarity)
-    
-    return torch.tensor(similarities)
-
-def create_similarity_matrix(apt_embeddings, apt_name_dict, apt_profiles, apt_ids):
-    """Create similarity DataFrame from embeddings"""
-    if torch.is_tensor(apt_embeddings):
-        emb_np = apt_embeddings.detach().cpu().numpy()
-    else:
-        emb_np = np.array(apt_embeddings)
-    
-    similarity_matrix = cosine_similarity(emb_np)
-    apt_names = [apt_name_dict[apt_profiles[apt]['encoded_id']] for apt in apt_ids]
-    similarity_df = pd.DataFrame(similarity_matrix, index=apt_names, columns=apt_names)
-    return similarity_df
-
-def plot_similarity_heatmap(similarity_df):
-    plt.figure(figsize=(16, 14))
-    colors = ["red", "yellow", "green"]
-    n_bins = 100
-    cmap = LinearSegmentedColormap.from_list("red_green", colors, N=n_bins)
-    sns.heatmap(similarity_df, mask=None, cmap=cmap, center=0.5, square=True,
-                xticklabels=True, yticklabels=True, cbar_kws={'shrink':0.8, 'label':'Similarity Score'})
-    plt.title("APT Group Similarity Matrix (Siamese embeddings)", fontsize=16, fontweight='bold')
-    plt.xticks(rotation=90, fontsize=8)
-    plt.yticks(rotation=0, fontsize=8)
-    plt.tight_layout()
-    plt.show()
-
-# ---------- Main evaluation functions ----------
-def load_siamese_complete(path="./siamese_complete_model.pkl"):
-    with open(path, 'rb') as f:
+def load_model_and_mapping():
+    """Load Siamese model + name mapping"""
+    print("🔍 LOADING SIAMESE MODEL...")
+    with open('apt_siamese_feature_model.pkl', 'rb') as f:
         data = pickle.load(f)
-    model = APTSiameseNetwork(data['model_config']['num_apts'], data['model_config']['embedding_dim'])
+    
+    config = data['model_config']
+    model = FeatureEncoder(config['num_techniques'], config['num_software'], config['num_cves'], config['embedding_dim'])
     model.load_state_dict(data['model_state_dict'])
     model.eval()
     
-    apt_embeddings = data.get('apt_embeddings')
-    if isinstance(apt_embeddings, np.ndarray):
-        apt_embeddings = torch.tensor(apt_embeddings, dtype=torch.float)
-    elif torch.is_tensor(apt_embeddings):
-        apt_embeddings = apt_embeddings.float()
-    else:
-        apt_embeddings = model.get_all_embeddings().detach().float()
+    # Name mapping ONLY for display
+    df_mapping = pd.read_csv("../BaseData/comparison_Encoded_df.csv")
+    apt_name_mapping = {}
+    for _, row in df_mapping.iterrows():
+        apt_name_mapping[int(row['APTnameEncoded'])] = row['APTnameOrigin']
     
-    return model, data, apt_embeddings
+    print("✅ Siamese model + name mapping loaded")
+    return model, apt_name_mapping
 
-def evaluate_similarity_matrix(similarity_df):
-    """Evaluate similarity matrix performance (Top-1, 5, 10, 20)"""
-    print("\n" + "="*80)
-    print("EVALUATING SIMILARITY MATRIX (Top-1, 5, 10, 20)")
-    print("="*80)
-
-    # Get APT names from the similarity matrix
-    apt_names_sim = list(similarity_df.index)
-    sim_matrix_results = {}
-
-    # For each APT, get its similarity scores from the matrix
-    for target_apt in apt_names_sim:
-        similarities = similarity_df.loc[target_apt].to_dict()
-        sim_matrix_results[target_apt] = similarities
-
-    # Evaluate for multiple top-X values
-    top_x_values_sim = [1, 5, 10, 20]
-
-    for topX in top_x_values_sim:
-        lengthResultDict = len(sim_matrix_results)
-        success = 0
-        failure = 0
+# ---------- Siamese Similarity (MODEL FORWARD PASS) ----------
+class SiameseSimilarityPredictor:
+    def __init__(self, model):
+        self.model = model
+    
+    def predict_similarity(self, features1, features2, n_samples=32):
+        """Siamese cosine similarity - MODEL FORWARD PASS"""
+        if features1[0] == -1 and features1[1] == -1 and features1[2] == -1:
+            return 0.0
+        if features2[0] == -1 and features2[1] == -1 and features2[2] == -1:
+            return 0.0
         
-        # Iterate through each APT's results
-        for target_apt, similarities in sim_matrix_results.items():
-            # Sort by similarity score (descending)
-            sorted_similarities = dict(sorted(similarities.items(), key=lambda x: x[1], reverse=True))
-            
-            # Get top X most similar APTs (exclude self if needed, but include for fair comparison)
-            top_x_similar = dict(list(sorted_similarities.items())[:topX])
-            
-            # Check if target APT is in its own top X most similar
-            if target_apt in top_x_similar:
-                success += 1
-            else:
-                failure += 1
+        # Generate embeddings THROUGH MODEL
+        emb1 = self._get_embedding(features1, n_samples)
+        emb2 = self._get_embedding(features2, n_samples)
         
-        print(f"\nSimilarity Matrix - TopX={topX}:")
-        print(f"Success: {success}/{lengthResultDict} | Failure: {failure}/{lengthResultDict}")
-        print(f"Success rate: {(success/lengthResultDict)*100:.2f}%")
+        # Cosine similarity of learned embeddings
+        sim = F.cosine_similarity(emb1.mean(0).unsqueeze(0), emb2.mean(0).unsqueeze(0)).item()
+        return np.clip(sim, 0.0, 1.0)
+    
+    def _get_embedding(self, features, n_samples=32):
+        """Generate embedding via model forward pass"""
+        vectors = []
+        for _ in range(n_samples):
+            # Sample single feature triplet
+            tech, soft, cve = features
+            vectors.append([float(tech), float(soft), float(cve)])
+        
+        vectors = torch.tensor(vectors, dtype=torch.float32)
+        embeddings = self.model(vectors)
+        return embeddings
 
-def divide_apt_profile(apt_name, apt_profiles, apt_name_dict, apt_ids, df_mapping, divider=2):
-    """Divide an APT's profile data and return the subset evidence"""
-    # Find the APT ID from the name
-    target_apt_id = None
+# ---------- EXACT SAME as XGBoost ----------
+def create_similarity_matrix_siamese(model, profiles, apt_name_mapping):
+    """FULL 181x181 matrix - Siamese MODEL predictions"""
+    print("🔍 Creating FULL Siamese similarity matrix...")
+    
+    apt_ids = sorted(profiles.keys())
+    apt_names = [apt_name_mapping.get(apt_id, f"APT{apt_id}") for apt_id in apt_ids]
+    
+    predictor = SiameseSimilarityPredictor(model)
+    
+    # Representative features per APT (EXACTLY like XGBoost)
+    X_apts = []
     for apt_id in apt_ids:
-        if apt_name_dict[apt_profiles[apt_id]['encoded_id']] == apt_name:
-            target_apt_id = apt_id
-            break
+        profile = profiles[apt_id]
+        tech = next(iter(profile['techniques'])) if profile['techniques'] else -1
+        soft = next(iter(profile['software'])) if profile['software'] else -1
+        cve = next(iter(profile['cve'])) if profile['cve'] else -1
+        X_apts.append([int(tech), int(soft), int(cve)])
     
-    if not target_apt_id:
-        return {}
+    # FULL similarity matrix
+    n = len(apt_ids)
+    similarity_matrix = np.zeros((n, n))
     
-    target_data = apt_profiles[target_apt_id]
-    divided_evidence = {}
+    print("Computing Siamese similarities...")
+    for i in range(n):
+        if i % 20 == 0:
+            print(f"  {i}/{n} APTs...")
+        for j in range(n):
+            similarity_matrix[i, j] = predictor.predict_similarity(X_apts[i], X_apts[j])
     
-    for feature_type, evidence_key in [('techniques', 'techniques_str'),
-                                    ('software', 'software_str'),
-                                    ('capec', 'CAPEC_ID'),
-                                    ('cwe', 'CWE_ID'),
-                                    ('cve', 'CVE_ID'),
-                                    ('pulse', 'Pulse_ID')]:
-        
-        if feature_type in target_data and target_data[feature_type]:
-            feature_list = target_data[feature_type].copy()
-            random.shuffle(feature_list)
-            division_size = max(1, len(feature_list) // divider)
-            divided_features = feature_list[:division_size]
-            
-            # Convert encoded features back to original format
-            if feature_type == 'techniques':
-                mapping = dict(zip(df_mapping['techniques_Encoded'], df_mapping['techniques_Origin']))
-                divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
-            elif feature_type == 'software':
-                mapping = dict(zip(df_mapping['software_Encoded'], df_mapping['software_Origin']))
-                divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
-            elif feature_type == 'capec':
-                mapping = dict(zip(df_mapping['CAPEC_ID_Encoded'], df_mapping['CAPEC_ID_Origin']))
-                divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
-            elif feature_type == 'cwe':
-                mapping = dict(zip(df_mapping['CWE_ID_Encoded'], df_mapping['CWE_ID_Origin']))
-                divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
-            elif feature_type == 'cve':
-                mapping = dict(zip(df_mapping['CVE_ID_Encoded'], df_mapping['CVE_ID_Origin']))
-                divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
-            elif feature_type == 'pulse':
-                mapping = dict(zip(df_mapping['Pulse_ID_Encoded'], df_mapping['Pulse_ID_Origin']))
-                divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
+    similarity_df = pd.DataFrame(similarity_matrix, index=apt_names, columns=apt_names)
+    return similarity_df, apt_names
+
+# ---------- EXACT SAME as XGBoost ----------
+def plot_similarity_heatmap_siamese(similarity_df):
+    """FULL 181x181 heatmap - PROPER red=low, green=high scaling"""
+    plt.figure(figsize=(20, 18))
     
-    return divided_evidence
+    # 🔥 FIXED: Proper min/max scaling - RED=lowest, GREEN=highest
+    vmin = similarity_df.min().min()  # Lowest value = RED
+    vmax = similarity_df.max().max()  # Highest value = GREEN
+    
+    colors = ["red", "yellow", "green"]
+    cmap = LinearSegmentedColormap.from_list("red_green", colors, N=100)
+    
+    sns.heatmap(similarity_df, 
+                mask=None, 
+                cmap=cmap, 
+                center=None,  # 🔥 REMOVED center=0.5
+                vmin=vmin,    # 🔥 RED at actual minimum
+                vmax=vmax,    # 🔥 GREEN at actual maximum
+                square=True,
+                xticklabels=True, 
+                yticklabels=True,
+                cbar_kws={'shrink':0.8, 'label':'Siamese Similarity Score'})
+    
+    plt.title("APT Similarity Matrix (Siamese FeatureEncoder)", fontsize=16, fontweight='bold')
+    plt.xticks(rotation=90, fontsize=8)
+    plt.yticks(rotation=0, fontsize=8)
+    plt.tight_layout()
+    plt.savefig('siamese_similarity_matrix.png', dpi=300, bbox_inches='tight')
+    print("💾 PERFECT heatmap saved (Red=Min, Green=Max)!")
+    plt.show()
 
-def evaluate_profile_division_performance(apt_profiles, apt_name_dict, apt_ids, df_mapping, similarity_df, divider=2, top_x_values=[1, 5, 10, 20]):
-    """Evaluate performance when using divided profile data"""
-    apt_names = list(similarity_df.index)
-    resultdict = {}
 
-    print(f"\nEvaluating Siamese similarity matrix with divider={divider} (using {100/divider:.1f}% of profile data)")
-
-    # For each APT, divide its profile and calculate similarities
-    for target_apt_name in apt_names:
-        
-        # Divide the profile
-        divided_evidence = divide_apt_profile(target_apt_name, apt_profiles, apt_name_dict, apt_ids, df_mapping, divider)
-        
-        # Process the divided evidence
-        clean_evidence = sanitize_evidence(divided_evidence, df_mapping)
-        encoded_evidence = translate_to_encoded(clean_evidence, df_mapping)
-        
-        # Calculate weighted similarities
-        weighted_similarities = calculate_weighted_similarity(encoded_evidence, apt_profiles, apt_ids)
-        
-        # Create ranked results
-        ranked_results = {}
-        for idx in weighted_similarities.sort(descending=True).indices:
-            apt_name = apt_ids[idx]
-            apt_real_name = apt_name_dict[apt_profiles[apt_name]['encoded_id']]
-            ranked_results[apt_real_name] = weighted_similarities[idx].item()
-        
-        resultdict[target_apt_name] = ranked_results
-
-    # Evaluate Top-X
-    for topX in top_x_values:
-        lengthResultDict = len(resultdict)
+def evaluate_similarity_matrix_siamese(similarity_df, apt_names):
+    """EXACT SAME evaluation as XGBoost"""
+    print("\n" + "="*80)
+    print("SIAMESE SIMILARITY MATRIX EVALUATION")
+    print("="*80)
+    
+    top_x_values = [1, 5, 10, 20]
+    for top_x in top_x_values:
         success = 0
-        failure = 0
-        SuccessFailDict = {}
-
-        for target_apt, similarities in resultdict.items():
-            sorted_similarities = dict(sorted(similarities.items(), key=lambda x: x[1], reverse=True))
-            top_x_similar = dict(islice(sorted_similarities.items(), topX))
-
-            if target_apt in top_x_similar:
+        for i, apt_name in enumerate(apt_names):
+            similarities = similarity_df.iloc[i]
+            top_similar = similarities.nlargest(top_x)
+            if apt_name in top_similar.index:
                 success += 1
-                SuccessFailDict[target_apt] = "Pass"
-            else:
-                failure += 1
-                SuccessFailDict[target_apt] = "Fail"
+        
+        total = len(apt_names)
+        print(f"Top-{top_x}: {success}/{total} ({success/total*100:.1f}%)")
 
-        print(f"\nSettings: TopX={topX}, Divider={divider}")
-        print(f"Siamese model success/failure: {success}/{failure}  (Total={lengthResultDict})")
-        print(f"Success rate: {(success/lengthResultDict)*100:.2f}%")
+# ---------- EXACT SAME profile division as XGBoost ----------
+def evaluate_profile_division_siamese(model, divider=2):
+    """EXACT SAME logic as XGBoost profile division"""
+    profiles = load_apt_profiles_from_data()
+    apt_ids = sorted(profiles.keys())
+    
+    df_mapping = pd.read_csv("../BaseData/comparison_Encoded_df.csv")
+    apt_name_mapping = {int(row['APTnameEncoded']): row['APTnameOrigin'] for _, row in df_mapping.iterrows()}
+    apt_names = [apt_name_mapping.get(apt_id, f"APT{apt_id}") for apt_id in apt_ids]
+    
+    predictor = SiameseSimilarityPredictor(model)
+    
+    # Representative features (like XGBoost)
+    X_apts = []
+    for apt_id in apt_ids:
+        profile = profiles[apt_id]
+        tech = next(iter(profile['techniques'])) if profile['techniques'] else -1
+        soft = next(iter(profile['software'])) if profile['software'] else -1
+        cve = next(iter(profile['cve'])) if profile['cve'] else -1
+        X_apts.append([int(tech), int(soft), int(cve)])
+    
+    print(f"\n🎯 SIAMESE PROFILE DIVISION (divider={divider})")
+    resultdict = {}
+    
+    for i, target_apt_name in enumerate(apt_names):
+        if i % 20 == 0: print(f"  {i}/{len(apt_names)}...")
+        
+        target_apt_id = next(apt_id for apt_id in apt_ids if apt_name_mapping.get(apt_id, f"APT{apt_id}") == target_apt_name)
+        target_profile = profiles[target_apt_id]
+        
+        # EXACT SAME division logic as XGBoost
+        divided_evidence = {'techniques': [], 'software': [], 'cves': []}
+        for feature_type, key in [('techniques', 'techniques'), ('software', 'software'), ('cve', 'cves')]:
+            features = list(target_profile[feature_type])
+            if features:
+                random.shuffle(features)
+                size = max(1, len(features) // divider)
+                divided_evidence[key] = features[:size]
+        
+        # Query features (like XGBoost)
+        tech = divided_evidence['techniques'][0] if divided_evidence['techniques'] else -1
+        soft = divided_evidence['software'][0] if divided_evidence['software'] else -1
+        cve = divided_evidence['cves'][0] if divided_evidence['cves'] else -1
+        query_features = [int(tech), int(soft), int(cve)]
+        
+        # Rank all APTs
+        similarities = [predictor.predict_similarity(query_features, apt_features) for apt_features in X_apts]
+        ranked_results = {}
+        for idx, sim in enumerate(similarities):
+            ranked_results[apt_names[idx]] = sim
+        
+        resultdict[target_apt_name] = dict(sorted(ranked_results.items(), key=lambda x: x[1], reverse=True))
+    
+    # EXACT SAME evaluation
+    for top_x in [1, 5, 10, 20]:
+        success = sum(1 for target_apt, similarities in resultdict.items() 
+                     if target_apt in dict(islice(similarities.items(), top_x)))
+        print(f"Top-{top_x}: {success}/{len(resultdict)} ({success/len(resultdict)*100:.1f}%)")
 
-# ---------- Main evaluation script ----------
+# ---------- MAIN ----------
 def main():
-
-    model_path = os.path.join('./siamese_complete_model.pkl')
-    print("Loading siamese complete model & metadata...")
-    model, data, apt_embeddings = load_siamese_complete(model_path)
-    apt_profiles = data['apt_profiles']
-    apt_name_dict = data['apt_name_dict']
-    apt_ids = data['apt_ids']
-    df_mapping = data['df_mapping']
+    print("🚀 SIAMESE FEATURE ENCODER EVALUATION")
+    print("=" * 60)
     
-    # 1) Create full similarity DataFrame & show a sample
-    print("Creating similarity matrix (from siamese embeddings)...")
-    similarity_df = create_similarity_matrix(apt_embeddings, apt_name_dict, apt_profiles, apt_ids)
-    print("Similarity DataFrame sample (first 5x5):")
-    print(similarity_df.iloc[:5, :5])
-    print(f"\nMatrix shape: {similarity_df.shape}")
+    model, apt_name_mapping = load_model_and_mapping()
+    profiles = load_apt_profiles_from_data()
     
-    # 2) Plot heatmap
-    print("Plotting similarity heatmap...")
-    plot_similarity_heatmap(similarity_df)
+    # 1. FULL similarity matrix
+    similarity_df, apt_names = create_similarity_matrix_siamese(model, profiles, apt_name_mapping)
+    print(f"\n✅ FULL {len(apt_names)}x{len(apt_names)} Siamese matrix created")
     
-    # 3) Evaluate similarity matrix performance
-    evaluate_similarity_matrix(similarity_df)
+    # 2. FULL heatmap
+    plot_similarity_heatmap_siamese(similarity_df)
     
-    # 4) Evaluate profile division performance
-    evaluate_profile_division_performance(
-        apt_profiles=apt_profiles,
-        apt_name_dict=apt_name_dict,
-        apt_ids=apt_ids,
-        df_mapping=df_mapping,
-        similarity_df=similarity_df,
-        divider=2,
-        top_x_values=[1, 5, 10, 20]
-    )
+    # 3. Matrix evaluation
+    evaluate_similarity_matrix_siamese(similarity_df, apt_names)
+    
+    # 4. Profile division (EXACT XGBoost logic)
+    evaluate_profile_division_siamese(model, divider=2)
+    
+    print("\n🎉 SIAMESE EVALUATION COMPLETE!")
+    print("✅ Uses Siamese MODEL forward pass")
+    print("✅ FULL 181x181 heatmap")
+    print("✅ Exact XGBoost evaluation logic")
 
 if __name__ == "__main__":
     main()
