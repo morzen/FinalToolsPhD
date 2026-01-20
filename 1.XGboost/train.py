@@ -6,12 +6,14 @@ from sklearn.model_selection import train_test_split
 import warnings
 warnings.filterwarnings('ignore')
 
+
 def load_training_data(pwd="../BaseData/"):
     """Load the encoded data directly"""
     print("Loading encoded data...")
     df = pd.read_csv(pwd + 'EncodedData.csv')
     print(f"Data: {len(df)} records, {df.shape[1]} columns")
     return df
+
 
 def prepare_training_data(df):
     """Prepare data for efficient training - USE ALL 181 APTs"""
@@ -29,8 +31,8 @@ def prepare_training_data(df):
     print(f"Using ALL APTs: {df['APTname'].nunique()} APTs")
     print(f"Total records: {len(df_filtered)}")
     
-    # Use ALL 7 features
-    X = df_filtered[['techniques_str', 'software_str', 'CAPEC_ID', 'CWE_ID', 'CVE_ID', 'Pulse_ID']].values
+    # Use all features directly
+    X = df_filtered[['techniques_str', 'software_str', 'CVE_ID']].values
     y = df_filtered['APTname'].values
     
     print(f"Features: {X.shape}")
@@ -38,13 +40,14 @@ def prepare_training_data(df):
     
     return X, y, df_filtered
 
+
 class EfficientXGBoost:
     """Efficient XGBoost that learns APT patterns directly"""
     
     def __init__(self):
         self.model = None
         self.apt_features = {}
-        self.apt_encoder = {}
+        self.apt_encoder = {}  # Map APT IDs to indices
     
     def train(self, X_train, y_train):
         """Train efficient XGBoost classifier"""
@@ -82,23 +85,20 @@ class EfficientXGBoost:
             apt_mask = (y == apt)
             if np.sum(apt_mask) > 0:
                 apt_data = X[apt_mask]
-                # Store common features for this APT - ALL 7 features
+                # Store common features for this APT
                 self.apt_features[apt] = {
                     'common_techniques': np.unique(apt_data[:, 0]),
                     'common_software': np.unique(apt_data[:, 1]),
-                    'common_capec': np.unique(apt_data[:, 2]),
-                    'common_cwe': np.unique(apt_data[:, 3]),
-                    'common_cves': np.unique(apt_data[:, 4]),
-                    'common_pulse': np.unique(apt_data[:, 5]),
+                    'common_cves': np.unique(apt_data[:, 2]),
                     'count': len(apt_data)
                 }
     
     def predict_similarity(self, features1, features2):
         """Calculate similarity between two feature sets - PURE MODEL OUTPUT"""
         # Get probability distributions
-        if np.all(features1 == -1):
+        if features1[0] == -1 and features1[1] == -1 and features1[2] == -1:
             return 0.0
-        if np.all(features2 == -1):
+        if features2[0] == -1 and features2[1] == -1 and features2[2] == -1:
             return 0.0
             
         prob1 = self.model.predict_proba([features1])[0]
@@ -111,7 +111,7 @@ class EfficientXGBoost:
     
     def find_similar_apts(self, features, top_k=5):
         """Find most similar APTs to given features"""
-        if np.all(features == -1):
+        if features[0] == -1 and features[1] == -1 and features[2] == -1:
             return []
             
         probabilities = self.model.predict_proba([features])[0]
@@ -129,6 +129,7 @@ class EfficientXGBoost:
         similar_apts.sort(key=lambda x: x[1], reverse=True)
         return similar_apts[:top_k]
 
+
 def main():
     """Efficient XGBoost training - ALL 181 APTs, no filtering"""
     print("🚀 EFFICIENT XGBOOST TRAINING (ALL 181 APTs)")
@@ -143,7 +144,7 @@ def main():
     # Step 2: Prepare training data (ALL APTs)
     X, y, df_filtered = prepare_training_data(df)
     
-    # Step 3: Split for validation - EXACT SAME AS ORIGINAL
+    # Step 3: Split for validation
     X_tr, X_val, y_tr, y_val = train_test_split(
         X, y, test_size=0.2, random_state=42
     )
@@ -161,7 +162,7 @@ def main():
     test_sample = X_val[0]
     similar_apts = model.find_similar_apts(test_sample, top_k=3)
     
-    print(f"Sample features: T={test_sample[0]}, SW={test_sample[1]}, CAPEC={test_sample[2]}, CWE={test_sample[3]}, CVE={test_sample[4]}, Pulse={test_sample[5]}")
+    print(f"Sample features: T={test_sample[0]}, SW={test_sample[1]}, CVE={test_sample[2]}")
     print(f"Most similar APTs:")
     for apt_id, similarity in similar_apts:
         print(f"  APT {apt_id}: {similarity:.4f}")
@@ -176,13 +177,13 @@ def main():
         'model': model.model,
         'apt_features': model.apt_features,
         'apt_encoder': model.apt_encoder,
-        'feature_columns': ['techniques_str', 'software_str', 'CAPEC_ID', 'CWE_ID', 'CVE_ID', 'Pulse_ID'],
+        'feature_columns': ['techniques_str', 'software_str', 'CVE_ID'],
         'training_info': {
             'approach': 'efficient_xgboost_classifier_all_apts',
             'training_records': len(X_tr),
             'unique_apts': len(np.unique(y_tr)),
-            'total_apts': len(np.unique(y)),  
-            'apt_list': sorted(np.unique(y)),  
+            'total_apts': len(np.unique(y)),  # ← NEW: Track total APTs
+            'apt_list': sorted(np.unique(y)),  # ← NEW: Explicit APT list
             'original_data_size': len(df)
         }
     }
@@ -207,6 +208,7 @@ def main():
     print(f"   Features per record: {X.shape[1]}")
     
     return save_data
+
 
 if __name__ == "__main__":
     saved_data = main()
