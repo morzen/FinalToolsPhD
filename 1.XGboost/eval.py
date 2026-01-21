@@ -5,14 +5,13 @@ import seaborn as sns
 import numpy as np
 import random
 from itertools import islice
-from matplotlib.colors import LinearSegmentedColormap
 
 #####################################################################
-# EFFICIENT MODEL PREDICTOR FOR 6D FEATURES
+# EFFICIENT MODEL PREDICTOR FOR EVALUATION
 #####################################################################
 
 class EfficientXGBoostPredictor:
-    """Predictor for the efficient XGBoost model - NOW 6D"""
+    """Predictor for the efficient XGBoost model"""
     def __init__(self, model, apt_features, apt_encoder):
         self.model = model
         self.apt_features = apt_features
@@ -20,48 +19,54 @@ class EfficientXGBoostPredictor:
         self.reverse_encoder = {v: k for k, v in apt_encoder.items()}
     
     def predict_similarity(self, features1, features2):
-        """Predict similarity between two 6D feature sets"""
-        # Skip if first 3 features are all -1 (same as original logic)
-        if all(x == -1 for x in features1[:3]):
+        """Predict similarity between two feature sets"""
+        if features1[0] == -1 and features1[1] == -1 and features1[2] == -1:
             return 0.0
-        if all(x == -1 for x in features2[:3]):
+        if features2[0] == -1 and features2[1] == -1 and features2[2] == -1:
             return 0.0
             
-        # XGBoost gets ALL 6 features (your model expects 6D)
+        # Get probability distributions
         prob1 = self.model.predict_proba([features1])[0]
         prob2 = self.model.predict_proba([features2])[0]
         
-        # Cosine similarity (unchanged)
+        # Multiple similarity measures
         cosine_sim = np.dot(prob1, prob2) / (np.linalg.norm(prob1) * np.linalg.norm(prob2))
         
-        # 6D Feature overlap (EXTENDED)
+        # Feature overlap similarity
         feature_overlap = self._feature_overlap_similarity(features1, features2)
         
-        # Combined (same weights)
-        combined_similarity = 0.7 * cosine_sim + 0.3 * feature_overlap
+        # Combined similarity
+        combined_similarity = cosine_sim #+ 0.3 * feature_overlap
+        
         return np.clip(combined_similarity, 0.0, 1.0)
     
     def _feature_overlap_similarity(self, features1, features2):
-        """6D feature overlap similarity"""
+        """Calculate similarity based on feature overlap"""
         overlap_score = 0.0
         
-        # Technique (40%)
-        if features1[0] == features2[0] and features1[0] != -1: overlap_score += 0.40
-        # Software (40%)  
-        if features1[1] == features2[1] and features1[1] != -1: overlap_score += 0.40
-        # CVE (20%)
-        if features1[2] == features2[2] and features1[2] != -1: overlap_score += 0.20
+        # Technique similarity
+        if features1[0] == features2[0] and features1[0] != -1:
+            overlap_score += 0.6
         
-        # NEW FEATURES (bonus overlap)
-        # CAPEC (5%)
-        if len(features1) > 3 and len(features2) > 3 and features1[3] == features2[3] and features1[3] != -1: 
-            overlap_score += 0.05
-        # CWE (3%)
-        if len(features1) > 4 and len(features2) > 4 and features1[4] == features2[4] and features1[4] != -1: 
-            overlap_score += 0.03
-        # Pulse (2%)
-        if len(features1) > 5 and len(features2) > 5 and features1[5] == features2[5] and features1[5] != -1: 
-            overlap_score += 0.02
+        # Software similarity  
+        if features1[1] == features2[1] and features1[1] != -1:
+            overlap_score += 0.5
+            
+        # Capec similarity
+        if features1[2] == features2[2] and features1[2] != -1:
+            overlap_score += 0.4
+        
+        # CWE similarity
+        if features1[2] == features2[3] and features1[3] != -1:
+            overlap_score += 0.3
+
+        # CVE similarity
+        if features1[2] == features2[4] and features1[4] != -1:
+            overlap_score += 0.2
+        
+        # Pulse similarity
+        if features1[2] == features2[5] and features1[5] != -1:
+            overlap_score += 0.1
             
         return overlap_score
 
@@ -78,33 +83,31 @@ def load_efficient_xgboost_model():
         return None
 
 def load_apt_profiles_from_data():
-    """Load 6D APT profiles from EncodedData.csv - YOUR CORRECT COLUMNS"""
-    print("📊 LOADING 6D APT PROFILES FROM EncodedData.csv...")
+    """Load APT profiles from the encoded data file"""
+    print("📊 LOADING APT PROFILES FROM DATA...")
     df = pd.read_csv("../BaseData/EncodedData.csv")
     
     profiles = {}
     for apt_id in df['APTname'].unique():
         apt_data = df[df['APTname'] == apt_id]
-        
-        # YOUR EXACT COLUMNS FROM EncodedData.csv
-        tech_max = apt_data['techniques_str'].max() if 'techniques_str' in apt_data.columns else -1
-        soft_max = apt_data['software_str'].max() if 'software_str' in apt_data.columns else -1
-        cve_max  = apt_data['CVE_ID'].max() if 'CVE_ID' in apt_data.columns else -1
-        cap_max  = apt_data['CAPEC_ID'].max() if 'CAPEC_ID' in apt_data.columns else -1
-        cwe_max  = apt_data['CWE_ID'].max() if 'CWE_ID' in apt_data.columns else -1
-        pul_max  = apt_data['Pulse_ID'].max() if 'Pulse_ID' in apt_data.columns else -1
-        
-        # 6D profile: [tech, software, cve, capec, cwe, pulse]
-        profiles[apt_id] = np.array([tech_max, soft_max, cve_max, cap_max, cwe_max, pul_max], dtype=float)
+        profiles[apt_id] = {
+            'techniques': set(apt_data['techniques_str'].unique()),
+            'software': set(apt_data['software_str'].unique()),
+            'capec': set(apt_data['CAPEC_ID'].unique()),
+            'cwe': set(apt_data['CWE_ID'].unique()),
+            'cve': set(apt_data['CVE_ID'].unique()),
+            'pulse': set(apt_data['Pulse_ID'].unique()),
+            'total_features': len(apt_data)
+        }
     
-    print(f"✅ Loaded {len(profiles)} 6D APT profiles")
+    print(f"✅ Loaded profiles for {len(profiles)} APTs")
     return profiles
 
 def create_similarity_matrix_efficient(saved_data):
-    """Create 6D similarity matrix - SAME LOGIC"""
-    print("🎯 CREATING 6D SIMILARITY MATRIX...")
+    """Create similarity matrix between all APTs using the efficient XGBoost model"""
+    print("Creating similarity matrix using efficient XGBoost model...")
     
-    # Load 6D profiles
+    # Load APT profiles
     profiles = load_apt_profiles_from_data()
     apt_ids = list(profiles.keys())
     
@@ -115,7 +118,121 @@ def create_similarity_matrix_efficient(saved_data):
         saved_data['apt_encoder']
     )
     
-    # APT name mapping (unchanged)
+    # Load APT name mappings
+    df_mapping = pd.read_csv("../BaseData/comparison_Encoded_df.csv")
+    apt_name_mapping = {}
+    for _, row in df_mapping.iterrows():
+        encoded_id = row['APTnameEncoded']
+        original_name = row['APTnameOrigin']
+        apt_name_mapping[encoded_id] = original_name
+    
+    # Get APT names in order
+    apt_names = [apt_name_mapping.get(apt_id, f"APT{apt_id}") for apt_id in apt_ids]
+    
+    # Create feature matrix for all APTs (using representative features)
+    X_apts = []
+    for apt_id in apt_ids:
+        profile = profiles[apt_id]
+        # Use most common technique, software, CVE for this APT
+        technique_item = next(iter(profile['techniques'])) if profile['techniques'] else -1
+        software_item = next(iter(profile['software'])) if profile['software'] else -1
+        capec_item = next(iter(profile['capec'])) if profile['capec'] else -1
+        cwe_item = next(iter(profile['cwe'])) if profile['cwe'] else -1
+        cve_item = next(iter(profile['cve'])) if profile['cve'] else -1
+        pulse_item = next(iter(profile['pulse'])) if profile['pulse'] else -1
+        
+        apt_features = np.array([technique_item, software_item, capec_item, cwe_item, cve_item, pulse_item])
+        X_apts.append(apt_features)
+    
+    X_apts = np.array(X_apts)
+    
+    # Calculate similarity matrix using XGBoost predictions
+    num_apts = len(apt_ids)
+    similarity_matrix = np.zeros((num_apts, num_apts))
+    
+    print("Computing pairwise similarities...")
+    for i in range(num_apts):
+        if i % 20 == 0:
+            print(f"  Processed {i}/{num_apts} APTs...")
+        
+        for j in range(num_apts):
+            similarity = predictor.predict_similarity(X_apts[i], X_apts[j])
+            similarity_matrix[i, j] = similarity
+    
+    # Create DataFrame
+    similarity_df = pd.DataFrame(
+        similarity_matrix,
+        index=apt_names,
+        columns=apt_names
+    )
+    
+    return similarity_df, apt_names
+
+def plot_similarity_heatmap_efficient(similarity_df):
+    """Plot heatmap of similarity matrix for efficient XGBoost"""
+    plt.figure(figsize=(16, 14))
+    
+    # Create custom red-to-green colormap
+    from matplotlib.colors import LinearSegmentedColormap
+    colors = ["red", "yellow", "green"]
+    n_bins = 100
+    cmap = LinearSegmentedColormap.from_list("red_green", colors, N=n_bins)
+    
+    # Plot complete heatmap
+    sns.heatmap(similarity_df, 
+                mask=None,
+                cmap=cmap,
+                center=0.5,
+                square=True,
+                xticklabels=True,
+                yticklabels=True,
+                cbar_kws={'shrink': 0.8, 'label': 'Similarity Score'})
+    
+    plt.title("APT Group Similarity Matrix (Efficient XGBoost)", fontsize=16, fontweight='bold')
+    plt.xticks(rotation=90, fontsize=8)
+    plt.yticks(rotation=0, fontsize=8)
+    plt.tight_layout()
+    plt.savefig('apt_efficient_xgboost_similarity_matrix.png', dpi=300, bbox_inches='tight')
+    plt.show()
+
+def evaluate_similarity_matrix_efficient(similarity_df, apt_names):
+    """Evaluate the similarity matrix for different top-X values"""
+    print("\n" + "="*80)
+    print("EVALUATING EFFICIENT XGBOOST SIMILARITY MATRIX (FULL DATA)")
+    print("="*80)
+    
+    # Evaluate for multiple top-X values
+    top_x_values = [1, 5, 10, 20]
+    
+    for top_x in top_x_values:
+        success = 0
+        failure = 0
+        
+        # For each APT, check if it appears in its own top X most similar APTs
+        for i, apt_name in enumerate(apt_names):
+            # Get similarity scores for this APT
+            similarities = similarity_df.iloc[i]
+            
+            # Get top X most similar APTs (including self)
+            top_similar = similarities.nlargest(top_x)
+            
+            # Check if the APT itself is in its own top X most similar
+            if apt_name in top_similar.index:
+                success += 1
+            else:
+                failure += 1
+        
+        total = len(apt_names)
+        print(f"\nSettings: Top {top_x} (Full Data)")
+        print(f"Success/Failure: {success}/{failure} Total: {total}")
+        print(f"Success rate: {(success/total)*100:.2f}%")
+
+def evaluate_profile_division_efficient(saved_data, divider=2, top_x_values=[1, 5, 10, 20]):
+    """Evaluate efficient XGBoost model performance with divided profile data"""
+    profiles = load_apt_profiles_from_data()
+    apt_ids = list(profiles.keys())
+    
+    # Load APT name mappings
     df_mapping = pd.read_csv("../BaseData/comparison_Encoded_df.csv")
     apt_name_mapping = {}
     for _, row in df_mapping.iterrows():
@@ -125,165 +242,180 @@ def create_similarity_matrix_efficient(saved_data):
     
     apt_names = [apt_name_mapping.get(apt_id, f"APT{apt_id}") for apt_id in apt_ids]
     
-    # Build 6D feature matrix
-    X_apts = np.array([profiles[apt_id] for apt_id in apt_ids])
+    # Create predictor
+    predictor = EfficientXGBoostPredictor(
+        saved_data['model'], 
+        saved_data['apt_features'], 
+        saved_data['apt_encoder']
+    )
     
-    # Calculate pairwise similarities (SAME LOOP)
-    num_apts = len(apt_ids)
-    similarity_matrix = np.zeros((num_apts, num_apts))
+    # Create feature matrix for all APTs
+    X_apts = []
+    for apt_id in apt_ids:
+        profile = profiles[apt_id]
+        technique_item = next(iter(profile['techniques'])) if profile['techniques'] else -1
+        software_item = next(iter(profile['software'])) if profile['software'] else -1
+        capec_item = next(iter(profile['capec'])) if profile['capec'] else -1
+        cwe_item = next(iter(profile['cwe'])) if profile['cwe'] else -1
+        cve_item = next(iter(profile['cve'])) if profile['cve'] else -1
+        pulse_item = next(iter(profile['pulse'])) if profile['pulse'] else -1
+        apt_features = np.array([technique_item, software_item, capec_item, cwe_item, cve_item, pulse_item])
+        X_apts.append(apt_features)
     
-    print("Computing 6D pairwise similarities...")
-    for i in range(num_apts):
+    X_apts = np.array(X_apts)
+    
+    print(f"\nEvaluating Efficient XGBoost with divider: {divider} (using {100/divider:.1f}% of profile data)")
+    
+    resultdict = {}
+    
+    # For each APT, create divided profile and calculate similarities
+    for i, target_apt_name in enumerate(apt_names):
         if i % 20 == 0:
-            print(f"  Processed {i}/{num_apts} APTs...")
-        for j in range(num_apts):
-            similarity = predictor.predict_similarity(X_apts[i], X_apts[j])
-            similarity_matrix[i, j] = similarity
-    
-    similarity_df = pd.DataFrame(similarity_matrix, index=apt_names, columns=apt_names)
-    return similarity_df, apt_names
+            print(f"  Processing {i}/{len(apt_names)} APTs...")
+        
+        # Get the target APT's original data
+        target_apt_id = next(apt for apt in apt_ids if apt_name_mapping.get(apt, f"APT{apt}") == target_apt_name)
+        target_profile = profiles[target_apt_id]
+        
+        # Create divided evidence for each feature type
+        divided_evidence = {
+            'techniques': [],
+            'software': [],
+            'capec': [],
+            'cwes': [],
+            'cves': [],
+            'pulse': []
+        }
+        
+        # Divide techniques
+        if target_profile['techniques']:
+            techniques_list = list(target_profile['techniques'])
+            random.shuffle(techniques_list)
+            division_size = max(1, len(techniques_list) // divider)
+            divided_evidence['techniques'] = techniques_list[:division_size]
+        
+        # Divide software
+        if target_profile['software']:
+            software_list = list(target_profile['software'])
+            random.shuffle(software_list)
+            division_size = max(1, len(software_list) // divider)
+            divided_evidence['software'] = software_list[:division_size]
+        
+        # Divide CAPEC
+        if target_profile['capec']:
+            capec_list = list(target_profile['capec'])
+            random.shuffle(capec_list)
+            division_size = max(1, len(capec_list) // divider)
+            divided_evidence['capec'] = capec_list[:division_size]
 
-def plot_similarity_heatmap_efficient(similarity_df):
-    """Plot 6D similarity heatmap - UNCHANGED"""
-    plt.figure(figsize=(16, 14))
-    colors = ["red", "yellow", "green"]
-    cmap = LinearSegmentedColormap.from_list("red_green", colors, N=100)
-    
-    sns.heatmap(similarity_df, 
-                cmap=cmap, center=0.5, square=True,
-                xticklabels=True, yticklabels=True,
-                cbar_kws={'shrink': 0.8, 'label': '6D Similarity Score'})
-    
-    plt.title("APT Group 6D Similarity Matrix (XGBoost + T/S/CVE/CAPEC/CWE/Pulse)", 
-              fontsize=16, fontweight='bold')
-    plt.xticks(rotation=90, fontsize=8)
-    plt.yticks(rotation=0, fontsize=8)
-    plt.tight_layout()
-    plt.savefig('apt_efficient_xgboost_6d_similarity_matrix.png', dpi=300, bbox_inches='tight')
-    plt.show()
+        # Divide CWEs
+        if target_profile['cwe']:
+            cwe_list = list(target_profile['cwe'])
+            random.shuffle(cwe_list)
+            division_size = max(1, len(cwe_list) // divider)
+            divided_evidence['cwes'] = cwe_list[:division_size]
 
-def evaluate_similarity_matrix_efficient(similarity_df, apt_names):
-    """Evaluate 6D matrix - SAME LOGIC"""
-    print("\n" + "="*80)
-    print("EVALUATING 6D XGBOOST SIMILARITY MATRIX")
-    print("="*80)
+        # Divide CVEs
+        if target_profile['cve']:
+            cve_list = list(target_profile['cve'])
+            random.shuffle(cve_list)
+            division_size = max(1, len(cve_list) // divider)
+            divided_evidence['cves'] = cve_list[:division_size]
+
+        # Divide Pulse
+        if target_profile['pulse']:
+            pulse_list = list(target_profile['pulse'])
+            random.shuffle(pulse_list)
+            division_size = max(1, len(pulse_list) // divider)
+            divided_evidence['pulse'] = pulse_list[:division_size]
+        
+        # Create query features from divided evidence
+        technique_item = divided_evidence['techniques'][0] if divided_evidence['techniques'] else -1
+        software_item = divided_evidence['software'][0] if divided_evidence['software'] else -1
+        capec_item = divided_evidence['capec'][0] if divided_evidence['capec'] else -1
+        cwe_item = divided_evidence['cwes'][0] if divided_evidence['cwes'] else -1
+        cve_item = divided_evidence['cves'][0] if divided_evidence['cves'] else -1
+        pulse_item = divided_evidence['pulse'][0] if divided_evidence['pulse'] else -1
+        
+        query_features = np.array([technique_item, software_item, capec_item, cwe_item, cve_item, pulse_item])
+        
+        # Calculate similarities with all APTs
+        similarities = []
+        for apt_features in X_apts:
+            similarity = predictor.predict_similarity(query_features, apt_features)
+            similarities.append(similarity)
+        
+        # Create ranked results
+        ranked_results = {}
+        sorted_indices = np.argsort(similarities)[::-1]  # Sort descending
+        
+        for idx in sorted_indices:
+            apt_id = apt_ids[idx]
+            apt_real_name = apt_name_mapping.get(apt_id, f"APT{apt_id}")
+            ranked_results[apt_real_name] = similarities[idx]
+        
+        resultdict[target_apt_name] = ranked_results
     
-    top_x_values = [1, 5, 10, 20]
-    for top_x in top_x_values:
+    # Evaluate for multiple top-X values
+    for topX in top_x_values:
+        lengthResultDict = len(resultdict)
         success = 0
         failure = 0
-        for i, apt_name in enumerate(apt_names):
-            similarities = similarity_df.iloc[i]
-            top_similar = similarities.nlargest(top_x)
-            if apt_name in top_similar.index:
+        
+        # Iterate through each APT's results
+        for target_apt, similarities in resultdict.items():
+            # Get top X most similar APTs
+            top_x_similar = dict(islice(similarities.items(), topX))
+            
+            # Check if target APT is in its own top X most similar
+            if target_apt in top_x_similar:
                 success += 1
             else:
                 failure += 1
         
-        total = len(apt_names)
-        print(f"\nTop {top_x}: {success}/{failure} ({(success/total)*100:.1f}%)")
-
-def evaluate_profile_division_efficient(saved_data, divider=2, top_x_values=[1, 5, 10, 20]):
-    """6D Profile division evaluation - FIXED"""
-    print(f"\n🎯 6D PROFILE DIVISION EVALUATION (divider={divider})")
-    
-    profiles = load_apt_profiles_from_data()
-    apt_ids = list(profiles.keys())
-    
-    df_mapping = pd.read_csv("../BaseData/comparison_Encoded_df.csv")
-    apt_name_mapping = {row['APTnameEncoded']: row['APTnameOrigin'] for _, row in df_mapping.iterrows()}
-    apt_names = [apt_name_mapping.get(apt_id, f"APT{apt_id}") for apt_id in apt_ids]
-    
-    predictor = EfficientXGBoostPredictor(saved_data['model'], saved_data['apt_features'], saved_data['apt_encoder'])
-    X_apts = np.array([profiles[apt_id] for apt_id in apt_ids])
-    
-    # Build mappings for divided evidence
-    df_map = pd.read_csv("../BaseData/comparison_Encoded_df.csv")
-    mappings = {}
-    for ftype, origin_col, encoded_col in [
-        ('tech', 'techniques_Origin', 'techniques_Encoded'),
-        ('soft', 'software_Origin', 'software_Encoded'),
-        ('cve', 'CVE_ID_Origin', 'CVE_ID_Encoded'),
-        ('capec', 'CAPEC_ID_Origin', 'CAPEC_ID_Encoded'),
-        ('cwe', 'CWE_ID_Origin', 'CWE_ID_Encoded'),
-        ('pulse', 'Pulse_ID_Origin', 'Pulse_ID_Encoded')
-    ]:
-        mappings[ftype] = {}
-        for _, row in df_map.iterrows():
-            if pd.notna(row.get(origin_col)) and pd.notna(row.get(encoded_col)):
-                mappings[ftype][str(row[origin_col])] = int(row[encoded_col])
-    
-    resultdict = {}
-    for i, target_apt_name in enumerate(apt_names):
-        if i % 20 == 0:
-            print(f"  Processing {i}/{len(apt_names)}...")
-        
-        target_apt_id = apt_ids[i]
-        full_profile_df = pd.read_csv("../BaseData/EncodedData.csv")
-        target_data = full_profile_df[full_profile_df['APTname'] == target_apt_id]
-        
-        divided_features = [-1] * 6
-        for idx, (col, mtype) in enumerate([
-            ('techniques_str', 'tech'),
-            ('software_str', 'soft'), 
-            ('CVE_ID', 'cve'),
-            ('CAPEC_ID', 'capec'),
-            ('CWE_ID', 'cwe'),
-            ('Pulse_ID', 'pulse')
-        ]):
-            if col in target_data.columns:
-                values = target_data[col].dropna().unique()
-                if len(values) > 0:
-                    sample_size = max(1, len(values) // divider)
-                    sample = random.sample(list(values), min(sample_size, len(values)))
-                    encoded = [mappings[mtype].get(str(v), -1) for v in sample]
-                    encoded = [e for e in encoded if e != -1]
-                    if encoded:
-                        divided_features[idx] = max(encoded)
-        
-        query_features = np.array(divided_features, dtype=float)
-        similarities = [predictor.predict_similarity(query_features, apt_feat) for apt_feat in X_apts]
-        ranked_results = {apt_names[j]: similarities[j] for j in range(len(apt_names))}
-        resultdict[target_apt_name] = dict(sorted(ranked_results.items(), key=lambda x: x[1], reverse=True))
-    
-    # FIXED EVALUATION
-    for topX in top_x_values:
-        success = 0
-        total = len(resultdict)
-        for target, sims in resultdict.items():
-            top_x_similar = dict(islice(sims.items(), topX))
-            if target in top_x_similar:
-                success += 1
-        failure = total - success
-        print(f"Top {topX}, Divider {divider}: {success}/{failure} ({success/total*100:.1f}%)")
-
-
+        print(f"\nSettings: Top {topX}, Divider: {divider}")
+        print(f"Success/Failure: {success}/{failure} Total: {lengthResultDict}")
+        print(f"Success rate: {(success/lengthResultDict)*100:.2f}%")
 
 def main():
-    print("🚀 EFFICIENT XGBOOST 6D EVALUATION")
+    print("🚀 EFFICIENT XGBOOST APT SIMILARITY MODEL EVALUATION")
     print("=" * 60)
     
+    # Load trained XGBoost model
     saved_data = load_efficient_xgboost_model()
+    
     if saved_data is None:
+        print("❌ Cannot proceed without trained model. Please run train.py first.")
         return
     
-    print(f"✅ 6D Model: {saved_data['training_info']['unique_apts']} APTs, {saved_data['training_info']['training_records']} records")
+    print(f"✅ Efficient XGBoost model loaded successfully!")
+    print(f"   APTs in training: {saved_data['training_info']['unique_apts']}")
+    print(f"   Training records: {saved_data['training_info']['training_records']}")
     
-    # 1. Full matrix
-    print("\n" + "="*80); print("6D SIMILARITY MATRIX")
+    # 1. Create and display similarity matrix
+    print("\n" + "="*80)
+    print("CREATING EFFICIENT XGBOOST SIMILARITY MATRIX")
+    print("="*80)
+    
     similarity_df, apt_names = create_similarity_matrix_efficient(saved_data)
-    print(similarity_df.iloc[:5, :5]); print(f"Shape: {similarity_df.shape}")
     
-    # 2. Heatmap
-    print("\nPlotting 6D heatmap...")
+    print("Similarity DataFrame sample (first 5x5):")
+    print(similarity_df.iloc[:5, :5])
+    print(f"\nMatrix shape: {similarity_df.shape}")
+    
+    # 2. Plot heatmap
+    print("\nPlotting Efficient XGBoost similarity heatmap...")
     plot_similarity_heatmap_efficient(similarity_df)
     
-    # 3. Matrix evaluation
+    # 3. Evaluate similarity matrix
     evaluate_similarity_matrix_efficient(similarity_df, apt_names)
     
-    # 4. Profile division
-    print("\n" + "="*80); print("6D PROFILE DIVISION")
-    evaluate_profile_division_efficient(saved_data, divider=2)
+    # 4. Evaluate profile division
+    print("\n" + "="*80)
+    print("EVALUATING EFFICIENT XGBOOST PROFILE DIVISION PERFORMANCE")
+    print("="*80)
+    
+    evaluate_profile_division_efficient(saved_data, divider=2, top_x_values=[1, 5, 10, 20])
 
 if __name__ == "__main__":
     main()

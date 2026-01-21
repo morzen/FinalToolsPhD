@@ -12,8 +12,9 @@ import os
 import random
 import math
 
+
 #####################################################################
-# EFFICIENT MODEL PREDICTOR FOR XGBOOST - PURE MODEL OUTPUT (6D)
+# EFFICIENT MODEL PREDICTOR FOR XGBOOST - PURE MODEL OUTPUT
 #####################################################################
 
 class EfficientXGBoostPredictor:
@@ -25,24 +26,23 @@ class EfficientXGBoostPredictor:
         self.reverse_encoder = {v: k for k, v in apt_encoder.items()}
     
     def predict_similarity(self, features1, features2):
-        """Predict similarity using ONLY XGBoost model probabilities - NO custom heuristics"""
-        # keep same guard: empty main triple => 0
+        """Predict similarity between two feature sets"""
         if features1[0] == -1 and features1[1] == -1 and features1[2] == -1:
             return 0.0
         if features2[0] == -1 and features2[1] == -1 and features2[2] == -1:
             return 0.0
             
-        # Get probability distributions DIRECTLY from XGBoost model
+        # Get probability distributions
         prob1 = self.model.predict_proba([features1])[0]
         prob2 = self.model.predict_proba([features2])[0]
         
-        # Pure cosine similarity of XGBoost probability distributions
-        denom = (np.linalg.norm(prob1) * np.linalg.norm(prob2))
-        if denom == 0:
-            return 0.0
-        cosine_sim = np.dot(prob1, prob2) / denom
+        # Multiple similarity measures
+        cosine_sim = np.dot(prob1, prob2) / (np.linalg.norm(prob1) * np.linalg.norm(prob2))
+
+        # Combined similarity
+        combined_similarity = cosine_sim
         
-        return np.clip(cosine_sim, 0.0, 1.0)
+        return np.clip(combined_similarity, 0.0, 1.0)
 
 
 def load_efficient_xgboost_model():
@@ -59,7 +59,7 @@ def load_efficient_xgboost_model():
 
 
 def load_apt_profiles_from_data():
-    """Load APT profiles from the encoded data file (6D sets)"""
+    """Load APT profiles from the encoded data file"""
     print("📊 LOADING APT PROFILES FROM DATA...")
     df = pd.read_csv("../BaseData/EncodedData.csv")
     
@@ -67,12 +67,12 @@ def load_apt_profiles_from_data():
     for apt_id in df['APTname'].unique():
         apt_data = df[df['APTname'] == apt_id]
         profiles[apt_id] = {
-            'techniques': set(apt_data['techniques_str'].dropna().unique()),
-            'software':   set(apt_data['software_str'].dropna().unique()),
-            'cve':        set(apt_data['CVE_ID'].dropna().unique()),
-            'capec':      set(apt_data['CAPEC_ID'].dropna().unique()),
-            'cwe':        set(apt_data['CWE_ID'].dropna().unique()),
-            'pulse':      set(apt_data['Pulse_ID'].dropna().unique()),
+            'techniques': set(apt_data['techniques_str'].unique()),
+            'software': set(apt_data['software_str'].unique()),
+            'capec': set(apt_data['CAPEC_ID'].unique()),
+            'cwe': set(apt_data['CWE_ID'].unique()),
+            'cve': set(apt_data['CVE_ID'].unique()),
+            'pulse': set(apt_data['Pulse_ID'].unique()),
             'total_features': len(apt_data)
         }
     
@@ -81,37 +81,43 @@ def load_apt_profiles_from_data():
 
 
 def load_mappings():
-    """Load mappings once to avoid repeated file reading (6D)"""
+    """Load mappings once to avoid repeated file reading"""
     df_mapping = pd.read_csv("../BaseData/comparison_Encoded_df.csv")
     
     technique_mapping = {}
-    software_mapping  = {} 
-    cve_mapping       = {}
-    capec_mapping     = {}
-    cwe_mapping       = {}
-    pulse_mapping     = {}
+    software_mapping = {} 
+    capec_mapping = {}
+    cwe_mapping = {}
+    cve_mapping = {}
+    pulse_mapping = {}
     
     for _, row in df_mapping.iterrows():
+        # Technique mapping
         if pd.notna(row['techniques_Origin']) and pd.notna(row['techniques_Encoded']):
             if row['techniques_Origin'] not in technique_mapping:
                 technique_mapping[row['techniques_Origin']] = row['techniques_Encoded']
         
+        # Software mapping
         if pd.notna(row['software_Origin']) and pd.notna(row['software_Encoded']):
             if row['software_Origin'] not in software_mapping:
                 software_mapping[row['software_Origin']] = row['software_Encoded']
         
-        if pd.notna(row['CVE_ID_Origin']) and pd.notna(row['CVE_ID_Encoded']):
-            if row['CVE_ID_Origin'] not in cve_mapping:
-                cve_mapping[row['CVE_ID_Origin']] = row['CVE_ID_Encoded']
-        
+        # Capec mapping
         if pd.notna(row['CAPEC_ID_Origin']) and pd.notna(row['CAPEC_ID_Encoded']):
             if row['CAPEC_ID_Origin'] not in capec_mapping:
                 capec_mapping[row['CAPEC_ID_Origin']] = row['CAPEC_ID_Encoded']
-        
+
+        # CWE mapping
         if pd.notna(row['CWE_ID_Origin']) and pd.notna(row['CWE_ID_Encoded']):
             if row['CWE_ID_Origin'] not in cwe_mapping:
                 cwe_mapping[row['CWE_ID_Origin']] = row['CWE_ID_Encoded']
-        
+
+        # CVE mapping
+        if pd.notna(row['CVE_ID_Origin']) and pd.notna(row['CVE_ID_Encoded']):
+            if row['CVE_ID_Origin'] not in cve_mapping:
+                cve_mapping[row['CVE_ID_Origin']] = row['CVE_ID_Encoded']
+
+        # Pulse mapping
         if pd.notna(row['Pulse_ID_Origin']) and pd.notna(row['Pulse_ID_Encoded']):
             if row['Pulse_ID_Origin'] not in pulse_mapping:
                 pulse_mapping[row['Pulse_ID_Origin']] = row['Pulse_ID_Encoded']
@@ -123,25 +129,22 @@ def load_mappings():
         if encoded_id not in apt_name_mapping:
             apt_name_mapping[encoded_id] = original_name
     
-    return (technique_mapping, software_mapping, cve_mapping,
-            capec_mapping, cwe_mapping, pulse_mapping, apt_name_mapping)
+    return technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping
 
 
 def create_feature_matrix(profiles, apt_ids):
-    """Create feature matrix for all APTs using representative 6D encoded features"""
-    df = pd.read_csv("../BaseData/EncodedData.csv")
+    """Create feature matrix for all APTs using representative features"""
     X_apts = []
     for apt_id in apt_ids:
-        apt_data = df[df['APTname'] == apt_id]
-        # representative max per field
-        tech = apt_data['techniques_str'].max() if 'techniques_str' in apt_data.columns else -1
-        soft = apt_data['software_str'].max()   if 'software_str'   in apt_data.columns else -1
-        cve  = apt_data['CVE_ID'].max()         if 'CVE_ID'         in apt_data.columns else -1
-        cap  = apt_data['CAPEC_ID'].max()       if 'CAPEC_ID'       in apt_data.columns else -1
-        cwe  = apt_data['CWE_ID'].max()         if 'CWE_ID'         in apt_data.columns else -1
-        pul  = apt_data['Pulse_ID'].max()       if 'Pulse_ID'       in apt_data.columns else -1
+        profile = profiles[apt_id]
+        technique_item = next(iter(profile['techniques'])) if profile['techniques'] else -1
+        software_item = next(iter(profile['software'])) if profile['software'] else -1
+        capec_item = next(iter(profile['capec'])) if profile['capec'] else -1
+        cwe_item = next(iter(profile['cwe'])) if profile['cwe'] else -1
+        cve_item = next(iter(profile['cve'])) if profile['cve'] else -1
+        pulse_item = next(iter(profile['pulse'])) if profile['pulse'] else -1
         
-        apt_features = np.array([tech, soft, cve, cap, cwe, pul])
+        apt_features = np.array([technique_item, software_item, capec_item, cwe_item, cve_item, pulse_item])
         X_apts.append(apt_features)
     
     return np.array(X_apts)
@@ -149,19 +152,25 @@ def create_feature_matrix(profiles, apt_ids):
 
 def sample_mixed_features(attacker_profile, mimicked_profile, rng=None, attacker_fraction=0.3):
     """
-    Sample 30% attacker / 70% mimicked feature *triple* for false-flag testing
-    ORIGINAL 3D VERSION (tech/software/cve) – kept for compatibility
+    Sample 30% attacker / 70% mimicked feature triple for false-flag testing
+    Uses probabilistic sampling per feature slot
     """
     if rng is None:
         rng = random
 
     atk_tech = list(attacker_profile['techniques'])
     atk_soft = list(attacker_profile['software'])
+    atk_capec  = list(attacker_profile['capec'])
+    atk_cwe  = list(attacker_profile['cwe'])
     atk_cve  = list(attacker_profile['cve'])
+    atk_pulse  = list(attacker_profile['pulse'])
 
     mim_tech = list(mimicked_profile['techniques'])
     mim_soft = list(mimicked_profile['software'])
+    mim_capec  = list(mimicked_profile['capec'])
+    mim_cwe  = list(mimicked_profile['cwe'])
     mim_cve  = list(mimicked_profile['cve'])
+    mim_pulse  = list(mimicked_profile['pulse'])
 
     def pick_feature(atk_list, mim_list):
         if not atk_list and not mim_list:
@@ -179,50 +188,17 @@ def sample_mixed_features(attacker_profile, mimicked_profile, rng=None, attacker
 
     technique = pick_feature(atk_tech, mim_tech)
     software  = pick_feature(atk_soft, mim_soft)
+    capec     = pick_feature(atk_capec,  mim_capec)
+    cwe       = pick_feature(atk_cwe,  mim_cwe)
     cve       = pick_feature(atk_cve,  mim_cve)
+    pulse     = pick_feature(atk_pulse,  mim_pulse)
 
-    return np.array([technique, software, cve])
-
-
-def sample_mixed_features_6d(attacker_profile, mimicked_profile, rng=None, attacker_fraction=0.3):
-    """
-    NEW 6D VERSION: 30% attacker / 70% mimicked for
-    [techniques, software, cve, capec, cwe, pulse]
-    """
-    if rng is None:
-        rng = random
-    
-    def pick(atk_set, mim_set):
-        atk_list = list(atk_set)
-        mim_list = list(mim_set)
-        if not atk_list and not mim_list:
-            return -1
-        use_attacker = (rng.random() < attacker_fraction)
-        if use_attacker and atk_list:
-            return rng.choice(atk_list)
-        elif mim_list:
-            return rng.choice(mim_list)
-        elif atk_list:
-            return rng.choice(atk_list)
-        else:
-            return -1
-    
-    technique = pick(attacker_profile['techniques'], mimicked_profile['techniques'])
-    software  = pick(attacker_profile['software'],   mimicked_profile['software'])
-    cve       = pick(attacker_profile['cve'],        mimicked_profile['cve'])
-    capec     = pick(attacker_profile['capec'],      mimicked_profile['capec'])
-    cwe       = pick(attacker_profile['cwe'],        mimicked_profile['cwe'])
-    pulse     = pick(attacker_profile['pulse'],      mimicked_profile['pulse'])
-    
-    return np.array([technique, software, cve, capec, cwe, pulse])
+    return np.array([technique, software, capec, cwe, cve, pulse])
 
 
 def process_single_false_flag_efficient(args):
-    """Process single false-flag with 30/70 mixed evidence (FULL, 6D)"""
-    (attacker_apt_id, mimicked_apt_id, saved_data,
-     technique_mapping, software_mapping, cve_mapping,
-     capec_mapping, cwe_mapping, pulse_mapping,
-     apt_name_mapping, profiles, X_apts, apt_ids, seed) = args
+    """Process single false-flag with 30/70 mixed evidence (FULL)"""
+    attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping, profiles, X_apts, apt_ids, seed = args
     
     rng = random.Random(seed)  # Reproducible randomness
     
@@ -232,8 +208,8 @@ def process_single_false_flag_efficient(args):
     attacker_profile = profiles[attacker_apt_id]
     mimicked_profile = profiles[mimicked_apt_id]
     
-    # 30% ATTACKER / 70% MIMICKED 6D mixed evidence (FULL volume)
-    false_flag_features = sample_mixed_features_6d(
+    # 30% ATTACKER / 70% MIMICKED mixed evidence (FULL volume)
+    false_flag_features = sample_mixed_features(
         attacker_profile, mimicked_profile, rng=rng, attacker_fraction=0.3
     )
     
@@ -270,11 +246,8 @@ def process_single_false_flag_efficient(args):
 
 
 def process_single_false_flag_partial_evidence(args):
-    """Process single false-flag with 30/70 mixed evidence (PARTIAL volume, 6D)"""
-    (attacker_apt_id, mimicked_apt_id, saved_data,
-     technique_mapping, software_mapping, cve_mapping,
-     capec_mapping, cwe_mapping, pulse_mapping,
-     apt_name_mapping, profiles, X_apts, apt_ids, seed) = args
+    """Process single false-flag with 30/70 mixed evidence (PARTIAL volume)"""
+    attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, capec_mapping, apt_name_mapping, profiles, X_apts, apt_ids, seed = args
     
     rng = random.Random(seed)
     
@@ -284,15 +257,15 @@ def process_single_false_flag_partial_evidence(args):
     attacker_profile = profiles[attacker_apt_id]
     mimicked_profile = profiles[mimicked_apt_id]
     
-    # Start with 30/70 6D mix
-    full_mixed = sample_mixed_features_6d(
+    # Start with 30/70 mix
+    full_mixed = sample_mixed_features(
         attacker_profile, mimicked_profile, rng=rng, attacker_fraction=0.3
     )
     
-    # PARTIAL: randomly drop ~33% evidence (2 of 6 slots)
+    # PARTIAL: randomly drop ~50% evidence (mask 1-2 slots)
     mask = [0, 1, 2, 3, 4, 5]
     rng.shuffle(mask)
-    to_drop = mask[:2]  # 2 of 6 ≈ 33%
+    to_drop = mask[:1]  # Drop 1 slot = ~33% reduction
     
     partial = full_mixed.copy()
     for idx in to_drop:
@@ -333,30 +306,28 @@ def process_single_false_flag_partial_evidence(args):
 
 
 def evaluate_false_flag_attacks_efficient_parallel(saved_data, top_x_values=[1, 3, 5, 10, 20]):
-    """FULL EVIDENCE: 30/70 mixed features (6D)"""
-    print(" EVALUATING FALSE-FLAG ATTACKS (EFFICIENT XGBOOST - 30/70 MIX FULL, 6D)")
+    """FULL EVIDENCE: 30/70 mixed features"""
+    print(" EVALUATING FALSE-FLAG ATTACKS (EFFICIENT XGBOOST - 30/70 MIX FULL)")
     print("=" * 80)
-    print(" FALSE-FLAG: 30% Attacker + 70% Mimicked features per slot (T/S/CVE/CAPEC/CWE/Pulse)")
+    print(" FALSE-FLAG: 30% Attacker + 70% Mimicked features per slot")
     print("=" * 80)
     
     profiles = load_apt_profiles_from_data()
     apt_ids = list(profiles.keys())
     X_apts = create_feature_matrix(profiles, apt_ids)
     
-    (technique_mapping, software_mapping, cve_mapping,
-     capec_mapping, cwe_mapping, pulse_mapping, apt_name_mapping) = load_mappings()
+    technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping = load_mappings()
     
     all_combinations = [(a, m) for a in apt_ids for m in apt_ids if a != m]
     total_combinations = len(all_combinations)
     
-    print(f"Testing {total_combinations} false-flag combinations (30/70 FULL, 6D)...")
+    print(f"Testing {total_combinations} false-flag combinations (30/70 FULL)...")
     print(f"Using {mp.cpu_count()} CPU cores")
     
     args_list = []
     for i, (attacker_apt_id, mimicked_apt_id) in enumerate(all_combinations):
-        args = (attacker_apt_id, mimicked_apt_id, saved_data,
-                technique_mapping, software_mapping, cve_mapping,
-                capec_mapping, cwe_mapping, pulse_mapping,
+        args = (attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, 
+                software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping,
                 apt_name_mapping, profiles, X_apts, apt_ids, i)
         args_list.append(args)
     
@@ -365,10 +336,8 @@ def evaluate_false_flag_attacks_efficient_parallel(saved_data, top_x_values=[1, 
     max_workers = min(mp.cpu_count(), 8)
     
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        future_to_combination = {
-            executor.submit(process_single_false_flag_efficient, args): args 
-            for args in args_list
-        }
+        future_to_combination = {executor.submit(process_single_false_flag_efficient, args): args 
+                               for args in args_list}
         
         completed = 0
         for future in as_completed(future_to_combination):
@@ -394,8 +363,9 @@ def evaluate_false_flag_attacks_efficient_parallel(saved_data, top_x_values=[1, 
     total_time = time.time() - start_time
     print(f"\nCompleted {total_combinations} evaluations in {total_time/60:.1f} minutes")
     
+    # Top-k analysis
     print("\n" + "="*80)
-    print("FALSE-FLAG RESULTS - XGBOOST 30/70 FULL EVIDENCE (6D)")
+    print("FALSE-FLAG RESULTS - XGBOOST 30/70 FULL EVIDENCE")
     print("="*80)
     
     for top_x in top_x_values:
@@ -425,28 +395,26 @@ def evaluate_false_flag_attacks_efficient_parallel(saved_data, top_x_values=[1, 
 
 
 def evaluate_false_flag_attacks_partial_evidence(saved_data, top_x_values=[1, 3, 5, 10, 20]):
-    """PARTIAL EVIDENCE: 30/70 mix + volume reduction (6D)"""
+    """PARTIAL EVIDENCE: 30/70 mix + volume reduction"""
     print("\n" + "="*80)
-    print("FALSE-FLAG: 30/70 MIX + PARTIAL VOLUME (~33% reduction, 6D)")
+    print("FALSE-FLAG: 30/70 MIX + PARTIAL VOLUME (~33% reduction)")
     print("=" * 80)
     
     profiles = load_apt_profiles_from_data()
     apt_ids = list(profiles.keys())
     X_apts = create_feature_matrix(profiles, apt_ids)
     
-    (technique_mapping, software_mapping, cve_mapping,
-     capec_mapping, cwe_mapping, pulse_mapping, apt_name_mapping) = load_mappings()
+    technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping = load_mappings()
     
     all_combinations = [(a, m) for a in apt_ids for m in apt_ids if a != m]
     total_combinations = len(all_combinations)
     
-    print(f"Testing {total_combinations} partial evidence combinations (6D)...")
+    print(f"Testing {total_combinations} partial evidence combinations...")
     
     args_list = []
     for i, (attacker_apt_id, mimicked_apt_id) in enumerate(all_combinations):
-        args = (attacker_apt_id, mimicked_apt_id, saved_data,
-                technique_mapping, software_mapping, cve_mapping,
-                capec_mapping, cwe_mapping, pulse_mapping,
+        args = (attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, 
+                software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, 
                 apt_name_mapping, profiles, X_apts, apt_ids, i)
         args_list.append(args)
     
@@ -455,10 +423,8 @@ def evaluate_false_flag_attacks_partial_evidence(saved_data, top_x_values=[1, 3,
     max_workers = min(mp.cpu_count(), 8)
     
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        future_to_combination = {
-            executor.submit(process_single_false_flag_partial_evidence, args): args 
-            for args in args_list
-        }
+        future_to_combination = {executor.submit(process_single_false_flag_partial_evidence, args): args 
+                               for args in args_list}
         
         completed = 0
         for future in as_completed(future_to_combination):
@@ -481,8 +447,9 @@ def evaluate_false_flag_attacks_partial_evidence(saved_data, top_x_values=[1, 3,
             except Exception as e:
                 print(f"Combination failed: {e}")
     
+    # Same analysis format
     print("\n" + "="*80)
-    print("FALSE-FLAG RESULTS - XGBOOST 30/70 PARTIAL EVIDENCE (6D)")
+    print("FALSE-FLAG RESULTS - XGBOOST 30/70 PARTIAL EVIDENCE")
     print("="*80)
     
     for top_x in top_x_values:
@@ -511,6 +478,7 @@ def evaluate_false_flag_attacks_partial_evidence(saved_data, top_x_values=[1, 3,
     return all_results
 
 
+# VISUALIZATION FUNCTIONS REMAIN IDENTICAL - just pass results
 def plot_false_flag_analysis_efficient(results, apt_name_mapping, profiles, apt_ids):
     """
     XGBoost continuous deception heatmap:
@@ -519,11 +487,12 @@ def plot_false_flag_analysis_efficient(results, apt_name_mapping, profiles, apt_
     > 0: mimicked ranked better (smaller rank) -> successful deception (RED)
     < 0: attacker ranked better                -> successful detection (BLUE)
     """
-    print("\n📈 CREATING XGBOOST FALSE-FLAG DECEPTION HEATMAP (30/70, CONTINUOUS, 6D)...")
+    print("\n📈 CREATING XGBOOST FALSE-FLAG DECEPTION HEATMAP (30/70, CONTINUOUS)...")
     
     n = len(apt_ids)
     apt_names = [apt_name_mapping.get(aid, f"APT{aid}") for aid in apt_ids]
     
+    # Continuous matrix: attacker_rank - mimicked_rank
     deception_matrix = np.zeros((n, n), dtype=float)
     id_to_idx = {apt_id: i for i, apt_id in enumerate(apt_ids)}
     
@@ -531,11 +500,13 @@ def plot_false_flag_analysis_efficient(results, apt_name_mapping, profiles, apt_
         attacker_rank = result['attacker_rank']
         mimicked_rank = result['mimicked_rank']
         
+        # Parse key: "AttackerName→MimickedName"
         try:
             attacker_name, mimicked_name = key.split("→")
             attacker_name = attacker_name.strip()
             mimicked_name = mimicked_name.strip()
             
+            # Find APT IDs from names
             attacker_id = next((aid for aid, name in apt_name_mapping.items() if name == attacker_name), None)
             mimicked_id = next((aid for aid, name in apt_name_mapping.items() if name == mimicked_name), None)
         except:
@@ -546,11 +517,14 @@ def plot_false_flag_analysis_efficient(results, apt_name_mapping, profiles, apt_
         if i is None or j is None:
             continue
         
+        # Substitute n for missing ranks
         a_r = attacker_rank if attacker_rank is not None else n
         m_r = mimicked_rank if mimicked_rank is not None else n
         
+        # Positive = deception success (mimicked better rank)
         deception_matrix[i, j] = a_r - m_r
     
+    # Robust color scaling
     non_zero = deception_matrix[np.nonzero(deception_matrix)]
     if non_zero.size == 0:
         print("⚠️ All deception scores zero; nothing to plot.")
@@ -566,7 +540,7 @@ def plot_false_flag_analysis_efficient(results, apt_name_mapping, profiles, apt_
         deception_matrix,
         xticklabels=apt_names,
         yticklabels=apt_names,
-        cmap='RdBu_r',
+        cmap='RdBu_r',  # Red (positive=deception) → Blue (negative=detection)
         center=0,
         vmin=vmin,
         vmax=vmax,
@@ -578,7 +552,7 @@ def plot_false_flag_analysis_efficient(results, apt_name_mapping, profiles, apt_
     )
     
     plt.title(
-        'XGBoost False-Flag Deception (30/70 Mixed Evidence, 6D)\n'
+        'XGBoost False-Flag Deception (30/70 Mixed Evidence, Continuous)\n'
         'Rows=Actual Attacker | Columns=Mimicked Target',
         fontsize=14, fontweight='bold', pad=20
     )
@@ -588,17 +562,18 @@ def plot_false_flag_analysis_efficient(results, apt_name_mapping, profiles, apt_
     plt.yticks(rotation=0, fontsize=8)
     plt.tight_layout()
     
-    out_name = 'false_flag_deception_matrix_xgboost_30_70_6d_continuous.png'
+    # Save AND display
+    out_name = 'false_flag_deception_matrix_xgboost_30_70_continuous.png'
     plt.savefig(out_name, dpi=300, bbox_inches='tight')
     plt.show()
     print(f"✅ Saved & displayed: {out_name}")
 
 
 def main():
-    print(" FALSE-FLAG EVALUATION: XGBOOST 30/70 MIX (PURE MODEL OUTPUT, 6D)")
+    print(" FALSE-FLAG EVALUATION: XGBOOST 30/70 MIX (PURE MODEL OUTPUT)")
     print("=" * 70)
     print("Each test uses XGBoost predict_proba cosine similarity ONLY")
-    print("30% attacker + 70% mimicked features per evidence vector (T/S/CVE/CAPEC/CWE/Pulse)")
+    print("30% attacker + 70% mimicked features per evidence triple")
     print("=" * 70)
     
     saved_data = load_efficient_xgboost_model()
@@ -607,21 +582,21 @@ def main():
     
     print(f"XGBoost model loaded: {saved_data['training_info']['unique_apts']} APTs")
     
-    # FULL 30/70 evidence (6D)
+    # FULL 30/70 evidence
     results_full, apt_name_mapping, profiles, apt_ids = evaluate_false_flag_attacks_efficient_parallel(
         saved_data, top_x_values=[1, 5, 10, 20]
     )
-
-    # Visualizations (FULL evidence only)
-    plot_false_flag_analysis_efficient(results_full, apt_name_mapping, profiles, apt_ids)
-
-    print("\n✅ XGBOOST 30/70 FALSE-FLAG COMPLETE! (6D, pure model output)")
     
-    # PARTIAL 30/70 + volume reduction (6D)
+    # PARTIAL 30/70 + volume reduction
     results_partial = evaluate_false_flag_attacks_partial_evidence(
         saved_data, top_x_values=[1, 5, 10, 20]
     )
-
+    
+    # Visualizations (FULL evidence only)
+    plot_false_flag_analysis_efficient(results_full, apt_name_mapping, profiles, apt_ids)
+    
+    print("\n✅ XGBOOST 30/70 FALSE-FLAG COMPLETE!")
+    print("Pure XGBoost model output, no custom similarity heuristics")
 
 
 if __name__ == "__main__":

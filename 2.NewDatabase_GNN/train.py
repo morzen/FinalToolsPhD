@@ -1,11 +1,13 @@
 import os
 import pickle
 from collections import defaultdict
+
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 from torch_geometric.data import Data
 from torch_geometric.nn import GCNConv
 
@@ -15,12 +17,12 @@ from torch_geometric.nn import GCNConv
 ###################################################################
 
 FEATURE_WEIGHTS = {
-    "techniques": 100.0,   # MUCH higher emphasis on TTPs
-    "software": 3.0,     # medium importance
-    "capec": 7.0,
-    "cwe": 6.0,
-    "cve": 5.0,      # almost negligible
-    "pulse": 0.1
+    "techniques": 80.0,
+    "software":   70.0,
+    "capec":      60.1,
+    "cwe":        50.1,
+    "cve":        40.1,
+    "pulse":      30.1
 }
 
 
@@ -136,14 +138,14 @@ def build_graph_structure(profiles, apt_ids):
         all_capec.update(profile["capec"])
         all_cwe.update(profile["cwe"])
         all_cve.update(profile["cve"])
-        all_pulse.update(profile["pulse"])
+        all_pulse.update(profile["cve"])
 
     technique_to_idx = {tech: i for i, tech in enumerate(all_techniques)}
     software_to_idx = {soft: i for i, soft in enumerate(all_software)}
-    capec_to_idx = {soft: i for i, soft in enumerate(all_capec)}
-    cwe_to_idx = {soft: i for i, soft in enumerate(all_cwe)}
+    capec_to_idx = {capec: i for i, capec in enumerate(all_capec)}
+    cwe_to_idx = {cwe: i for i, cwe in enumerate(all_cwe)}
     cve_to_idx = {cve: i for i, cve in enumerate(all_cve)}
-    pulse_to_idx = {soft: i for i, soft in enumerate(all_pulse)}
+    pulse_to_idx = {pulse: i for i, pulse in enumerate(all_pulse)}
 
     num_apts = len(apt_ids)
     num_techniques = len(all_techniques)
@@ -158,7 +160,7 @@ def build_graph_structure(profiles, apt_ids):
     capec_offset = software_offset + num_software
     cwe_offset = capec_offset + num_capec
     cve_offset = cwe_offset + num_cwe
-    pulse_offset = cve_offset + num_pulse
+    pulse_offset = cve_offset + num_cve
 
     total_nodes = num_apts + num_techniques + num_software + num_capec + num_cwe + num_cve + num_pulse
 
@@ -215,6 +217,7 @@ def build_graph_structure(profiles, apt_ids):
             edge_list.append([pulse_idx, apt_idx])
             edge_weights.extend([fw["pulse"], fw["pulse"]])
 
+
     if edge_list:
         edge_index = torch.tensor(edge_list, dtype=torch.long).t().contiguous()
         edge_weight = torch.tensor(edge_weights, dtype=torch.float)
@@ -263,7 +266,7 @@ def build_graph_structure(profiles, apt_ids):
 
 class APTGNN(nn.Module):
     """
-    Simple 2-layer GCN over the heterogeneous APT–TTP–SW–CVE graph.
+    Simple 2-layer GCN over the heterogeneous APT-TTP-SW-CAPEC-CWE-CVE-Pulse graph.
     APT embeddings are just the node embeddings of the first num_apts nodes.
     """
     def __init__(self, in_channels, hidden_dim=128, out_dim=128):
@@ -300,7 +303,7 @@ def compute_ground_truth_similarity_matrix(profiles, apt_ids):
 
     for i, apt_i in enumerate(apt_ids):
         prof_i = profiles[apt_i]
-        T_i, S_i, Ca_i, Cw_i, Cv_i, P_i = prof_i["techniques"], prof_i["software"], prof_i["capec"], prof_i["cwe"] , prof_i["cve"], prof_i["pulse"]
+        T_i, S_i, Ca_i, Cw_i, Cv_i,P_i = prof_i["techniques"], prof_i["software"], prof_i["capec"], prof_i["cwe"], prof_i["cve"], prof_i["pulse"]
 
         max_i = (
             len(T_i) * TECHNIQUE_WEIGHT +
@@ -308,7 +311,7 @@ def compute_ground_truth_similarity_matrix(profiles, apt_ids):
             len(Ca_i) * CAPEC_WEIGHT +
             len(Cw_i) * CWE_WEIGHT +
             len(Cv_i) * CVE_WEIGHT +
-            len(P_i) * PULSE_WEIGHT 
+            len(P_i) * PULSE_WEIGHT
         )
 
         for j, apt_j in enumerate(apt_ids):
@@ -320,28 +323,28 @@ def compute_ground_truth_similarity_matrix(profiles, apt_ids):
 
             tech_overlap = len(T_i & T_j)
             soft_overlap = len(S_i & S_j)
-            capec_overlap = len(Ca_i & Ca_j)
-            cwe_overlap = len(Cw_i & Cw_j)
+            capec_overlap  = len(Ca_i & Ca_j)
+            cwe_overlap  = len(Cw_i & Cw_j)
             cve_overlap  = len(Cv_i & Cv_j)
-            pulse_overlap = len(P_i & P_j)
+            pulse_overlap  = len(P_i & P_j)
 
             raw = (
                 tech_overlap * TECHNIQUE_WEIGHT +
                 soft_overlap * SOFTWARE_WEIGHT +
-                capec_overlap * CAPEC_WEIGHT +
-                cwe_overlap * CWE_WEIGHT +
+                capec_overlap  * CAPEC_WEIGHT +
+                cwe_overlap  * CWE_WEIGHT +
                 cve_overlap  * CVE_WEIGHT +
-                pulse_overlap * PULSE_WEIGHT 
+                pulse_overlap  * PULSE_WEIGHT 
             )
 
             max_j = (
-            len(T_j) * TECHNIQUE_WEIGHT +
-            len(S_j) * SOFTWARE_WEIGHT +
-            len(Ca_j) * CAPEC_WEIGHT +
-            len(Cw_j) * CWE_WEIGHT +
-            len(Cv_j) * CVE_WEIGHT +
-            len(P_j) * PULSE_WEIGHT 
-        )
+                len(T_j) * TECHNIQUE_WEIGHT +
+                len(S_j) * SOFTWARE_WEIGHT +
+                len(Ca_j) * CAPEC_WEIGHT +
+                len(Cw_j) * CWE_WEIGHT +
+                len(Cv_j) * CVE_WEIGHT +
+                len(P_j) * PULSE_WEIGHT
+            )
 
             max_possible = min(max_i, max_j)
             if max_possible > 0:
@@ -358,51 +361,55 @@ def train_gnn(
     profiles,
     apt_ids,
     num_apts,
-    epochs=200,
+    epochs=400,
     device="cpu",
 ):
-    """
-    Train GNN so that cosine similarity between APT node embeddings
-    approximates a TTP-weighted similarity derived from feature overlaps.
-    """
     model = model.to(device)
     data = data.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-
-    apt_idx = torch.arange(num_apts, device=device)  # assume APT nodes = [0..num_apts-1]
+    
+    apt_idx = torch.arange(num_apts, device=device)
 
     print(f"🚀 GNN TRAINING FOR {epochs} EPOCHS...")
-    print(f"   Weights: TTP×{FEATURE_WEIGHTS['techniques']}, "
-          f"SW×{FEATURE_WEIGHTS['software']}, CAPEC×{FEATURE_WEIGHTS['capec']}"
-          f"CWE×{FEATURE_WEIGHTS['cwe']}, CVE×{FEATURE_WEIGHTS['cve']}"
-          f"Pu×{FEATURE_WEIGHTS['pulse']}")
 
     gt_cpu = compute_ground_truth_similarity_matrix(profiles, apt_ids)
     gt = gt_cpu.to(device)
 
-    mask = ~torch.eye(num_apts, dtype=bool, device=device)
+    # ✅ CRITICAL FIX: Include self-similarities (diagonal = 1.0)
+    gt_with_diag = gt.clone()
+    gt_with_diag.fill_diagonal_(1.0)
+    
+    # Use all pairs for training
+    mask = torch.ones_like(gt_with_diag, dtype=bool, device=device)
 
     for epoch in range(epochs):
         model.train()
         optimizer.zero_grad()
 
-        node_emb = model(data.x, data.edge_index, data.edge_weight)  # [N, d]
-        apt_emb = node_emb[apt_idx]  # [num_apts, d]
+        node_emb = model(data.x, data.edge_index, data.edge_weight)
+        apt_emb = node_emb[apt_idx]
 
         sim = torch.matmul(apt_emb, apt_emb.t())  # cosine similarities
 
-        loss = F.mse_loss(sim[mask], gt[mask])
+        # Train on ALL similarities including diagonal
+        loss = F.mse_loss(sim[mask], gt_with_diag[mask])
 
         loss.backward()
         optimizer.step()
 
-        if epoch % 20 == 0:
-            print(f"Epoch {epoch:03d}, Loss: {loss.item():.4f}")
+        if epoch % 30 == 0:
+            with torch.no_grad():
+                # Check self-similarities are close to 1.0
+                diag_mean = torch.diag(sim).mean().item()
+                print(f"Epoch {epoch:03d}, Loss: {loss.item():.4f}, Self-sim: {diag_mean:.4f}")
 
     model.eval()
     with torch.no_grad():
         node_emb = model(data.x, data.edge_index, data.edge_weight)
         apt_emb = node_emb[apt_idx].cpu()
+        
+        # ✅ Normalize AFTER training (this is compatible)
+        apt_emb = F.normalize(apt_emb, p=2, dim=1)
 
     return apt_emb
 
@@ -428,7 +435,7 @@ def analyze_ranking_anomalies(profiles, apt_embeddings, apt_ids, apt_name_mappin
             'techniques': len(profile['techniques']),
             'software': len(profile['software']),
             'capec': len(profile['capec']),
-            'cwe': len(profile['cwe']),
+            'cwes': len(profile['cwe']),
             'cves': len(profile['cve']),
             'pulse': len(profile['pulse']),
             'profile_size': len(profile['techniques']) +
@@ -447,8 +454,10 @@ def analyze_ranking_anomalies(profiles, apt_embeddings, apt_ids, apt_name_mappin
     for item in embedding_norms[:10]:
         print(f"{item['apt_name']:<30} {item['embedding_norm']:<10.4f} "
               f"{item['techniques']:<10} {item['software']:<8} "
-              f"{item['capec']:<10} {item['cwe']:<8} "
-              f"{item['cves']:<8} {item['pulse']:<8} {item['profile_size']:<6}")
+              f"{item['capec']:<8} {item['profile_size']:<6}"
+              f"{item['cwes']:<8} {item['profile_size']:<6}"
+              f"{item['cves']:<8} {item['profile_size']:<6}"
+              f"{item['pulse']:<8} {item['profile_size']:<6}")
 
 
 def debug_gnn_outputs(apt_embeddings, profiles, apt_ids, apt_name_mapping):
@@ -474,16 +483,15 @@ def debug_gnn_outputs(apt_embeddings, profiles, apt_ids, apt_name_mapping):
 ###################################################################
 
 def save_trained_gnn_model(model, apt_embeddings, profiles, graph_info, apt_ids,
-                           filename="trained_apt_gnn_model.pkl"):
+                           apt_name_mapping, filename="trained_apt_gnn_model.pkl"):
     print("\n💾 SAVING TRAINED GNN MODEL")
-    print("=" * 50)
-
     save_data = {
         "model_state_dict": model.state_dict(),
         "apt_embeddings": apt_embeddings,
         "profiles": profiles,
         "graph_info": graph_info,
         "apt_ids": apt_ids,
+        "apt_name_mapping": apt_name_mapping,  # Add this line!
         "feature_weights": FEATURE_WEIGHTS.copy(),
         "model_config": {
             "in_channels": model.conv1.in_channels,
@@ -491,10 +499,8 @@ def save_trained_gnn_model(model, apt_embeddings, profiles, graph_info, apt_ids,
             "out_dim": model.conv2.out_channels,
         },
     }
-
     with open(filename, "wb") as f:
         pickle.dump(save_data, f)
-
     print(f"✅ GNN model saved as '{filename}'")
     print(f"Saved: {len(apt_ids)} APT embeddings, {len(profiles)} profiles")
 
@@ -557,9 +563,8 @@ def main():
     debug_gnn_outputs(apt_embeddings, profiles, apt_ids, apt_name_mapping)
 
     # 8. Save trained GNN + embeddings
-    save_trained_gnn_model(model, apt_embeddings, profiles, graph_info, apt_ids)
+    save_trained_gnn_model(model, apt_embeddings, profiles, graph_info, apt_ids, apt_name_mapping)
 
 
 if __name__ == "__main__":
     main()
-

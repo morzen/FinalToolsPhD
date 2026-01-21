@@ -32,7 +32,7 @@ def prepare_training_data(df):
     print(f"Total records: {len(df_filtered)}")
     
     # Use all features directly
-    X = df_filtered[['techniques_str', 'software_str', 'CVE_ID']].values
+    X = df_filtered[['techniques_str','software_str','CAPEC_ID','CWE_ID','CVE_ID','Pulse_ID']].values
     y = df_filtered['APTname'].values
     
     print(f"Features: {X.shape}")
@@ -89,7 +89,10 @@ class EfficientXGBoost:
                 self.apt_features[apt] = {
                     'common_techniques': np.unique(apt_data[:, 0]),
                     'common_software': np.unique(apt_data[:, 1]),
-                    'common_cves': np.unique(apt_data[:, 2]),
+                    'common_capec': np.unique(apt_data[:, 2]),
+                    'common_cwes': np.unique(apt_data[:, 3]),
+                    'common_cves': np.unique(apt_data[:, 4]),
+                    'common_pulse': np.unique(apt_data[:, 5]),
                     'count': len(apt_data)
                 }
     
@@ -162,7 +165,7 @@ def main():
     test_sample = X_val[0]
     similar_apts = model.find_similar_apts(test_sample, top_k=3)
     
-    print(f"Sample features: T={test_sample[0]}, SW={test_sample[1]}, CVE={test_sample[2]}")
+    print(f"Sample features: T={test_sample[0]}, SW={test_sample[1]}, Ca={test_sample[2]}, Cw={test_sample[3]}, Cv={test_sample[4]}, P={test_sample[5]}")
     print(f"Most similar APTs:")
     for apt_id, similarity in similar_apts:
         print(f"  APT {apt_id}: {similarity:.4f}")
@@ -177,7 +180,7 @@ def main():
         'model': model.model,
         'apt_features': model.apt_features,
         'apt_encoder': model.apt_encoder,
-        'feature_columns': ['techniques_str', 'software_str', 'CVE_ID'],
+        'feature_columns': ['techniques_str','software_str','CAPEC_ID','CWE_ID','CVE_ID','Pulse_ID'],
         'training_info': {
             'approach': 'efficient_xgboost_classifier_all_apts',
             'training_records': len(X_tr),
