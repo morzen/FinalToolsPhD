@@ -17,7 +17,7 @@ from sklearn.ensemble import RandomForestClassifier
 # ============================================================
 
 MODEL_PATH = "apt_similarity_model.joblib"
-TOP_X_VALUES = [1, 3, 5, 10, 20]
+TOP_X_VALUES = [1, 5, 10, 20]
 MAX_WORKERS = min(mp.cpu_count(), 8)
 
 

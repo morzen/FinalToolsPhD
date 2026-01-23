@@ -57,15 +57,15 @@ class EfficientXGBoostPredictor:
             overlap_score += 0.4
         
         # CWE similarity
-        if features1[2] == features2[3] and features1[3] != -1:
+        if features1[3] == features2[3] and features1[3] != -1:
             overlap_score += 0.3
 
         # CVE similarity
-        if features1[2] == features2[4] and features1[4] != -1:
+        if features1[4] == features2[4] and features1[4] != -1:
             overlap_score += 0.2
         
         # Pulse similarity
-        if features1[2] == features2[5] and features1[5] != -1:
+        if features1[5] == features2[5] and features1[5] != -1:
             overlap_score += 0.1
             
         return overlap_score

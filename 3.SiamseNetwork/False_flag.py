@@ -19,29 +19,35 @@ from matplotlib.colors import LinearSegmentedColormap
 # CONFIG - SAME AS XGBoost/GNN
 # ============================================================
 MODEL_PATH = "apt_siamese_feature_model.pkl"
-TOP_X_VALUES = [1, 3, 5, 10, 20]
+TOP_X_VALUES = [1, 5, 10, 20]
 MAX_WORKERS = min(mp.cpu_count(), 8)
 
 # ---------- YOUR EXACT FeatureEncoder from eval.py ----------
 class FeatureEncoder(nn.Module):
-    def __init__(self, num_techniques, num_software, num_cves, embed_dim=128):
+    def __init__(self, num_techniques, num_software, num_capec, num_cwes, num_cves, num_pulse, embed_dim=128):
         super().__init__()
-        embed_per_feature = embed_dim // 3
+        embed_per_feature = embed_dim // 6
         self.tech_embed = nn.Embedding(num_techniques+1, embed_per_feature)
         self.soft_embed = nn.Embedding(num_software+1, embed_per_feature)
+        self.capec_embed = nn.Embedding(num_capec+1, embed_per_feature)
+        self.cwe_embed = nn.Embedding(num_cwes+1, embed_per_feature)
         self.cve_embed = nn.Embedding(num_cves+1, embed_per_feature)
-        total_embed_size = embed_per_feature * 3
+        self.pulse_embed = nn.Embedding(num_pulse+1, embed_per_feature)
+        total_embed_size = embed_per_feature * 6
         self.fc1 = nn.Linear(total_embed_size, 64)
         self.fc2 = nn.Linear(64, embed_dim)
         self.dropout = nn.Dropout(0.3)
         self.layer_norm = nn.LayerNorm(embed_dim)
         
     def forward(self, features):
-        tech, soft, cve = features[:, 0], features[:, 1], features[:, 2]
+        tech, soft, capec, cwe, cve, pulse = features[:, 0], features[:, 1], features[:, 2], features[:, 3], features[:, 4], features[:, 5]
         t_emb = self.tech_embed(tech.long() + 1)
         s_emb = self.soft_embed(soft.long() + 1)
-        c_emb = self.cve_embed(cve.long() + 1)
-        x = torch.cat([t_emb, s_emb, c_emb], dim=-1)
+        ca_emb = self.capec_embed(capec.long() + 1)
+        cw_emb = self.cwe_embed(cwe.long() + 1)
+        cv_emb = self.cve_embed(cve.long() + 1)
+        p_emb = self.pulse_embed(pulse.long() + 1)
+        x = torch.cat([t_emb, s_emb, ca_emb, cw_emb, cv_emb, p_emb], dim=-1)
         x = F.relu(self.fc1(x))
         x = self.dropout(x)
         x = self.fc2(x)
@@ -62,7 +68,10 @@ def load_apt_profiles_from_data():
         profiles[int(apt_id)] = {
             'techniques': set(apt_data['techniques_str'].dropna().unique()),
             'software': set(apt_data['software_str'].dropna().unique()),
+            'capec': set(apt_data['CAPEC_ID'].dropna().unique()),
+            'cwe': set(apt_data['CWE_ID'].dropna().unique()),
             'cve': set(apt_data['CVE_ID'].dropna().unique()),
+            'pulse': set(apt_data['Pulse_ID'].dropna().unique()),
             'total_features': len(apt_data)
         }
     
@@ -81,7 +90,10 @@ def load_model_and_mappings():
     model = FeatureEncoder(
         config['num_techniques'], 
         config['num_software'], 
+        config['num_capec'],
+        config['num_cwes'],
         config['num_cves'],
+        config['num_pulse'],
         config['embedding_dim']
     )
     model.load_state_dict(data['model_state_dict'])
@@ -97,8 +109,11 @@ def load_model_and_mappings():
         profile = profiles[apt_id]
         tech = next(iter(profile['techniques'])) if profile['techniques'] else -1
         soft = next(iter(profile['software'])) if profile['software'] else -1
+        capec = next(iter(profile['capec'])) if profile['capec'] else -1
+        cwe = next(iter(profile['cwe'])) if profile['cwe'] else -1
         cve = next(iter(profile['cve'])) if profile['cve'] else -1
-        X_apts.append([int(tech), int(soft), int(cve)])
+        pulse = next(iter(profile['pulse'])) if profile['pulse'] else -1
+        X_apts.append([int(tech), int(soft), int(capec), int(cwe), int(cve), int(pulse)])
     X_apts = np.array(X_apts)
     
     # Name mapping
@@ -118,9 +133,9 @@ class SiameseSimilarityPredictor:
     
     def predict_similarity(self, features1, features2, n_samples=32):
         """EXACTLY like XGBoost - pure model cosine similarity"""
-        if features1[0] == -1 and features1[1] == -1 and features1[2] == -1:
+        if features1[0] == -1 and features1[1] == -1 and features1[2] == -1 and features1[3] == -1 and features1[4] == -1 and features1[5] == -1:
             return 0.0
-        if features2[0] == -1 and features2[1] == -1 and features2[2] == -1:
+        if features2[0] == -1 and features2[1] == -1 and features2[2] == -1 and features2[3] == -1 and features2[4] == -1 and features2[5] == -1:
             return 0.0
         
         # Generate embeddings THROUGH MODEL (n_samples like XGBoost prob dist)
@@ -135,8 +150,8 @@ class SiameseSimilarityPredictor:
         """Model forward pass - multiple samples"""
         vectors = []
         for _ in range(n_samples):
-            tech, soft, cve = features
-            vectors.append([float(tech), float(soft), float(cve)])
+            tech, soft, capec, cwe, cve, pulse = features
+            vectors.append([float(tech), float(soft), float(capec), float(cwe), float(cve), float(pulse)])
         
         vectors = torch.tensor(vectors, dtype=torch.float32)
         return self.model(vectors)
@@ -163,9 +178,12 @@ def sample_mixed_features(attacker_profile, mimicked_profile, rng=None, attacker
     
     technique = pick_feature(attacker_profile['techniques'], mimicked_profile['techniques'])
     software = pick_feature(attacker_profile['software'], mimicked_profile['software'])
+    capec = pick_feature(attacker_profile['capec'], mimicked_profile['capec'])
+    cwe = pick_feature(attacker_profile['cwe'], mimicked_profile['cwe'])
     cve = pick_feature(attacker_profile['cve'], mimicked_profile['cve'])
+    pulse = pick_feature(attacker_profile['pulse'], mimicked_profile['pulse'])
     
-    return np.array([int(technique), int(software), int(cve)])
+    return np.array([int(technique), int(software), int(capec), int(cwe), int(cve), int(pulse)])
 
 # ============================================================
 # WORKER - EXACT XGBoost structure
@@ -181,7 +199,7 @@ def process_single_false_flag_siamese(args):
     # 30/70 mix (EXACTLY like XGBoost)
     if partial:
         full_mix = sample_mixed_features(attacker_profile, mimicked_profile, rng)
-        mask = [0, 1, 2]
+        mask = [0, 1, 2, 3, 4, 5]
         rng.shuffle(mask)
         false_flag_features = full_mix.copy()
         false_flag_features[mask[0]] = -1  # Drop 1 slot

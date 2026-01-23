@@ -27,9 +27,9 @@ class EfficientXGBoostPredictor:
     
     def predict_similarity(self, features1, features2):
         """Predict similarity between two feature sets"""
-        if features1[0] == -1 and features1[1] == -1 and features1[2] == -1:
+        if features1[0] == -1 and features1[1] == -1 and features1[2] == -1 and features1[3] == -1 and features1[4] == -1 and features1[5] == -1:
             return 0.0
-        if features2[0] == -1 and features2[1] == -1 and features2[2] == -1:
+        if features2[0] == -1 and features2[1] == -1 and features2[2] == -1 and features2[3] == -1 and features2[4] == -1 and features2[5] == -1:
             return 0.0
             
         # Get probability distributions
@@ -586,14 +586,15 @@ def main():
     results_full, apt_name_mapping, profiles, apt_ids = evaluate_false_flag_attacks_efficient_parallel(
         saved_data, top_x_values=[1, 5, 10, 20]
     )
+
+    # Visualizations (FULL evidence only)
+    plot_false_flag_analysis_efficient(results_full, apt_name_mapping, profiles, apt_ids)
     
     # PARTIAL 30/70 + volume reduction
     results_partial = evaluate_false_flag_attacks_partial_evidence(
         saved_data, top_x_values=[1, 5, 10, 20]
     )
     
-    # Visualizations (FULL evidence only)
-    plot_false_flag_analysis_efficient(results_full, apt_name_mapping, profiles, apt_ids)
     
     print("\n✅ XGBOOST 30/70 FALSE-FLAG COMPLETE!")
     print("Pure XGBoost model output, no custom similarity heuristics")

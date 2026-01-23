@@ -22,15 +22,18 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 class FeatureEncoder(nn.Module):
     """FIXED: Handles exact embedding dimensions"""
-    def __init__(self, num_techniques, num_software, num_cves, embed_dim=EMBEDDING_DIM):
+    def __init__(self, num_techniques, num_software, num_capec, num_cwes, num_cves, num_pulse, embed_dim=EMBEDDING_DIM):
         super().__init__()
-        embed_per_feature = embed_dim // 3  # e.g., 128//3 = 42
+        embed_per_feature = embed_dim // 6  # e.g., 128//3 = 42
         
         self.tech_embed = nn.Embedding(num_techniques+1, embed_per_feature)
         self.soft_embed = nn.Embedding(num_software+1, embed_per_feature) 
+        self.capec_embed = nn.Embedding(num_capec+1, embed_per_feature)
+        self.cwe_embed = nn.Embedding(num_cwes+1, embed_per_feature)
         self.cve_embed = nn.Embedding(num_cves+1, embed_per_feature)
-        
-        total_embed_size = embed_per_feature * 3
+        self.pulse_embed = nn.Embedding(num_pulse+1, embed_per_feature)
+
+        total_embed_size = embed_per_feature * 6
         print(f"🔧 Embed/feature: {embed_per_feature}, Total input: {total_embed_size}")
         
         self.fc1 = nn.Linear(total_embed_size, HIDDEN_DIM)
@@ -39,11 +42,14 @@ class FeatureEncoder(nn.Module):
         self.layer_norm = nn.LayerNorm(embed_dim)
         
     def forward(self, features):
-        tech, soft, cve = features[:, 0], features[:, 1], features[:, 2]
+        tech, soft, capec, cwe, cve, pulse = features[:, 0], features[:, 1], features[:, 2], features[:, 3], features[:, 4], features[:, 5]
         t_emb = self.tech_embed(tech.long() + 1)
         s_emb = self.soft_embed(soft.long() + 1)
-        c_emb = self.cve_embed(cve.long() + 1)
-        x = torch.cat([t_emb, s_emb, c_emb], dim=-1)
+        ca_emb = self.capec_embed(capec.long() + 1)
+        cw_emb = self.cwe_embed(cwe.long() + 1)
+        cv_emb = self.cve_embed(cve.long() + 1)
+        p_emb = self.pulse_embed(pulse.long() + 1)
+        x = torch.cat([t_emb, s_emb, ca_emb, cw_emb, cv_emb, p_emb], dim=-1)
         x = F.relu(self.fc1(x))
         x = self.dropout(x)
         x = self.fc2(x)
@@ -67,22 +73,25 @@ def contrastive_loss(emb1, emb2, labels, margin=0.5):
 
 def load_and_prepare_data():
     df = pd.read_csv(DATA_PATH)
-    X = df[['techniques_str', 'software_str', 'CVE_ID']].values
+    X = df[['techniques_str', 'software_str', 'CAPEC_ID','CWE_ID','CVE_ID','Pulse_ID']].values
     y = df['APTname'].values
     
     num_tech = int(X[:, 0].max()) + 1
     num_soft = int(X[:, 1].max()) + 1
-    num_cve  = int(X[:, 2].max()) + 1
+    num_capec  = int(X[:, 2].max()) + 1
+    num_cwe  = int(X[:, 3].max()) + 1
+    num_cve  = int(X[:, 4].max()) + 1
+    num_pulse  = int(X[:, 5].max()) + 1
     
     unique_apts = sorted(np.unique(y))
     apt_to_idx = {apt: i for i, apt in enumerate(unique_apts)}
     
     print(f"Data: {len(df)} records, {len(unique_apts)} APTs")
-    print(f"Vocab: T={num_tech}, S={num_soft}, C={num_cve}")
-    return X, y, apt_to_idx, num_tech, num_soft, num_cve
+    print(f"Vocab: T={num_tech}, S={num_soft}, Ca={num_capec}, Cw={num_cwe}, Cv={num_cve}, P={num_pulse}")
+    return X, y, apt_to_idx, num_tech, num_soft, num_capec, num_cwe, num_cve, num_pulse
 
 def train_siamese_model():
-    X, y, apt_to_idx, num_tech, num_soft, num_cve = load_and_prepare_data()
+    X, y, apt_to_idx, num_tech, num_soft, num_capec, num_cwe, num_cve, num_pulse = load_and_prepare_data()
     X_tr, X_val, y_tr, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
     
     train_ds = APTFeatureDataset(X_tr, y_tr, apt_to_idx)
@@ -91,7 +100,7 @@ def train_siamese_model():
     train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=BATCH_SIZE)
     
-    model = FeatureEncoder(num_tech, num_soft, num_cve).to(DEVICE)
+    model = FeatureEncoder(num_tech, num_soft, num_capec, num_cwe, num_cve, num_pulse).to(DEVICE)
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
     
     print(f"\n🚀 Training on {DEVICE} ({len(train_loader)} batches)")
@@ -194,7 +203,10 @@ def save_model(model, apt_embeddings, apt_ids, X, apt_to_idx):
         'model_config': {
             'num_techniques': int(X[:,0].max()) + 1,
             'num_software': int(X[:,1].max()) + 1,
-            'num_cves': int(X[:,2].max()) + 1,
+            'num_capec': int(X[:,2].max()) + 1,
+            'num_cwes': int(X[:,3].max()) + 1,
+            'num_cves': int(X[:,4].max()) + 1,
+            'num_pulse': int(X[:,5].max()) + 1,
             'embedding_dim': EMBEDDING_DIM
         },
         'apt_embeddings': apt_embeddings,
@@ -207,7 +219,7 @@ def save_model(model, apt_embeddings, apt_ids, X, apt_to_idx):
 
 def main():
     model, apt_to_idx = train_siamese_model()
-    X, y, _, _, _, _ = load_and_prepare_data()
+    X, y, _, _, _, _, _, _, _ = load_and_prepare_data()
     apt_embeddings, apt_ids = extract_apt_embeddings(model, X, y, apt_to_idx)
     save_model(model, apt_embeddings, apt_ids, X, apt_to_idx)
     print("🎉 SIAMESE MODEL READY FOR FALSE-FLAG ANALYSIS!")

@@ -29,15 +29,25 @@ def create_and_save_model():
                     'encoded_id': apt_encoded,
                     'techniques': set(),
                     'software': set(),
-                    'cve': set()
+                    'capec': set(),
+                    'cwe': set(),
+                    'cve': set(),
+                    'pulse': set()
                 }
             
             if row['techniques_str'] != -1:
                 profiles[apt_name]['techniques'].add(row['techniques_str'])
             if row['software_str'] != -1:
                 profiles[apt_name]['software'].add(row['software_str'])
+            if row['CAPEC_ID'] != -1:
+                profiles[apt_name]['capec'].add(row['CAPEC_ID'])
+            if row['CWE_ID'] != -1:
+                profiles[apt_name]['cwe'].add(row['CWE_ID'])
             if row['CVE_ID'] != -1:
                 profiles[apt_name]['cve'].add(row['CVE_ID'])
+            if row['Pulse_ID'] != -1:
+                profiles[apt_name]['pulse'].add(row['Pulse_ID'])
+
         
         return profiles
 
@@ -46,12 +56,12 @@ def create_and_save_model():
     # Convert sets to lists and add counts
     for apt_name in apt_profiles:
         profile = apt_profiles[apt_name]
-        for key in ['techniques', 'software', 'cve']:
+        for key in ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']:
             profile[key] = list(profile[key])
             profile[f'{key}_count'] = len(profile[key])
 
     # Create feature vectors for each APT
-    feature_types = ['techniques', 'software', 'cve']
+    feature_types = ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']
 
     # Initialize binarizers for each feature type
     binarizers = {ft: MultiLabelBinarizer() for ft in feature_types}
