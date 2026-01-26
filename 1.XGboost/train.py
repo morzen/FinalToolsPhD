@@ -1,3 +1,14 @@
+"""
+STANDARDIZED XGBOOST MODEL FOR APT SIMILARITY
+=============================================
+Author: [Your Name]
+Date: [Current Date]
+Description: Efficient XGBoost classifier for APT similarity detection
+"""
+
+# ============================
+# 1. IMPORTS
+# ============================
 import pandas as pd
 import numpy as np
 import xgboost as xgb
@@ -6,86 +17,107 @@ from sklearn.model_selection import train_test_split
 import warnings
 warnings.filterwarnings('ignore')
 
+# ============================
+# 2. CONFIGURATION
+# ============================
+class Config:
+    """Configuration for XGBoost model"""
 
-def load_training_data(pwd="../BaseData/"):
-    """Load the encoded data directly"""
-    print("Loading encoded data...")
-    df = pd.read_csv(pwd + 'EncodedData.csv')
-    print(f"Data: {len(df)} records, {df.shape[1]} columns")
-    return df
+#variable shared by all models:
+    DATA_PATH = "../BaseData/EncodedData.csv"
+    MODEL_PATH = "efficient_apt_similarity.pkl"
 
+#variables share by some models:
+    MODEL_PARAMS = {
+        'objective': 'multi:softprob',#XGboost only
+        'n_estimators': 100,#XGboost only
+        'max_depth': 6,#XGboost only
+        'learning_rate': 0.1,#shared between XGboost GNN and siamese
+        'random_state': 42 #shared between XGboost siames and RF
+    }
 
-def prepare_training_data(df):
-    """Prepare data for efficient training - USE ALL 181 APTs"""
-    print("\n PREPARING EFFICIENT TRAINING DATA (ALL APTs)")
+#variables unique to this model:
+    FEATURE_COLUMNS = ['techniques_str', 'software_str', 'CAPEC_ID', 'CWE_ID', 'CVE_ID', 'Pulse_ID']
+    TARGET_COLUMN = 'APTname'
     
-    # Count records per APT (for info only)
-    apt_counts = df['APTname'].value_counts()
-    print(f"APT distribution:")
-    print(f"  APTs with 1 record: {len(apt_counts[apt_counts == 1])}")
-    print(f"  APTs with 2-10 records: {len(apt_counts[(apt_counts >= 2) & (apt_counts <= 10)])}")
-    print(f"  APTs with 10+ records: {len(apt_counts[apt_counts > 10])}")
-    
-    # FIXED: Use ALL APTs - no filtering
-    df_filtered = df.copy()
-    print(f"Using ALL APTs: {df['APTname'].nunique()} APTs")
-    print(f"Total records: {len(df_filtered)}")
-    
-    # Use all features directly
-    X = df_filtered[['techniques_str','software_str','CAPEC_ID','CWE_ID','CVE_ID','Pulse_ID']].values
-    y = df_filtered['APTname'].values
-    
-    print(f"Features: {X.shape}")
-    print(f"Unique APTs: {len(np.unique(y))}")
-    
-    return X, y, df_filtered
+    TRAIN_TEST_SPLIT = 0.2
 
+# ============================
+# 3. DATA LOADING & PREPROCESSING
+# ============================
+class XGBoostDataLoader:
+    """Handles data loading and preparation for XGBoost"""
+    
+    @staticmethod
+    def load_data(data_path=Config.DATA_PATH):
+        """Load encoded training data"""
+        print("Loading encoded data...")
+        df = pd.read_csv(data_path)
+        print(f"Data: {len(df)} records, {df.shape[1]} columns")
+        return df
+    
+    @staticmethod
+    def prepare_training_data(df):
+        """Prepare data for XGBoost training"""
+        print("\nPREPARING TRAINING DATA")
+        print("=" * 50)
+        
+        # Count records per APT
+        apt_counts = df['APTname'].value_counts()
+        print(f"APT distribution:")
+        print(f"  APTs with 1 record: {len(apt_counts[apt_counts == 1])}")
+        print(f"  APTs with 2-10 records: {len(apt_counts[(apt_counts >= 2) & (apt_counts <= 10)])}")
+        print(f"  APTs with 10+ records: {len(apt_counts[apt_counts > 10])}")
+        
+        # Use all data
+        X = df[Config.FEATURE_COLUMNS].values
+        y = df[Config.TARGET_COLUMN].values
+        
+        print(f"Features shape: {X.shape}")
+        print(f"Unique APTs: {len(np.unique(y))}")
+        
+        return X, y, df
 
-class EfficientXGBoost:
-    """Efficient XGBoost that learns APT patterns directly"""
+# ============================
+# 4. MODEL DEFINITION
+# ============================
+class EfficientXGBoostModel:
+    """Efficient XGBoost model for APT similarity detection"""
     
     def __init__(self):
         self.model = None
         self.apt_features = {}
-        self.apt_encoder = {}  # Map APT IDs to indices
+        self.apt_encoder = {}
+        self.reverse_encoder = {}
     
     def train(self, X_train, y_train):
-        """Train efficient XGBoost classifier"""
-        print(f"\n TRAINING EFFICIENT XGBOOST")
-        print(f"Training on {X_train.shape[0]} records")
-        print(f"Features: {X_train.shape[1]}, APTs: {len(np.unique(y_train))}")
+        """Train the XGBoost classifier"""
+        print(f"\nTRAINING XGBOOST MODEL")
+        print("=" * 50)
         
-        # Create mapping from APT IDs to consecutive indices for XGBoost
+        # Create APT encoding
         unique_apts = np.unique(y_train)
         self.apt_encoder = {apt: idx for idx, apt in enumerate(unique_apts)}
+        self.reverse_encoder = {v: k for k, v in self.apt_encoder.items()}
         
-        # Convert y_train to consecutive indices
+        # Encode target variable
         y_train_encoded = np.array([self.apt_encoder[apt] for apt in y_train])
         
-        # Train classifier to predict APT from features
-        self.model = xgb.XGBClassifier(
-            objective='multi:softprob',
-            n_estimators=100,
-            max_depth=6,
-            learning_rate=0.1,
-            random_state=42
-        )
-        
+        # Initialize and train model
+        self.model = xgb.XGBClassifier(**Config.MODEL_PARAMS)
         print("Training classifier...")
         self.model.fit(X_train, y_train_encoded)
-        print(" Training completed!")
         
-        # Store feature patterns for each APT
+        # Learn APT patterns
         self._learn_apt_patterns(X_train, y_train)
+        print("Training completed!")
     
     def _learn_apt_patterns(self, X, y):
         """Learn characteristic patterns for each APT"""
-        print("Learning APT patterns...")
         for apt in np.unique(y):
             apt_mask = (y == apt)
             if np.sum(apt_mask) > 0:
                 apt_data = X[apt_mask]
-                # Store common features for this APT
                 self.apt_features[apt] = {
                     'common_techniques': np.unique(apt_data[:, 0]),
                     'common_software': np.unique(apt_data[:, 1]),
@@ -97,121 +129,129 @@ class EfficientXGBoost:
                 }
     
     def predict_similarity(self, features1, features2):
-        """Calculate similarity between two feature sets - PURE MODEL OUTPUT"""
+        """Calculate similarity between two feature sets"""
+        # Handle missing features
+        if self._has_missing_features(features1) or self._has_missing_features(features2):
+            return 0.0
+        
         # Get probability distributions
-        if features1[0] == -1 and features1[1] == -1 and features1[2] == -1:
-            return 0.0
-        if features2[0] == -1 and features2[1] == -1 and features2[2] == -1:
-            return 0.0
-            
         prob1 = self.model.predict_proba([features1])[0]
         prob2 = self.model.predict_proba([features2])[0]
         
-        # Pure cosine similarity of XGBoost probability distributions
+        # Calculate cosine similarity
         cosine_sim = np.dot(prob1, prob2) / (np.linalg.norm(prob1) * np.linalg.norm(prob2))
-        
         return np.clip(cosine_sim, 0.0, 1.0)
+    
+    def _has_missing_features(self, features):
+        """Check if features are missing"""
+        return all(f == -1 for f in features[:3])
     
     def find_similar_apts(self, features, top_k=5):
         """Find most similar APTs to given features"""
-        if features[0] == -1 and features[1] == -1 and features[2] == -1:
+        if self._has_missing_features(features):
             return []
-            
+        
         probabilities = self.model.predict_proba([features])[0]
         similar_apts = []
         
-        # Convert back to original APT IDs
-        reverse_encoder = {v: k for k, v in self.apt_encoder.items()}
-        
         for apt_idx, prob in enumerate(probabilities):
-            if prob > 0.01:  # Only consider APTs with meaningful probability
-                original_apt = reverse_encoder[apt_idx]
+            if prob > 0.01:  # Meaningful probability threshold
+                original_apt = self.reverse_encoder[apt_idx]
                 similar_apts.append((original_apt, prob))
         
         # Sort by probability
         similar_apts.sort(key=lambda x: x[1], reverse=True)
         return similar_apts[:top_k]
 
-
-def main():
-    """Efficient XGBoost training - ALL 181 APTs, no filtering"""
-    print(" EFFICIENT XGBOOST TRAINING (ALL 181 APTs)")
-    print("=" * 50)
-    print(" SINGLE RECORDS → PATTERN LEARNING → SIMILARITY")
-    print(" FIXED: Uses ALL APTs - no rare APT filtering")
-    print("=" * 50)
+# ============================
+# 5. TRAINING FUNCTION
+# ============================
+def train_xgboost_model():
+    """Main training pipeline for XGBoost"""
+    print("XGBOOST TRAINING PIPELINE")
+    print("=" * 60)
     
-    # Step 1: Load data
-    df = load_training_data()
+    # Load and prepare data
+    data_loader = XGBoostDataLoader()
+    df = data_loader.load_data()
+    X, y, df_filtered = data_loader.prepare_training_data(df)
     
-    # Step 2: Prepare training data (ALL APTs)
-    X, y, df_filtered = prepare_training_data(df)
-    
-    # Step 3: Split for validation
-    X_tr, X_val, y_tr, y_val = train_test_split(
-        X, y, test_size=0.2, random_state=42
+    # Split data
+    X_train, X_val, y_train, y_val = train_test_split(
+        X, y, test_size=Config.TRAIN_TEST_SPLIT, random_state=42
     )
+    print(f"\nData split - Train: {X_train.shape[0]}, Val: {X_val.shape[0]}")
     
-    print(f"Training: {X_tr.shape[0]} records ({len(np.unique(y_tr))} APTs)")
-    print(f"Validation: {X_val.shape[0]} records ({len(np.unique(y_val))} APTs)")
+    # Train model
+    model = EfficientXGBoostModel()
+    model.train(X_train, y_train)
     
-    # Step 4: Train efficient model
-    model = EfficientXGBoost()
-    model.train(X_tr, y_tr)
-    
-    # Step 5: Test similarity (pure model output)
-    print(f"\n🧪 TESTING SIMILARITY (PURE MODEL)")
-    
-    test_sample = X_val[0]
-    similar_apts = model.find_similar_apts(test_sample, top_k=3)
-    
-    print(f"Sample features: T={test_sample[0]}, SW={test_sample[1]}, Ca={test_sample[2]}, Cw={test_sample[3]}, Cv={test_sample[4]}, P={test_sample[5]}")
-    print(f"Most similar APTs:")
-    for apt_id, similarity in similar_apts:
-        print(f"  APT {apt_id}: {similarity:.4f}")
-    
-    if len(X_val) > 1:
-        test_features2 = X_val[1]
-        similarity = model.predict_similarity(test_sample, test_features2)
-        print(f"Pure model cosine similarity: {similarity:.4f}")
-    
-    # Step 6: Save model with ALL APTs info
+    return model, X_train, y_train, X_val, y_val
+
+# ============================
+# 6. MODEL SAVING
+# ============================
+def save_xgboost_model(model, X_train, y_train, filename=Config.MODEL_PATH):
+    """Save trained XGBoost model with metadata"""
     save_data = {
         'model': model.model,
         'apt_features': model.apt_features,
         'apt_encoder': model.apt_encoder,
-        'feature_columns': ['techniques_str','software_str','CAPEC_ID','CWE_ID','CVE_ID','Pulse_ID'],
+        'feature_columns': Config.FEATURE_COLUMNS,
         'training_info': {
             'approach': 'efficient_xgboost_classifier_all_apts',
-            'training_records': len(X_tr),
-            'unique_apts': len(np.unique(y_tr)),
-            'total_apts': len(np.unique(y)),  # ← NEW: Track total APTs
-            'apt_list': sorted(np.unique(y)),  # ← NEW: Explicit APT list
-            'original_data_size': len(df)
+            'training_records': len(X_train),
+            'unique_apts': len(np.unique(y_train)),
+            'apt_list': sorted(np.unique(y_train)),
+            'model_params': Config.MODEL_PARAMS
         }
     }
     
-    with open('efficient_apt_similarity.pkl', 'wb') as f:
+    with open(filename, 'wb') as f:
         pickle.dump(save_data, f)
     
-    print(f"\n Model saved as 'efficient_apt_similarity.pkl'")
-    print(f" Efficient approach (ALL APTs):")
-    print(f"   • No pair creation")
-    print(f"   • ALL 181 APTs included")
-    print(f"   • Direct classification training") 
-    print(f"   • Pure XGBoost cosine similarity")
-    print(f"   • Scalable to large datasets")
-    
-    # Show statistics
-    print(f"\n TRAINING SUMMARY:")
-    print(f"   Original records: {len(df)}")
-    print(f"   Training records: {len(X_tr)}")
-    print(f"   APTs in training: {len(np.unique(y_tr))}")
-    print(f"   Total unique APTs: {len(np.unique(y))}")
-    print(f"   Features per record: {X.shape[1]}")
-    
+    print(f"\nModel saved to '{filename}'")
     return save_data
 
+# ============================
+# 7. MAIN EXECUTION
+# ============================
+def main():
+    """Execute the XGBoost training pipeline"""
+    # Train model
+    model, X_train, y_train, X_val, y_val = train_xgboost_model()
+    
+    # Test predictions
+    print(f"\nTESTING MODEL PREDICTIONS")
+    print("=" * 50)
+    
+    if len(X_val) > 0:
+        test_sample = X_val[0]
+        similar_apts = model.find_similar_apts(test_sample, top_k=3)
+        
+        print(f"Sample features: {test_sample}")
+        print(f"Most similar APTs:")
+        for apt_id, similarity in similar_apts:
+            print(f"  APT {apt_id}: {similarity:.4f}")
+        
+        # Test similarity between two samples
+        if len(X_val) > 1:
+            test_features2 = X_val[1]
+            similarity = model.predict_similarity(test_sample, test_features2)
+            print(f"\nSimilarity between two samples: {similarity:.4f}")
+    
+    # Save model
+    save_data = save_xgboost_model(model, X_train, y_train)
+    
+    print(f"\nTRAINING SUMMARY")
+    print("=" * 50)
+    info = save_data['training_info']
+    print(f"• Approach: {info['approach']}")
+    print(f"• Training records: {info['training_records']}")
+    print(f"• Unique APTs: {info['unique_apts']}")
+    print(f"• Model parameters: {info['model_params']}")
+    
+    return save_data
 
 if __name__ == "__main__":
     saved_data = main()

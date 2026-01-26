@@ -377,7 +377,7 @@ def evaluate_profile_division(model, apt_profiles, apt_name_dict, df_mapping, ap
                     divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
         
         # Process the divided evidence
-        from querying import sanitize_evidence, translate_to_encoded
+        from query import sanitize_evidence, translate_to_encoded
         clean_evidence = sanitize_evidence(divided_evidence, df_mapping)
         encoded_evidence = translate_to_encoded(clean_evidence, df_mapping)
         
