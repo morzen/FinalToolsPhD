@@ -140,7 +140,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
 def analyze_feature_matching_classification(encoded_evidence, results, apt_profiles, apt_name_dict):
     """ANALYZE FEATURE MATCHING BY CATEGORY - SEPARATE TABLES FOR TTP, SOFTWARE, CVE"""
     print("\n" + "="*80)
-    print("🔍 FEATURE MATCHING CLASSIFICATION - TOP 5 BY CATEGORY")
+    print(" FEATURE MATCHING CLASSIFICATION - TOP 5 BY CATEGORY")
     print("="*80)
     
     # Prepare feature matching breakdown
@@ -244,7 +244,7 @@ def analyze_feature_matching_classification(encoded_evidence, results, apt_profi
             })
     
     # TABLE 1: TOP 5 TTP MATCHING
-    print("\n🎯 TOP 5 APTs BY TTP MATCHING")
+    print("\n TOP 5 APTs BY TTP MATCHING")
     print("-" * 85)
     header = f"{'Rank':<4} {'APT Name':<30} {'Score':<10} {'Evidence':<15} {'Profile':<15} {'Harmonic':<10}"
     print(header)
@@ -263,7 +263,7 @@ def analyze_feature_matching_classification(encoded_evidence, results, apt_profi
         print(row)
     
     # TABLE 2: TOP 5 SOFTWARE MATCHING
-    print("\n🛠️  TOP 5 APTs BY SOFTWARE MATCHING")
+    print("\n  TOP 5 APTs BY SOFTWARE MATCHING")
     print("-" * 85)
     header = f"{'Rank':<4} {'APT Name':<30} {'Score':<10} {'Evidence':<15} {'Profile':<15} {'Harmonic':<10}"
     print(header)
@@ -282,7 +282,7 @@ def analyze_feature_matching_classification(encoded_evidence, results, apt_profi
         print(row)
     
     # TABLE 3: TOP 5 CAPEC MATCHING
-    print("\n💥 TOP 5 APTs BY CAPEC MATCHING")
+    print("\n TOP 5 APTs BY CAPEC MATCHING")
     print("-" * 85)
     header = f"{'Rank':<4} {'APT Name':<30} {'Score':<10} {'Evidence':<15} {'Profile':<15} {'Harmonic':<10}"
     print(header)
@@ -301,7 +301,7 @@ def analyze_feature_matching_classification(encoded_evidence, results, apt_profi
         print(row)
 
     # TABLE 4: TOP 5 CWE MATCHING
-    print("\n💥 TOP 5 APTs BY CWE MATCHING")
+    print("\n TOP 5 APTs BY CWE MATCHING")
     print("-" * 85)
     header = f"{'Rank':<4} {'APT Name':<30} {'Score':<10} {'Evidence':<15} {'Profile':<15} {'Harmonic':<10}"
     print(header)
@@ -320,7 +320,7 @@ def analyze_feature_matching_classification(encoded_evidence, results, apt_profi
         print(row)
 
     # TABLE 5: TOP 5 CVE MATCHING
-    print("\n💥 TOP 5 APTs BY CVE MATCHING")
+    print("\n TOP 5 APTs BY CVE MATCHING")
     print("-" * 85)
     header = f"{'Rank':<4} {'APT Name':<30} {'Score':<10} {'Evidence':<15} {'Profile':<15} {'Harmonic':<10}"
     print(header)
@@ -339,7 +339,7 @@ def analyze_feature_matching_classification(encoded_evidence, results, apt_profi
         print(row)
 
     # TABLE 6: TOP 5 pulse MATCHING
-    print("\n💥 TOP 5 APTs BY pulse MATCHING")
+    print("\n TOP 5 APTs BY pulse MATCHING")
     print("-" * 85)
     header = f"{'Rank':<4} {'APT Name':<30} {'Score':<10} {'Evidence':<15} {'Profile':<15} {'Harmonic':<10}"
     print(header)
@@ -358,7 +358,7 @@ def analyze_feature_matching_classification(encoded_evidence, results, apt_profi
         print(row)
     
     # SUMMARY STATISTICS
-    print("\n📊 FEATURE MATCHING SUMMARY")
+    print("\n FEATURE MATCHING SUMMARY")
     print("-" * 50)
     
     # Calculate averages
@@ -396,7 +396,7 @@ def analyze_feature_matching_classification(encoded_evidence, results, apt_profi
     print(f"Most distinctive feature: {distinctive}")
     
     # FALSE FLAG DETECTION
-    print("\n🔎 FALSE FLAG DETECTION ANALYSIS")
+    print("\n FALSE FLAG DETECTION ANALYSIS")
     print("-" * 50)
     
     # Check top APTs for inconsistent patterns
@@ -432,7 +432,7 @@ def analyze_feature_matching_classification(encoded_evidence, results, apt_profi
 
 def print_mil_results_table(results, encoded_evidence, apt_profiles, apt_name_dict):
     """Print results table for MIL model"""
-    print("\n📋 QUERY EVIDENCE:")
+    print("\n QUERY EVIDENCE:")
     print(f"   Techniques: {len(encoded_evidence.get('techniques', []))} items")
     print(f"   Software: {len(encoded_evidence.get('software', []))} items")
     print(f"   CAPEC: {len(encoded_evidence.get('capec', []))} items")
@@ -440,8 +440,8 @@ def print_mil_results_table(results, encoded_evidence, apt_profiles, apt_name_di
     print(f"   cve: {len(encoded_evidence.get('cve', []))} items")
     print(f"   Pulse: {len(encoded_evidence.get('pulse', []))} items")
     print()
-    print(f"🎯 ATTENTION MIL SIMILARITY RANKINGS")
-    print(f"🏆 Features: Attention-based multi-instance learning")
+    print(f" ATTENTION MIL SIMILARITY RANKINGS")
+    print(f" Features: Attention-based multi-instance learning")
     print("=" * 160)
     
     # Header
@@ -682,11 +682,11 @@ def main():
         apt_name_dict
     )
     
-    print(f"\n✅ ATTENTION MIL QUERY COMPLETE!")
-    print(f"🏆 Most similar: {results[0]['APT']} (score: {results[0]['Score']:.4f})")
-    print(f"💩 Least similar: {results[-1]['APT']} (score: {results[-1]['Score']:.4f})")
-    print(f"📊 Total APTs ranked: {len(results)}")
-    print(f"📊 Using Attention MIL with perfect match boosting")
+    print(f"\n ATTENTION MIL QUERY COMPLETE!")
+    print(f" Most similar: {results[0]['APT']} (score: {results[0]['Score']:.4f})")
+    print(f" Least similar: {results[-1]['APT']} (score: {results[-1]['Score']:.4f})")
+    print(f" Total APTs ranked: {len(results)}")
+    print(f" Using Attention MIL with perfect match boosting")
 
 if __name__ == "__main__":
     main()

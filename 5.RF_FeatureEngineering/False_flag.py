@@ -39,14 +39,14 @@ def load_efficient_rf_model(path=MODEL_PATH):
       - 'feature_types' (['techniques','software','cve'])
       - 'df_mapping'
     """
-    print("🔍 LOADING EFFICIENT RF MODEL...")
+    print(" LOADING EFFICIENT RF MODEL...")
     if not os.path.exists(path):
-        print(f"❌ {path} not found! Please run your RF training script first.")
+        print(f" {path} not found! Please run your RF training script first.")
         return None
     
     model_data = joblib.load(path)
     
-    print(f"✅ Loaded {path}")
+    print(f" Loaded {path}")
     print(f"   APTs: {len(model_data['apt_names'])}")
     print(f"   Feature types: {model_data['feature_types']}")
     print(f"   Feature matrix shape: {model_data['X'].shape}")
@@ -273,7 +273,7 @@ def process_single_false_flag_rf(args):
 def evaluate_false_flag_attacks_rf_parallel(model_data, top_x_values=TOP_X_VALUES, partial=False):
     scenario = "PARTIAL (50% volume from 30/70 mix)" if partial else "FULL (30/70 mixed evidence)"
     print("=" * 80)
-    print("🎯 FALSE-FLAG: 30% Attacker + 70% Mimicked features across ALL categories")
+    print(" FALSE-FLAG: 30% Attacker + 70% Mimicked features across ALL categories")
     print(f"(RF {scenario})")
     print("=" * 80)
     
@@ -319,7 +319,7 @@ def evaluate_false_flag_attacks_rf_parallel(model_data, top_x_values=TOP_X_VALUE
                 print(f"Worker error: {e}")
     
     total_time = time.time() - start_time
-    print(f"\n✅ Completed {len(all_results)} evaluations in {total_time/60:.1f} minutes")
+    print(f"\n Completed {len(all_results)} evaluations in {total_time/60:.1f} minutes")
     
     # Top-k analysis (same as GNN/MIL)
     print("\n" + "=" * 80)
@@ -341,12 +341,12 @@ def evaluate_false_flag_attacks_rf_parallel(model_data, top_x_values=TOP_X_VALUE
             if not attacker_in_top and not mimicked_in_top: neither_correct += 1
         
         total_cases = len(all_results)
-        print(f"\n📊 Top-{top_x} Analysis:")
+        print(f"\n Top-{top_x} Analysis:")
         print(f"  Actual attacker: {attacker_detected}/{total_cases} ({attacker_detected/total_cases*100:.1f}%)")
         print(f"  Mimicked APT: {mimicked_deceived}/{total_cases} ({mimicked_deceived/total_cases*100:.1f}%)")
         print(f"  Both: {both_correct}/{total_cases} ({both_correct/total_cases*100:.1f}%)")
         print(f"  Neither: {neither_correct}/{total_cases} ({neither_correct/total_cases*100:.1f}%)")
-        print(f"  🎭 Deception: {mimicked_deceived/total_cases*100:.1f}% | 🔍 Detection: {attacker_detected/total_cases*100:.1f}%")
+        print(f"   Deception: {mimicked_deceived/total_cases*100:.1f}% |  Detection: {attacker_detected/total_cases*100:.1f}%")
     
     return all_results, model_data['apt_name_dict'], model_data['apt_profiles'], apt_ids
 
@@ -363,7 +363,7 @@ def plot_false_flag_deception_rf(results, apt_name_mapping, apt_ids,
       >0: mimicked ranked better (deception success)
       <0: attacker ranked better (detection success)
     """
-    print("\n📈 CREATING FALSE-FLAG DECEPTION HEATMAP (RF 30/70, CONTINUOUS)...")
+    print("\n CREATING FALSE-FLAG DECEPTION HEATMAP (RF 30/70, CONTINUOUS)...")
     
     n = len(apt_ids)
     apt_names = [apt_name_mapping.get(aid, f"APT{aid}") for aid in apt_ids]
@@ -401,7 +401,7 @@ def plot_false_flag_deception_rf(results, apt_name_mapping, apt_ids,
     
     non_zero = deception_matrix[np.nonzero(deception_matrix)]
     if non_zero.size == 0:
-        print("⚠️ All deception scores are zero; nothing to plot.")
+        print("⚠ All deception scores are zero; nothing to plot.")
         return
     
     low = np.percentile(non_zero, 5)
@@ -438,7 +438,7 @@ def plot_false_flag_deception_rf(results, apt_name_mapping, apt_ids,
     
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.show()
-    print(f"✅ Saved: {output_path}")
+    print(f" Saved: {output_path}")
 
 
 # ============================================================
@@ -446,7 +446,7 @@ def plot_false_flag_deception_rf(results, apt_name_mapping, apt_ids,
 # ============================================================
 
 def main():
-    print("🚨 RF FALSE-FLAG EVALUATION: 30/70 MIXED EVIDENCE")
+    print(" RF FALSE-FLAG EVALUATION: 30/70 MIXED EVIDENCE")
     print("=" * 70)
     print("Random Forest + cosine similarity on predict_proba")
     print("30% attacker + 70% mimicked features ACROSS ALL CATEGORIES")
@@ -467,7 +467,7 @@ def main():
         model_data, top_x_values=TOP_X_VALUES, partial=True
     )
     
-    print("\n🎉 RF 30/70 FALSE-FLAG EVALUATION COMPLETE!")
+    print("\n RF 30/70 FALSE-FLAG EVALUATION COMPLETE!")
     print("Saved: false_flag_deception_matrix_rf_30_70_continuous.png")
 
 

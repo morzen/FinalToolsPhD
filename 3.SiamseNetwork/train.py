@@ -22,19 +22,19 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 class FeatureEncoder(nn.Module):
     """FIXED: Handles exact embedding dimensions"""
-    def __init__(self, num_techniques, num_software, num_capec, num_cwes, num_cves, num_pulse, embed_dim=EMBEDDING_DIM):
+    def __init__(self, num_techniques, num_software, num_capec, num_cwe, num_cve, num_pulse, embed_dim=EMBEDDING_DIM):
         super().__init__()
         embed_per_feature = embed_dim // 6  # e.g., 128//3 = 42
         
         self.tech_embed = nn.Embedding(num_techniques+1, embed_per_feature)
         self.soft_embed = nn.Embedding(num_software+1, embed_per_feature) 
         self.capec_embed = nn.Embedding(num_capec+1, embed_per_feature)
-        self.cwe_embed = nn.Embedding(num_cwes+1, embed_per_feature)
-        self.cve_embed = nn.Embedding(num_cves+1, embed_per_feature)
+        self.cwe_embed = nn.Embedding(num_cwe+1, embed_per_feature)
+        self.cve_embed = nn.Embedding(num_cve+1, embed_per_feature)
         self.pulse_embed = nn.Embedding(num_pulse+1, embed_per_feature)
 
         total_embed_size = embed_per_feature * 6
-        print(f"🔧 Embed/feature: {embed_per_feature}, Total input: {total_embed_size}")
+        print(f" Embed/feature: {embed_per_feature}, Total input: {total_embed_size}")
         
         self.fc1 = nn.Linear(total_embed_size, HIDDEN_DIM)
         self.fc2 = nn.Linear(HIDDEN_DIM, embed_dim)
@@ -103,7 +103,7 @@ def train_siamese_model():
     model = FeatureEncoder(num_tech, num_soft, num_capec, num_cwe, num_cve, num_pulse).to(DEVICE)
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
     
-    print(f"\n🚀 Training on {DEVICE} ({len(train_loader)} batches)")
+    print(f"\n Training on {DEVICE} ({len(train_loader)} batches)")
     
     best_val_loss = float('inf')
     for epoch in range(EPOCHS):
@@ -111,7 +111,7 @@ def train_siamese_model():
         train_loss = 0
         
         for batch_idx, (features1, apt1) in enumerate(train_loader):
-            # ✅ FIXED: Proper Siamese pairs from SAME APT
+            #  FIXED: Proper Siamese pairs from SAME APT
             batch_size = len(features1)
             
             # Positive pairs: same APT, different samples
@@ -136,7 +136,7 @@ def train_siamese_model():
             emb2 = model(features2)
             emb_neg = model(neg_features)
             
-            # ✅ FIXED: Triplet loss (anchor=features1, pos=features2, neg=neg_features)
+            #  FIXED: Triplet loss (anchor=features1, pos=features2, neg=neg_features)
             pos_dist = 1 - F.cosine_similarity(emb1, emb2)  # Distance = 1-cos_sim
             neg_dist = 1 - F.cosine_similarity(emb1, emb_neg)
             loss = F.relu(pos_dist - neg_dist + 0.3).mean()  # Margin=0.3
@@ -204,8 +204,8 @@ def save_model(model, apt_embeddings, apt_ids, X, apt_to_idx):
             'num_techniques': int(X[:,0].max()) + 1,
             'num_software': int(X[:,1].max()) + 1,
             'num_capec': int(X[:,2].max()) + 1,
-            'num_cwes': int(X[:,3].max()) + 1,
-            'num_cves': int(X[:,4].max()) + 1,
+            'num_cwe': int(X[:,3].max()) + 1,
+            'num_cve': int(X[:,4].max()) + 1,
             'num_pulse': int(X[:,5].max()) + 1,
             'embedding_dim': EMBEDDING_DIM
         },
@@ -215,14 +215,14 @@ def save_model(model, apt_embeddings, apt_ids, X, apt_to_idx):
     }
     with open(MODEL_PATH, 'wb') as f:
         pickle.dump(save_data, f)
-    print(f"✅ SAVED: {MODEL_PATH}")
+    print(f" SAVED: {MODEL_PATH}")
 
 def main():
     model, apt_to_idx = train_siamese_model()
     X, y, _, _, _, _, _, _, _ = load_and_prepare_data()
     apt_embeddings, apt_ids = extract_apt_embeddings(model, X, y, apt_to_idx)
     save_model(model, apt_embeddings, apt_ids, X, apt_to_idx)
-    print("🎉 SIAMESE MODEL READY FOR FALSE-FLAG ANALYSIS!")
+    print(" SIAMESE MODEL READY FOR FALSE-FLAG ANALYSIS!")
 
 if __name__ == "__main__":
     main()

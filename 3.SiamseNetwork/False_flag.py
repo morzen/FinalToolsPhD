@@ -24,14 +24,14 @@ MAX_WORKERS = min(mp.cpu_count(), 8)
 
 # ---------- YOUR EXACT FeatureEncoder from eval.py ----------
 class FeatureEncoder(nn.Module):
-    def __init__(self, num_techniques, num_software, num_capec, num_cwes, num_cves, num_pulse, embed_dim=128):
+    def __init__(self, num_techniques, num_software, num_capec, num_cwe, num_cve, num_pulse, embed_dim=128):
         super().__init__()
         embed_per_feature = embed_dim // 6
         self.tech_embed = nn.Embedding(num_techniques+1, embed_per_feature)
         self.soft_embed = nn.Embedding(num_software+1, embed_per_feature)
         self.capec_embed = nn.Embedding(num_capec+1, embed_per_feature)
-        self.cwe_embed = nn.Embedding(num_cwes+1, embed_per_feature)
-        self.cve_embed = nn.Embedding(num_cves+1, embed_per_feature)
+        self.cwe_embed = nn.Embedding(num_cwe+1, embed_per_feature)
+        self.cve_embed = nn.Embedding(num_cve+1, embed_per_feature)
         self.pulse_embed = nn.Embedding(num_pulse+1, embed_per_feature)
         total_embed_size = embed_per_feature * 6
         self.fc1 = nn.Linear(total_embed_size, 64)
@@ -59,7 +59,7 @@ class FeatureEncoder(nn.Module):
 # ============================================================
 def load_apt_profiles_from_data():
     """EXACTLY like XGBoost - from EncodedData.csv"""
-    print("📊 LOADING APT PROFILES FROM EncodedData.csv...")
+    print(" LOADING APT PROFILES FROM EncodedData.csv...")
     df = pd.read_csv("../BaseData/EncodedData.csv")
     
     profiles = {}
@@ -75,12 +75,12 @@ def load_apt_profiles_from_data():
             'total_features': len(apt_data)
         }
     
-    print(f"✅ Loaded {len(profiles)} APTs - EXACTLY like XGBoost")
+    print(f" Loaded {len(profiles)} APTs - EXACTLY like XGBoost")
     return profiles
 
 def load_model_and_mappings():
     """Load Siamese FeatureEncoder + mappings"""
-    print("🔍 LOADING SIAMESE FEATURE ENCODER...")
+    print(" LOADING SIAMESE FEATURE ENCODER...")
     
     # Load YOUR model
     with open(MODEL_PATH, 'rb') as f:
@@ -91,8 +91,8 @@ def load_model_and_mappings():
         config['num_techniques'], 
         config['num_software'], 
         config['num_capec'],
-        config['num_cwes'],
-        config['num_cves'],
+        config['num_cwe'],
+        config['num_cve'],
         config['num_pulse'],
         config['embedding_dim']
     )
@@ -121,7 +121,7 @@ def load_model_and_mappings():
     apt_name_mapping = {int(row['APTnameEncoded']): row['APTnameOrigin'] for _, row in df_mapping.iterrows()}
     apt_names = [apt_name_mapping.get(apt_id, f"APT{apt_id}") for apt_id in apt_ids]
     
-    print(f"✅ Model + {len(apt_ids)} APTs + features ready")
+    print(f" Model + {len(apt_ids)} APTs + features ready")
     return model, X_apts, apt_ids, apt_names, apt_name_mapping, profiles
 
 # ============================================================
@@ -237,7 +237,7 @@ def evaluate_false_flag_attacks_siamese(model, X_apts, apt_ids, apt_names, apt_n
     """EXACT XGBoost evaluation structure"""
     scenario = "PARTIAL (~33% reduction)" if partial else "FULL (30/70 mix)"
     print(f"\n{'='*80}")
-    print(f"🎯 SIAMESE FALSE-FLAG: 30% Attacker + 70% Mimicked ({scenario})")
+    print(f" SIAMESE FALSE-FLAG: 30% Attacker + 70% Mimicked ({scenario})")
     print(f"{'='*80}")
     
     all_combinations = [(a, m) for a in apt_ids for m in apt_ids if a != m]
@@ -276,7 +276,7 @@ def evaluate_false_flag_attacks_siamese(model, X_apts, apt_ids, apt_names, apt_n
                 print(f"Worker error: {e}")
     
     total_time = time.time() - start_time
-    print(f"\n✅ Completed {len(all_results):,} evals in {total_time/60:.1f} min")
+    print(f"\n Completed {len(all_results):,} evals in {total_time/60:.1f} min")
     
     # EXACT XGBoost analysis format
     print("\n" + "=" * 80)
@@ -298,12 +298,12 @@ def evaluate_false_flag_attacks_siamese(model, X_apts, apt_ids, apt_names, apt_n
             if not attacker_in_top and not mimicked_in_top: neither_correct += 1
         
         total_cases = len(all_results)
-        print(f"\n📊 Top-{top_x}:")
+        print(f"\n Top-{top_x}:")
         print(f"  Attacker: {attacker_detected}/{total_cases} ({attacker_detected/total_cases*100:.1f}%)")
         print(f"  Mimicked: {mimicked_deceived}/{total_cases} ({mimicked_deceived/total_cases*100:.1f}%)")
         print(f"  Both: {both_correct}/{total_cases} ({both_correct/total_cases*100:.1f}%)")
         print(f"  Neither: {neither_correct}/{total_cases} ({neither_correct/total_cases*100:.1f}%)")
-        print(f"  🎭 Deception: {mimicked_deceived/total_cases*100:.1f}% | 🔍 Detection: {attacker_detected/total_cases*100:.1f}%")
+        print(f"   Deception: {mimicked_deceived/total_cases*100:.1f}% |  Detection: {attacker_detected/total_cases*100:.1f}%")
     
     return all_results
 
@@ -312,7 +312,7 @@ def evaluate_false_flag_attacks_siamese(model, X_apts, apt_ids, apt_names, apt_n
 # ============================================================
 def plot_false_flag_deception_siamese(results, apt_names, apt_ids, partial=False):
     """EXACT XGBoost/GNN deception heatmap"""
-    print("\n📈 CREATING SIAMESE DECEPTION HEATMAP...")
+    print("\n CREATING SIAMESE DECEPTION HEATMAP...")
     
     n = len(apt_ids)
     id_to_idx = {apt_id: i for i, apt_id in enumerate(apt_ids)}
@@ -346,7 +346,7 @@ def plot_false_flag_deception_siamese(results, apt_names, apt_ids, partial=False
     
     non_zero = deception_matrix[np.nonzero(deception_matrix)]
     if non_zero.size == 0:
-        print("⚠️ No deception signal")
+        print("⚠ No deception signal")
         return
     
     vmin, vmax = -max(np.abs(non_zero)), max(np.abs(non_zero))
@@ -373,13 +373,13 @@ def plot_false_flag_deception_siamese(results, apt_names, apt_ids, partial=False
     output_path = f'false_flag_deception_matrix_siamese_30_70_{"partial" if partial else "full"}.png'
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.show()
-    print(f"✅ Saved: {output_path}")
+    print(f" Saved: {output_path}")
 
 # ============================================================
 # MAIN - EXACT XGBoost structure
 # ============================================================
 def main():
-    print("🚨 SIAMESE FALSE-FLAG EVALUATION: 30/70 MIX")
+    print(" SIAMESE FALSE-FLAG EVALUATION: 30/70 MIX")
     print("=" * 70)
     
     model, X_apts, apt_ids, apt_names, apt_name_mapping, profiles = load_model_and_mappings()
@@ -393,10 +393,10 @@ def main():
     partial_results = evaluate_false_flag_attacks_siamese(model, X_apts, apt_ids, apt_names, apt_name_mapping, profiles, partial=True)
     plot_false_flag_deception_siamese(partial_results, apt_names, apt_ids, partial=True)
     
-    print("\n🎉 SIAMESE 30/70 FALSE-FLAG COMPLETE!")
-    print("✅ Exact XGBoost/GNN format + structure")
-    print("✅ Uses FeatureEncoder forward pass")
-    print("✅ false_flag_deception_matrix_siamese_30_70_*.png")
+    print("\n SIAMESE 30/70 FALSE-FLAG COMPLETE!")
+    print(" Exact XGBoost/GNN format + structure")
+    print(" Uses FeatureEncoder forward pass")
+    print(" false_flag_deception_matrix_siamese_30_70_*.png")
 
 if __name__ == "__main__":
     mp.set_start_method('spawn', force=True)

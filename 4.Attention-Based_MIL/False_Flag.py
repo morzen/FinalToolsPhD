@@ -152,7 +152,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
 # ============================================================
 
 def load_mil_model_and_data(model_path=MODEL_PATH):
-    print("🔍 LOADING MIL MODEL AND DATA...")
+    print(" LOADING MIL MODEL AND DATA...")
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"{model_path} not found.")
     
@@ -169,7 +169,7 @@ def load_mil_model_and_data(model_path=MODEL_PATH):
     df_mapping = save_data["df_mapping"]
     apt_ids = save_data["apt_ids"]             # list of APT names
     
-    print(f"✅ MIL model and data loaded from {model_path}")
+    print(f" MIL model and data loaded from {model_path}")
     print(f"   APTs in profiles: {len(apt_profiles)}")
     print(f"   Available CPU cores: {mp.cpu_count()}")
     return model, apt_profiles, apt_name_dict, df_mapping, apt_ids
@@ -355,7 +355,7 @@ def evaluate_false_flag_attacks_mil_parallel(model, model_class, apt_profiles,
                                              top_x_values=TOP_X_VALUES, partial=False):
     print("=" * 80)
     scenario = "PARTIAL (50% volume from 30/70 mix)" if partial else "FULL (30/70 mixed evidence)"
-    print("🎯 FALSE-FLAG: 30% Attacker + 70% Mimicked features across ALL categories")
+    print(" FALSE-FLAG: 30% Attacker + 70% Mimicked features across ALL categories")
     print(f"({scenario})")
     print("=" * 80)
     
@@ -401,7 +401,7 @@ def evaluate_false_flag_attacks_mil_parallel(model, model_class, apt_profiles,
                 print(f"Worker error: {e}")
     
     total_time = time.time() - start_time
-    print(f"\n✅ Completed {len(all_results)} evaluations in {total_time/60:.1f} minutes")
+    print(f"\n Completed {len(all_results)} evaluations in {total_time/60:.1f} minutes")
     
     # Top-k analysis (same structure as GNN)
     print("\n" + "=" * 80)
@@ -423,12 +423,12 @@ def evaluate_false_flag_attacks_mil_parallel(model, model_class, apt_profiles,
             if not attacker_in_top and not mimicked_in_top: neither_correct += 1
         
         total_cases = len(all_results)
-        print(f"\n📊 Top-{top_x}:")
+        print(f"\n Top-{top_x}:")
         print(f"  Actual attacker: {attacker_detected}/{total_cases} ({attacker_detected/total_cases*100:.1f}%)")
         print(f"  Mimicked APT: {mimicked_deceived}/{total_cases} ({mimicked_deceived/total_cases*100:.1f}%)")
         print(f"  Both: {both_correct}/{total_cases} ({both_correct/total_cases*100:.1f}%)")
         print(f"  Neither: {neither_correct}/{total_cases} ({neither_correct/total_cases*100:.1f}%)")
-        print(f"  🎭 Deception: {mimicked_deceived/total_cases*100:.1f}% | 🔍 Detection: {attacker_detected/total_cases*100:.1f}%")
+        print(f"   Deception: {mimicked_deceived/total_cases*100:.1f}% |  Detection: {attacker_detected/total_cases*100:.1f}%")
     
     return all_results, apt_ids
 
@@ -444,7 +444,7 @@ def plot_false_flag_deception_mil(results, apt_ids, output_path="false_flag_dece
       >0: mimicked ranked better (deception success)
       <0: attacker ranked better (detection success)
     """
-    print("\n📈 CREATING FALSE-FLAG DECEPTION HEATMAP (MIL 30/70, CONTINUOUS)...")
+    print("\n CREATING FALSE-FLAG DECEPTION HEATMAP (MIL 30/70, CONTINUOUS)...")
     
     n = len(apt_ids)
     apt_names = apt_ids
@@ -477,7 +477,7 @@ def plot_false_flag_deception_mil(results, apt_ids, output_path="false_flag_dece
     
     non_zero = deception_matrix[np.nonzero(deception_matrix)]
     if non_zero.size == 0:
-        print("⚠️ All deception scores are zero; nothing to plot.")
+        print("⚠ All deception scores are zero; nothing to plot.")
         return
     
     low = np.percentile(non_zero, 5)
@@ -514,7 +514,7 @@ def plot_false_flag_deception_mil(results, apt_ids, output_path="false_flag_dece
     
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.show()
-    print(f"✅ Saved: {output_path}")
+    print(f" Saved: {output_path}")
 
 
 # ============================================================
@@ -522,7 +522,7 @@ def plot_false_flag_deception_mil(results, apt_ids, output_path="false_flag_dece
 # ============================================================
 
 def main():
-    print("🚨 MIL FALSE-FLAG EVALUATION: 30/70 MIXED EVIDENCE")
+    print(" MIL FALSE-FLAG EVALUATION: 30/70 MIXED EVIDENCE")
     print("=" * 70)
     print("Optimized Attention MIL + cosine-like similarity")
     print("30% attacker + 70% mimicked features ACROSS ALL CATEGORIES")
@@ -541,7 +541,7 @@ def main():
         model, model.__class__, apt_profiles, partial=True
     )
     
-    print("\n🎉 MIL 30/70 FALSE-FLAG EVALUATION COMPLETE!")
+    print("\n MIL 30/70 FALSE-FLAG EVALUATION COMPLETE!")
     print("Saved: false_flag_deception_matrix_mil_30_70_continuous.png")
 
 

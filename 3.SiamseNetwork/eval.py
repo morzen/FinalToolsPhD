@@ -14,14 +14,14 @@ from matplotlib.colors import LinearSegmentedColormap
 
 # ---------- FeatureEncoder ----------
 class FeatureEncoder(nn.Module):
-    def __init__(self, num_techniques, num_software, num_capec, num_cwes, num_cves, num_pulse, embed_dim=128):
+    def __init__(self, num_techniques, num_software, num_capec, num_cwe, num_cve, num_pulse, embed_dim=128):
         super().__init__()
         embed_per_feature = embed_dim // 6
         self.tech_embed = nn.Embedding(num_techniques+1, embed_per_feature)
         self.soft_embed = nn.Embedding(num_software+1, embed_per_feature)
         self.capec_embed = nn.Embedding(num_capec+1, embed_per_feature)
-        self.cwe_embed = nn.Embedding(num_cwes+1, embed_per_feature)
-        self.cve_embed = nn.Embedding(num_cves+1, embed_per_feature)
+        self.cwe_embed = nn.Embedding(num_cwe+1, embed_per_feature)
+        self.cve_embed = nn.Embedding(num_cve+1, embed_per_feature)
         self.pulse_embed = nn.Embedding(num_pulse+1, embed_per_feature)
         total_embed_size = embed_per_feature * 6
         self.fc1 = nn.Linear(total_embed_size, 64)
@@ -47,7 +47,7 @@ class FeatureEncoder(nn.Module):
 # ---------- EXACT SAME as XGBoost ----------
 def load_apt_profiles_from_data():
     """EXACTLY like XGBoost - from EncodedData.csv"""
-    print("📊 LOADING APT PROFILES FROM EncodedData.csv...")
+    print(" LOADING APT PROFILES FROM EncodedData.csv...")
     df = pd.read_csv("../BaseData/EncodedData.csv")
     
     profiles = {}
@@ -63,12 +63,12 @@ def load_apt_profiles_from_data():
             'total_features': len(apt_data)
         }
     
-    print(f"✅ Loaded {len(profiles)} APTs - EXACTLY like XGBoost")
+    print(f" Loaded {len(profiles)} APTs - EXACTLY like XGBoost")
     return profiles
 
 def load_model_and_mapping():
     """Load Siamese model + name mapping"""
-    print("🔍 LOADING SIAMESE MODEL...")
+    print(" LOADING SIAMESE MODEL...")
     with open('apt_siamese_feature_model.pkl', 'rb') as f:
         data = pickle.load(f)
     
@@ -77,8 +77,8 @@ def load_model_and_mapping():
         config['num_techniques'], 
         config['num_software'], 
         config['num_capec'],
-        config['num_cwes'],
-        config['num_cves'],
+        config['num_cwe'],
+        config['num_cve'],
         config['num_pulse'],
         config['embedding_dim']
     )
@@ -91,7 +91,7 @@ def load_model_and_mapping():
     for _, row in df_mapping.iterrows():
         apt_name_mapping[int(row['APTnameEncoded'])] = row['APTnameOrigin']
     
-    print("✅ Siamese model + name mapping loaded")
+    print(" Siamese model + name mapping loaded")
     return model, apt_name_mapping
 
 # ---------- Siamese Similarity (MODEL FORWARD PASS) ----------
@@ -129,7 +129,7 @@ class SiameseSimilarityPredictor:
 # ---------- EXACT SAME as XGBoost ----------
 def create_similarity_matrix_siamese(model, profiles, apt_name_mapping):
     """FULL 181x181 matrix - Siamese MODEL predictions"""
-    print("🔍 Creating FULL Siamese similarity matrix...")
+    print(" Creating FULL Siamese similarity matrix...")
     
     apt_ids = sorted(profiles.keys())
     apt_names = [apt_name_mapping.get(apt_id, f"APT{apt_id}") for apt_id in apt_ids]
@@ -167,7 +167,7 @@ def plot_similarity_heatmap_siamese(similarity_df):
     """FULL 181x181 heatmap - PROPER red=low, green=high scaling"""
     plt.figure(figsize=(20, 18))
     
-    # 🔥 FIXED: Proper min/max scaling - RED=lowest, GREEN=highest
+    #  FIXED: Proper min/max scaling - RED=lowest, GREEN=highest
     vmin = similarity_df.min().min()  # Lowest value = RED
     vmax = similarity_df.max().max()  # Highest value = GREEN
     
@@ -177,9 +177,9 @@ def plot_similarity_heatmap_siamese(similarity_df):
     sns.heatmap(similarity_df, 
                 mask=None, 
                 cmap=cmap, 
-                center=None,  # 🔥 REMOVED center=0.5
-                vmin=vmin,    # 🔥 RED at actual minimum
-                vmax=vmax,    # 🔥 GREEN at actual maximum
+                center=None,  #  REMOVED center=0.5
+                vmin=vmin,    #  RED at actual minimum
+                vmax=vmax,    #  GREEN at actual maximum
                 square=True,
                 xticklabels=True, 
                 yticklabels=True,
@@ -190,7 +190,7 @@ def plot_similarity_heatmap_siamese(similarity_df):
     plt.yticks(rotation=0, fontsize=8)
     plt.tight_layout()
     plt.savefig('siamese_similarity_matrix.png', dpi=300, bbox_inches='tight')
-    print("💾 PERFECT heatmap saved (Red=Min, Green=Max)!")
+    print(" PERFECT heatmap saved (Red=Min, Green=Max)!")
     plt.show()
 
 
@@ -236,7 +236,7 @@ def evaluate_profile_division_siamese(model, divider=2):
         pulse = next(iter(profile['pulse'])) if profile['pulse'] else -1
         X_apts.append([int(tech), int(soft), int(capec), int(cwe), int(cve), int(pulse)])
     
-    print(f"\n🎯 SIAMESE PROFILE DIVISION (divider={divider})")
+    print(f"\n SIAMESE PROFILE DIVISION (divider={divider})")
     resultdict = {}
     
     for i, target_apt_name in enumerate(apt_names):
@@ -246,8 +246,8 @@ def evaluate_profile_division_siamese(model, divider=2):
         target_profile = profiles[target_apt_id]
         
         # EXACT SAME division logic as XGBoost
-        divided_evidence = {'techniques': [], 'software': [], 'cves': []}
-        for feature_type, key in [('techniques', 'techniques'), ('software', 'software'), ('capec', 'capec'), ('cwe', 'cwes'), ('cve', 'cves'), ('pulse', 'pulse')]:
+        divided_evidence = {'techniques': [], 'software': [], 'cve': []}
+        for feature_type, key in [('techniques', 'techniques'), ('software', 'software'), ('capec', 'capec'), ('cwe', 'cwe'), ('cve', 'cve'), ('pulse', 'pulse')]:
             features = list(target_profile[feature_type])
             if features:
                 random.shuffle(features)
@@ -258,8 +258,8 @@ def evaluate_profile_division_siamese(model, divider=2):
         tech = divided_evidence['techniques'][0] if divided_evidence['techniques'] else -1
         soft = divided_evidence['software'][0] if divided_evidence['software'] else -1
         capec = divided_evidence['capec'][0] if divided_evidence['capec'] else -1
-        cve = divided_evidence['cwes'][0] if divided_evidence['cwes'] else -1
-        cve = divided_evidence['cves'][0] if divided_evidence['cves'] else -1
+        cve = divided_evidence['cwe'][0] if divided_evidence['cwe'] else -1
+        cve = divided_evidence['cve'][0] if divided_evidence['cve'] else -1
         cve = divided_evidence['pulse'][0] if divided_evidence['pulse'] else -1
         query_features = [int(tech), int(soft), int(capec), int(cwe), int(cve), int(pulse)]
         
@@ -279,7 +279,7 @@ def evaluate_profile_division_siamese(model, divider=2):
 
 # ---------- MAIN ----------
 def main():
-    print("🚀 SIAMESE FEATURE ENCODER EVALUATION")
+    print(" SIAMESE FEATURE ENCODER EVALUATION")
     print("=" * 60)
     
     model, apt_name_mapping = load_model_and_mapping()
@@ -287,7 +287,7 @@ def main():
     
     # 1. FULL similarity matrix
     similarity_df, apt_names = create_similarity_matrix_siamese(model, profiles, apt_name_mapping)
-    print(f"\n✅ FULL {len(apt_names)}x{len(apt_names)} Siamese matrix created")
+    print(f"\n FULL {len(apt_names)}x{len(apt_names)} Siamese matrix created")
     
     # 2. FULL heatmap
     plot_similarity_heatmap_siamese(similarity_df)
@@ -298,10 +298,10 @@ def main():
     # 4. Profile division (EXACT XGBoost logic)
     evaluate_profile_division_siamese(model, divider=2)
     
-    print("\n🎉 SIAMESE EVALUATION COMPLETE!")
-    print("✅ Uses Siamese MODEL forward pass")
-    print("✅ FULL 181x181 heatmap")
-    print("✅ Exact XGBoost evaluation logic")
+    print("\n SIAMESE EVALUATION COMPLETE!")
+    print(" Uses Siamese MODEL forward pass")
+    print(" FULL 181x181 heatmap")
+    print(" Exact XGBoost evaluation logic")
 
 if __name__ == "__main__":
     main()

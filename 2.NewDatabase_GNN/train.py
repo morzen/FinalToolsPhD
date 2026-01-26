@@ -44,7 +44,7 @@ def load_training_data(pwd="../BaseData/"):
 
 def create_apt_profiles_simple(df_encoded):
     """Create APT profiles directly from encoded data."""
-    print("\n📊 CREATING APT PROFILES FROM ENCODED DATA")
+    print("\n CREATING APT PROFILES FROM ENCODED DATA")
     print("=" * 50)
 
     unique_apts = sorted(df_encoded["APTname"].unique())
@@ -78,7 +78,7 @@ def create_apt_profiles_simple(df_encoded):
             if row["Pulse_ID"] != -1:
                 profiles[apt_id]["pulse"].add(row["Pulse_ID"])
 
-    print(f"\n📈 PROFILE STATISTICS:")
+    print(f"\n PROFILE STATISTICS:")
     total_tech = sum(len(p["techniques"]) for p in profiles.values())
     total_soft = sum(len(p["software"]) for p in profiles.values())
     total_capec = sum(len(p["capec"]) for p in profiles.values())
@@ -90,8 +90,8 @@ def create_apt_profiles_simple(df_encoded):
     print(f"Total techniques: {total_tech}")
     print(f"Total software: {total_soft}")
     print(f"Total CAPEC: {total_capec}")
-    print(f"Total CWEs: {total_cwe}")
-    print(f"Total CVEs: {total_cve}")
+    print(f"Total cwe: {total_cwe}")
+    print(f"Total cve: {total_cve}")
     print(f"Total Pulse: {total_pulse}")
 
     print(f"\n🧩 SAMPLE PROFILES (first 3 APTs):")
@@ -100,8 +100,8 @@ def create_apt_profiles_simple(df_encoded):
         print(f"    Techniques: {len(profile['techniques'])} - sample: {list(profile['techniques'])[:3]}")
         print(f"    Software: {len(profile['software'])} - sample: {list(profile['software'])[:3]}")
         print(f"    CAPEC: {len(profile['capec'])} - sample: {list(profile['capec'])[:3]}")
-        print(f"    CWEs: {len(profile['cwe'])} - sample: {list(profile['cwe'])[:3]}")
-        print(f"    CVEs: {len(profile['cve'])} - sample: {list(profile['cve'])[:3]}")
+        print(f"    cwe: {len(profile['cwe'])} - sample: {list(profile['cwe'])[:3]}")
+        print(f"    cve: {len(profile['cve'])} - sample: {list(profile['cve'])[:3]}")
         print(f"    Pulse: {len(profile['pulse'])} - sample: {list(profile['pulse'])[:3]}")
 
     return profiles, unique_apts
@@ -120,7 +120,7 @@ def build_graph_structure(profiles, apt_ids):
       - CVE nodes
     Edges are undirected, weighted according to FEATURE_WEIGHTS.
     """
-    print("\n🕸️ BUILDING GRAPH STRUCTURE")
+    print("\n BUILDING GRAPH STRUCTURE")
     print("=" * 50)
 
     apt_to_idx = {apt_id: i for i, apt_id in enumerate(apt_ids)}
@@ -228,7 +228,7 @@ def build_graph_structure(profiles, apt_ids):
     # Simple node features: 1 scalar per node; turned into [N, 1] matrix
     x = torch.ones(total_nodes, dtype=torch.float).view(-1, 1)
 
-    print(f"\n✅ Graph built:")
+    print(f"\n Graph built:")
     print(f"Nodes: {x.shape[0]}")
     print(f"Edges: {edge_index.shape[1]}")
 
@@ -370,12 +370,12 @@ def train_gnn(
     
     apt_idx = torch.arange(num_apts, device=device)
 
-    print(f"🚀 GNN TRAINING FOR {epochs} EPOCHS...")
+    print(f" GNN TRAINING FOR {epochs} EPOCHS...")
 
     gt_cpu = compute_ground_truth_similarity_matrix(profiles, apt_ids)
     gt = gt_cpu.to(device)
 
-    # ✅ CRITICAL FIX: Include self-similarities (diagonal = 1.0)
+    #  CRITICAL FIX: Include self-similarities (diagonal = 1.0)
     gt_with_diag = gt.clone()
     gt_with_diag.fill_diagonal_(1.0)
     
@@ -408,7 +408,7 @@ def train_gnn(
         node_emb = model(data.x, data.edge_index, data.edge_weight)
         apt_emb = node_emb[apt_idx].cpu()
         
-        # ✅ Normalize AFTER training (this is compatible)
+        #  Normalize AFTER training (this is compatible)
         apt_emb = F.normalize(apt_emb, p=2, dim=1)
 
     return apt_emb
@@ -419,7 +419,7 @@ def train_gnn(
 ###################################################################
 
 def analyze_ranking_anomalies(profiles, apt_embeddings, apt_ids, apt_name_mapping):
-    print("\n🔍 ANALYZING RANKING ANOMALIES")
+    print("\n ANALYZING RANKING ANOMALIES")
     print("=" * 50)
 
     embedding_norms = []
@@ -435,8 +435,8 @@ def analyze_ranking_anomalies(profiles, apt_embeddings, apt_ids, apt_name_mappin
             'techniques': len(profile['techniques']),
             'software': len(profile['software']),
             'capec': len(profile['capec']),
-            'cwes': len(profile['cwe']),
-            'cves': len(profile['cve']),
+            'cwe': len(profile['cwe']),
+            'cve': len(profile['cve']),
             'pulse': len(profile['pulse']),
             'profile_size': len(profile['techniques']) +
                             len(profile['software']) +
@@ -449,19 +449,19 @@ def analyze_ranking_anomalies(profiles, apt_embeddings, apt_ids, apt_name_mappin
     embedding_norms.sort(key=lambda x: x['embedding_norm'], reverse=True)
 
     print("Top 10 APTs by Embedding Norm:")
-    print(f"{'APT Name':<30} {'Embed Norm':<10} {'Techniques':<10} {'Software':<8} {'CAPEC':<8} {'CWEs':<8} {'CVEs':<8} {'Pulse':<8} {'Total':<6}")
+    print(f"{'APT Name':<30} {'Embed Norm':<10} {'Techniques':<10} {'Software':<8} {'CAPEC':<8} {'cwe':<8} {'cve':<8} {'Pulse':<8} {'Total':<6}")
     print("-" * 80)
     for item in embedding_norms[:10]:
         print(f"{item['apt_name']:<30} {item['embedding_norm']:<10.4f} "
               f"{item['techniques']:<10} {item['software']:<8} "
               f"{item['capec']:<8} {item['profile_size']:<6}"
-              f"{item['cwes']:<8} {item['profile_size']:<6}"
-              f"{item['cves']:<8} {item['profile_size']:<6}"
+              f"{item['cwe']:<8} {item['profile_size']:<6}"
+              f"{item['cve']:<8} {item['profile_size']:<6}"
               f"{item['pulse']:<8} {item['profile_size']:<6}")
 
 
 def debug_gnn_outputs(apt_embeddings, profiles, apt_ids, apt_name_mapping):
-    print("\n🐛 GNN MODEL DEBUG INFO")
+    print("\n GNN MODEL DEBUG INFO")
     print("=" * 50)
 
     print(f"APT embeddings shape: {apt_embeddings.shape}")
@@ -484,7 +484,7 @@ def debug_gnn_outputs(apt_embeddings, profiles, apt_ids, apt_name_mapping):
 
 def save_trained_gnn_model(model, apt_embeddings, profiles, graph_info, apt_ids,
                            apt_name_mapping, filename="trained_apt_gnn_model.pkl"):
-    print("\n💾 SAVING TRAINED GNN MODEL")
+    print("\n SAVING TRAINED GNN MODEL")
     save_data = {
         "model_state_dict": model.state_dict(),
         "apt_embeddings": apt_embeddings,
@@ -501,7 +501,7 @@ def save_trained_gnn_model(model, apt_embeddings, profiles, graph_info, apt_ids,
     }
     with open(filename, "wb") as f:
         pickle.dump(save_data, f)
-    print(f"✅ GNN model saved as '{filename}'")
+    print(f" GNN model saved as '{filename}'")
     print(f"Saved: {len(apt_ids)} APT embeddings, {len(profiles)} profiles")
 
 
@@ -520,7 +520,7 @@ def main():
     # 2. Build heterogeneous graph
     data, graph_info = build_graph_structure(profiles, apt_ids)
 
-    print("\n✅ READY FOR GNN MODEL CREATION!")
+    print("\n READY FOR GNN MODEL CREATION!")
     print(f"We have {graph_info['num_apts']} APT nodes for the model")
     print(f"Graph structure: {data.x.shape[0]} nodes, {data.edge_index.shape[1]} edges")
 
@@ -544,7 +544,7 @@ def main():
         epochs=200,
         device=device,
     )
-    print("\n✅ GNN TRAINING COMPLETE!")
+    print("\n GNN TRAINING COMPLETE!")
 
     # 6. Load APT name mappings (if file exists)
     try:

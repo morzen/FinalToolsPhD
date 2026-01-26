@@ -17,7 +17,7 @@ def load_training_data(pwd="../BaseData/"):
 
 def prepare_training_data(df):
     """Prepare data for efficient training - USE ALL 181 APTs"""
-    print("\n🎯 PREPARING EFFICIENT TRAINING DATA (ALL APTs)")
+    print("\n PREPARING EFFICIENT TRAINING DATA (ALL APTs)")
     
     # Count records per APT (for info only)
     apt_counts = df['APTname'].value_counts()
@@ -51,7 +51,7 @@ class EfficientXGBoost:
     
     def train(self, X_train, y_train):
         """Train efficient XGBoost classifier"""
-        print(f"\n🚀 TRAINING EFFICIENT XGBOOST")
+        print(f"\n TRAINING EFFICIENT XGBOOST")
         print(f"Training on {X_train.shape[0]} records")
         print(f"Features: {X_train.shape[1]}, APTs: {len(np.unique(y_train))}")
         
@@ -73,7 +73,7 @@ class EfficientXGBoost:
         
         print("Training classifier...")
         self.model.fit(X_train, y_train_encoded)
-        print("✅ Training completed!")
+        print(" Training completed!")
         
         # Store feature patterns for each APT
         self._learn_apt_patterns(X_train, y_train)
@@ -90,8 +90,8 @@ class EfficientXGBoost:
                     'common_techniques': np.unique(apt_data[:, 0]),
                     'common_software': np.unique(apt_data[:, 1]),
                     'common_capec': np.unique(apt_data[:, 2]),
-                    'common_cwes': np.unique(apt_data[:, 3]),
-                    'common_cves': np.unique(apt_data[:, 4]),
+                    'common_cwe': np.unique(apt_data[:, 3]),
+                    'common_cve': np.unique(apt_data[:, 4]),
                     'common_pulse': np.unique(apt_data[:, 5]),
                     'count': len(apt_data)
                 }
@@ -135,10 +135,10 @@ class EfficientXGBoost:
 
 def main():
     """Efficient XGBoost training - ALL 181 APTs, no filtering"""
-    print("🚀 EFFICIENT XGBOOST TRAINING (ALL 181 APTs)")
+    print(" EFFICIENT XGBOOST TRAINING (ALL 181 APTs)")
     print("=" * 50)
-    print("🎯 SINGLE RECORDS → PATTERN LEARNING → SIMILARITY")
-    print("✅ FIXED: Uses ALL APTs - no rare APT filtering")
+    print(" SINGLE RECORDS → PATTERN LEARNING → SIMILARITY")
+    print(" FIXED: Uses ALL APTs - no rare APT filtering")
     print("=" * 50)
     
     # Step 1: Load data
@@ -194,8 +194,8 @@ def main():
     with open('efficient_apt_similarity.pkl', 'wb') as f:
         pickle.dump(save_data, f)
     
-    print(f"\n✅ Model saved as 'efficient_apt_similarity.pkl'")
-    print(f"🎯 Efficient approach (ALL APTs):")
+    print(f"\n Model saved as 'efficient_apt_similarity.pkl'")
+    print(f" Efficient approach (ALL APTs):")
     print(f"   • No pair creation")
     print(f"   • ALL 181 APTs included")
     print(f"   • Direct classification training") 
@@ -203,7 +203,7 @@ def main():
     print(f"   • Scalable to large datasets")
     
     # Show statistics
-    print(f"\n📊 TRAINING SUMMARY:")
+    print(f"\n TRAINING SUMMARY:")
     print(f"   Original records: {len(df)}")
     print(f"   Training records: {len(X_tr)}")
     print(f"   APTs in training: {len(np.unique(y_tr))}")

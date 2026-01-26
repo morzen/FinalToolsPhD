@@ -30,7 +30,7 @@ class APTGNN(torch.nn.Module):
         return F.normalize(x, p=2, dim=-1)
 
 def load_trained_gnn_model(path="trained_apt_gnn_model.pkl"):
-    print("🔍 LOADING ENHANCED TRAINED GNN MODEL...")
+    print(" LOADING ENHANCED TRAINED GNN MODEL...")
     with open(path, 'rb') as f:
         saved = pickle.load(f)
     model = APTGNN(saved["model_config"]["in_channels"], 
@@ -38,8 +38,8 @@ def load_trained_gnn_model(path="trained_apt_gnn_model.pkl"):
                    saved["model_config"]["out_dim"])
     model.load_state_dict(saved["model_state_dict"])
     model.eval()
-    print(f"✅ Loaded {path}")
-    print(f"✅ GNN model loaded successfully!")
+    print(f" Loaded {path}")
+    print(f" GNN model loaded successfully!")
     print(f"   APTs: {len(saved['apt_ids'])}")
     print(f"   Embedding dimension: {saved['apt_embeddings'].shape[1]}")
     print(f"   Feature weights: TTP×{saved['feature_weights']['techniques']:.1f}, "
@@ -49,7 +49,7 @@ def load_trained_gnn_model(path="trained_apt_gnn_model.pkl"):
     return model, saved
 
 def load_apt_profiles_from_data():
-    print("📊 LOADING APT PROFILES FROM DATA...")
+    print(" LOADING APT PROFILES FROM DATA...")
     df = pd.read_csv("../BaseData/EncodedData.csv")
     profiles = {}
     for apt_id in df['APTname'].unique():
@@ -62,7 +62,7 @@ def load_apt_profiles_from_data():
             'cve': set(apt_data['CVE_ID'].dropna().unique()),
             'pulse': set(apt_data['Pulse_ID'].dropna().unique()),
         }
-    print(f"✅ Loaded profiles for {len(profiles)} APTs")
+    print(f" Loaded profiles for {len(profiles)} APTs")
     return profiles
 
 def load_mappings():
@@ -239,7 +239,7 @@ def process_single_false_flag_gnn(args):
 def evaluate_false_flag_attacks_gnn_parallel(model, saved_data, profiles, partial=False):
     print("=" * 80)
     scenario = "PARTIAL (50% volume from 30/70 mix)" if partial else "FULL (30/70 mixed evidence)"
-    print(f"🎯 FALSE-FLAG: 30% Attacker + 70% Mimicked features across ALL categories")
+    print(f" FALSE-FLAG: 30% Attacker + 70% Mimicked features across ALL categories")
     print(f"({scenario})")
     print("=" * 80)
     
@@ -283,7 +283,7 @@ def evaluate_false_flag_attacks_gnn_parallel(model, saved_data, profiles, partia
                 continue
     
     total_time = time.time() - start_time
-    print(f"\n✅ Completed {len(all_results)} evaluations in {total_time/60:.1f} minutes")
+    print(f"\n Completed {len(all_results)} evaluations in {total_time/60:.1f} minutes")
     return all_results
 
 def analyze_results(results, scenario="FULL"):
@@ -309,13 +309,13 @@ def analyze_results(results, scenario="FULL"):
             if not attacker_in_top and not mimicked_in_top: neither_correct += 1
         
         total_cases = len(results)
-        print(f"\n📊 Top-{top_x} Analysis:")
+        print(f"\n Top-{top_x} Analysis:")
         print(f"  Actual attacker: {attacker_detected}/{total_cases} ({attacker_detected/total_cases*100:.1f}%)")
         print(f"  Mimicked APT: {mimicked_deceived}/{total_cases} ({mimicked_deceived/total_cases*100:.1f}%)")
         print(f"  Both: {both_correct}/{total_cases} ({both_correct/total_cases*100:.1f}%)")
         print(f"  Neither: {neither_correct}/{total_cases} ({neither_correct/total_cases*100:.1f}%)")
-        print(f"  🎭 Deception: {mimicked_deceived/total_cases*100:.1f}% | 🔍 Detection: {attacker_detected/total_cases*100:.1f}%")
-        print(f"  ⚖️ Net Advantage: {(mimicked_deceived - attacker_detected)/total_cases*100:+.1f}%")
+        print(f"   Deception: {mimicked_deceived/total_cases*100:.1f}% |  Detection: {attacker_detected/total_cases*100:.1f}%")
+        print(f"  ⚖ Net Advantage: {(mimicked_deceived - attacker_detected)/total_cases*100:+.1f}%")
 
 def plot_false_flag_deception_gnn(results, apt_name_mapping, saved_data):
     """
@@ -327,7 +327,7 @@ def plot_false_flag_deception_gnn(results, apt_name_mapping, saved_data):
       < 0 : attacker ranked better                -> successful detection
       = 0 : tie or equal effectiveness
     """
-    print("\n📈 CREATING FALSE-FLAG DECEPTION HEATMAP (GNN 30/70, CONTINUOUS)...")
+    print("\n CREATING FALSE-FLAG DECEPTION HEATMAP (GNN 30/70, CONTINUOUS)...")
 
     apt_ids = saved_data['apt_ids']
     apt_names = [apt_name_mapping.get(a, f"APT{a}") for a in apt_ids]
@@ -369,7 +369,7 @@ def plot_false_flag_deception_gnn(results, apt_name_mapping, saved_data):
     # If everything is zero, nothing to plot
     non_zero = deception_matrix[np.nonzero(deception_matrix)]
     if non_zero.size == 0:
-        print("⚠️ All deception scores are zero; nothing to plot.")
+        print("⚠ All deception scores are zero; nothing to plot.")
         return
 
     # Robust symmetric color scaling (5th–95th percentile)
@@ -408,12 +408,12 @@ def plot_false_flag_deception_gnn(results, apt_name_mapping, saved_data):
     out_name = 'false_flag_deception_matrix_gnn_30_70_continuous.png'
     plt.savefig(out_name, dpi=300, bbox_inches='tight')
     plt.show()
-    print(f"✅ Saved: {out_name}")
+    print(f" Saved: {out_name}")
 
 
 
 if __name__ == "__main__":
-    print("🚨 GNN FALSE-FLAG EVALUATION: 30/70 MIXED EVIDENCE")
+    print(" GNN FALSE-FLAG EVALUATION: 30/70 MIXED EVIDENCE")
     print("=" * 70)
     print("Pure GNN embeddings + cosine similarity")
     print("30% attacker + 70% mimicked features ACROSS ALL CATEGORIES")
@@ -431,5 +431,5 @@ if __name__ == "__main__":
     partial_results = evaluate_false_flag_attacks_gnn_parallel(model, saved_data, profiles, partial=True)
     analyze_results(partial_results, "PARTIAL 30/70")
     
-    print("\n🎉 GNN 30/70 FALSE-FLAG EVALUATION COMPLETE!")
+    print("\n GNN 30/70 FALSE-FLAG EVALUATION COMPLETE!")
     print("Saved: false_flag_deception_matrix_gnn_30_70.png")

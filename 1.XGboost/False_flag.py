@@ -47,7 +47,7 @@ class EfficientXGBoostPredictor:
 
 def load_efficient_xgboost_model():
     """Load the efficient XGBoost model and data"""
-    print("🔍 LOADING EFFICIENT XGBOOST MODEL...")
+    print(" LOADING EFFICIENT XGBOOST MODEL...")
     try:
         with open('efficient_apt_similarity.pkl', 'rb') as f:
             saved_data = pickle.load(f)
@@ -60,7 +60,7 @@ def load_efficient_xgboost_model():
 
 def load_apt_profiles_from_data():
     """Load APT profiles from the encoded data file"""
-    print("📊 LOADING APT PROFILES FROM DATA...")
+    print(" LOADING APT PROFILES FROM DATA...")
     df = pd.read_csv("../BaseData/EncodedData.csv")
     
     profiles = {}
@@ -369,7 +369,7 @@ def evaluate_false_flag_attacks_efficient_parallel(saved_data, top_x_values=[1, 
     print("="*80)
     
     for top_x in top_x_values:
-        print(f"\n📊 Top-{top_x} Analysis:")
+        print(f"\n Top-{top_x} Analysis:")
         attacker_detected = mimicked_deceived = both_correct = neither_correct = 0
         
         for result in all_results.values():
@@ -388,8 +388,8 @@ def evaluate_false_flag_attacks_efficient_parallel(saved_data, top_x_values=[1, 
         print(f"  Mimicked APT Top-{top_x}: {mimicked_deceived}/{total_cases} ({mimicked_deceived/total_cases*100:.1f}%)")
         print(f"  Both Top-{top_x}: {both_correct}/{total_cases} ({both_correct/total_cases*100:.1f}%)")
         print(f"  Neither Top-{top_x}: {neither_correct}/{total_cases} ({neither_correct/total_cases*100:.1f}%)")
-        print(f"  🎭 Deception: {mimicked_deceived/total_cases*100:.1f}% | 🔍 Detection: {attacker_detected/total_cases*100:.1f}%")
-        print(f"  ⚖️ Net Advantage: {mimicked_deceived/total_cases*100 - attacker_detected/total_cases*100:+.1f}%")
+        print(f"   Deception: {mimicked_deceived/total_cases*100:.1f}% |  Detection: {attacker_detected/total_cases*100:.1f}%")
+        print(f"  ⚖ Net Advantage: {mimicked_deceived/total_cases*100 - attacker_detected/total_cases*100:+.1f}%")
     
     return all_results, apt_name_mapping, profiles, apt_ids
 
@@ -453,7 +453,7 @@ def evaluate_false_flag_attacks_partial_evidence(saved_data, top_x_values=[1, 3,
     print("="*80)
     
     for top_x in top_x_values:
-        print(f"\n📊 Top-{top_x} Analysis:")
+        print(f"\n Top-{top_x} Analysis:")
         attacker_detected = mimicked_deceived = both_correct = neither_correct = 0
         
         for result in all_results.values():
@@ -472,8 +472,8 @@ def evaluate_false_flag_attacks_partial_evidence(saved_data, top_x_values=[1, 3,
         print(f"  Mimicked APT Top-{top_x}: {mimicked_deceived}/{total_cases} ({mimicked_deceived/total_cases*100:.1f}%)")
         print(f"  Both Top-{top_x}: {both_correct}/{total_cases} ({both_correct/total_cases*100:.1f}%)")
         print(f"  Neither Top-{top_x}: {neither_correct}/{total_cases} ({neither_correct/total_cases*100:.1f}%)")
-        print(f"  🎭 Deception: {mimicked_deceived/total_cases*100:.1f}% | 🔍 Detection: {attacker_detected/total_cases*100:.1f}%")
-        print(f"  ⚖️ Net Advantage: {mimicked_deceived/total_cases*100 - attacker_detected/total_cases*100:+.1f}%")
+        print(f"   Deception: {mimicked_deceived/total_cases*100:.1f}% |  Detection: {attacker_detected/total_cases*100:.1f}%")
+        print(f"  ⚖ Net Advantage: {mimicked_deceived/total_cases*100 - attacker_detected/total_cases*100:+.1f}%")
     
     return all_results
 
@@ -487,7 +487,7 @@ def plot_false_flag_analysis_efficient(results, apt_name_mapping, profiles, apt_
     > 0: mimicked ranked better (smaller rank) -> successful deception (RED)
     < 0: attacker ranked better                -> successful detection (BLUE)
     """
-    print("\n📈 CREATING XGBOOST FALSE-FLAG DECEPTION HEATMAP (30/70, CONTINUOUS)...")
+    print("\n CREATING XGBOOST FALSE-FLAG DECEPTION HEATMAP (30/70, CONTINUOUS)...")
     
     n = len(apt_ids)
     apt_names = [apt_name_mapping.get(aid, f"APT{aid}") for aid in apt_ids]
@@ -527,7 +527,7 @@ def plot_false_flag_analysis_efficient(results, apt_name_mapping, profiles, apt_
     # Robust color scaling
     non_zero = deception_matrix[np.nonzero(deception_matrix)]
     if non_zero.size == 0:
-        print("⚠️ All deception scores zero; nothing to plot.")
+        print("⚠ All deception scores zero; nothing to plot.")
         return
     
     low = np.percentile(non_zero, 5)
@@ -566,7 +566,7 @@ def plot_false_flag_analysis_efficient(results, apt_name_mapping, profiles, apt_
     out_name = 'false_flag_deception_matrix_xgboost_30_70_continuous.png'
     plt.savefig(out_name, dpi=300, bbox_inches='tight')
     plt.show()
-    print(f"✅ Saved & displayed: {out_name}")
+    print(f" Saved & displayed: {out_name}")
 
 
 def main():
@@ -596,7 +596,7 @@ def main():
     )
     
     
-    print("\n✅ XGBOOST 30/70 FALSE-FLAG COMPLETE!")
+    print("\n XGBOOST 30/70 FALSE-FLAG COMPLETE!")
     print("Pure XGBoost model output, no custom similarity heuristics")
 
 

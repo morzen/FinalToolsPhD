@@ -30,7 +30,7 @@ class APTGNN(nn.Module):
 
 
 def load_trained_model():
-    print("🔍 LOADING TRAINED MODEL...")
+    print(" LOADING TRAINED MODEL...")
     with open('trained_apt_gnn_model.pkl', 'rb') as f:
         saved_data = pickle.load(f)
     return saved_data
@@ -64,8 +64,8 @@ def convert_evidence_to_encoded(evidence, mapping_file="../BaseData/comparison_E
         'techniques': [technique_mapping.get(t) for t in evidence.get('techniques', []) if t in technique_mapping],
         'software': [software_mapping.get(s) for s in evidence.get('software', []) if s in software_mapping],
         'capec': [capec_mapping.get(c) for c in evidence.get('capec', []) if c in capec_mapping],
-        'cwes': [cwe_mapping.get(c) for c in evidence.get('cwes', []) if c in cwe_mapping],
-        'cves': [cve_mapping.get(c) for c in evidence.get('cves', []) if c in cve_mapping],
+        'cwe': [cwe_mapping.get(c) for c in evidence.get('cwe', []) if c in cwe_mapping],
+        'cve': [cve_mapping.get(c) for c in evidence.get('cve', []) if c in cve_mapping],
         'pulse': [pulse_mapping.get(c) for c in evidence.get('pulse', []) if c in pulse_mapping],
     }
 
@@ -92,15 +92,15 @@ def query_apt_similarity(evidence, saved_data):
     techniques = evidence.get('techniques', [])
     software = evidence.get('software', [])
     capec = evidence.get('capec', [])
-    cwes = evidence.get('cwes', [])
-    cves = evidence.get('cves', [])
+    cwe = evidence.get('cwe', [])
+    cve = evidence.get('cve', [])
     pulse = evidence.get('pulse', [])
 
     tech_indices = [technique_to_idx.get(t, 0) for t in techniques] if techniques else [0]
     soft_indices = [software_to_idx.get(s, 0) for s in software] if software else [0]
     capec_indices = [capec_to_idx.get(c, 0) for c in capec] if capec else [0]
-    cwe_indices = [cwe_to_idx.get(c, 0) for c in cwes] if cwes else [0]
-    cve_indices = [cve_to_idx.get(c, 0) for c in cves] if cves else [0]
+    cwe_indices = [cwe_to_idx.get(c, 0) for c in cwe] if cwe else [0]
+    cve_indices = [cve_to_idx.get(c, 0) for c in cve] if cve else [0]
     pulse_indices = [pulse_to_idx.get(c, 0) for c in pulse] if pulse else [0]
 
     query_node = 0
@@ -252,7 +252,7 @@ def evaluate_profile_division(saved_data, divider=2, top_x_values=[1, 5, 10, 20]
         target_apt_id = apt_ids[i]
         target_profile = profiles[target_apt_id]
 
-        divided_evidence = {'techniques': [], 'software': [], 'capec': [], 'cwes': [], 'cves': [], 'pulse': []}
+        divided_evidence = {'techniques': [], 'software': [], 'capec': [], 'cwe': [], 'cve': [], 'pulse': []}
 
         if target_profile['techniques']:
             techniques_list = list(target_profile['techniques'])
@@ -276,13 +276,13 @@ def evaluate_profile_division(saved_data, divider=2, top_x_values=[1, 5, 10, 20]
             cwe_list = list(target_profile['cwe'])
             random.shuffle(cwe_list)
             division_size = max(1, len(cwe_list) // divider)
-            divided_evidence['cwes'] = cwe_list[:division_size]
+            divided_evidence['cwe'] = cwe_list[:division_size]
 
         if target_profile['cve']:
             cve_list = list(target_profile['cve'])
             random.shuffle(cve_list)
             division_size = max(1, len(cve_list) // divider)
-            divided_evidence['cves'] = cve_list[:division_size]
+            divided_evidence['cve'] = cve_list[:division_size]
 
         if target_profile['pulse']:
             pulse_list = list(target_profile['pulse'])
@@ -331,8 +331,8 @@ def test_sample_queries(saved_data):
         'techniques': ['faketest', 'T1001.002', 'T1003.002'],
         'software': ['faketest','S0002', 'S0029', 'S0037'],
         'capec': ['faketest','CAPEC-127', 'CAPEC-150'],
-        'cwes': ['faketest','CWE-1021', 'CWE-113'],
-        'cves': ['faketest','CVE-2012-0433', 'CVE-2013-10007'],
+        'cwe': ['faketest','CWE-1021', 'CWE-113'],
+        'cve': ['faketest','CVE-2012-0433', 'CVE-2013-10007'],
         'pulse': ['faketest','5c88e255d5fbbe1cb7c54534', '5cb741fb29d3ac01c1ac01ea']
     }
 
@@ -340,8 +340,8 @@ def test_sample_queries(saved_data):
     print(f"  Techniques: {test_evidence['techniques']}")
     print(f"  Software: {test_evidence['software']}")
     print(f"  CAPEC: {test_evidence['capec']}")
-    print(f"  CWEs: {test_evidence['cwes']}")
-    print(f"  CVEs: {test_evidence['cves']}")
+    print(f"  cwe: {test_evidence['cwe']}")
+    print(f"  cve: {test_evidence['cve']}")
     print(f"  Pulse: {test_evidence['pulse']}")
 
     encoded_evidence = convert_evidence_to_encoded(test_evidence)
@@ -361,12 +361,12 @@ def test_sample_queries(saved_data):
 
 
 def main():
-    print("🚀 GNN APT SIMILARITY MODEL EVALUATION")
+    print(" GNN APT SIMILARITY MODEL EVALUATION")
     print("=" * 60)
 
     saved_data = load_trained_model()
 
-    print(f"✅ Model loaded successfully!")
+    print(f" Model loaded successfully!")
     print(f"   APTs: {len(saved_data['apt_ids'])}")
     print(f"   Embedding dimension: {saved_data['apt_embeddings'].shape[1]}")
     print(f"   Profiles: {len(saved_data['profiles'])}")

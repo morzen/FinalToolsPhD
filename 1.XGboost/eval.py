@@ -72,19 +72,19 @@ class EfficientXGBoostPredictor:
 
 def load_efficient_xgboost_model():
     """Load the efficient XGBoost model and data"""
-    print("🔍 LOADING EFFICIENT XGBOOST MODEL...")
+    print(" LOADING EFFICIENT XGBOOST MODEL...")
     try:
         with open('efficient_apt_similarity.pkl', 'rb') as f:
             saved_data = pickle.load(f)
-        print("✅ Loaded efficient_apt_similarity.pkl")
+        print(" Loaded efficient_apt_similarity.pkl")
         return saved_data
     except FileNotFoundError:
-        print("❌ efficient_apt_similarity.pkl not found! Please run train.py first.")
+        print(" efficient_apt_similarity.pkl not found! Please run train.py first.")
         return None
 
 def load_apt_profiles_from_data():
     """Load APT profiles from the encoded data file"""
-    print("📊 LOADING APT PROFILES FROM DATA...")
+    print(" LOADING APT PROFILES FROM DATA...")
     df = pd.read_csv("../BaseData/EncodedData.csv")
     
     profiles = {}
@@ -100,7 +100,7 @@ def load_apt_profiles_from_data():
             'total_features': len(apt_data)
         }
     
-    print(f"✅ Loaded profiles for {len(profiles)} APTs")
+    print(f" Loaded profiles for {len(profiles)} APTs")
     return profiles
 
 def create_similarity_matrix_efficient(saved_data):
@@ -282,8 +282,8 @@ def evaluate_profile_division_efficient(saved_data, divider=2, top_x_values=[1, 
             'techniques': [],
             'software': [],
             'capec': [],
-            'cwes': [],
-            'cves': [],
+            'cwe': [],
+            'cve': [],
             'pulse': []
         }
         
@@ -308,19 +308,19 @@ def evaluate_profile_division_efficient(saved_data, divider=2, top_x_values=[1, 
             division_size = max(1, len(capec_list) // divider)
             divided_evidence['capec'] = capec_list[:division_size]
 
-        # Divide CWEs
+        # Divide cwe
         if target_profile['cwe']:
             cwe_list = list(target_profile['cwe'])
             random.shuffle(cwe_list)
             division_size = max(1, len(cwe_list) // divider)
-            divided_evidence['cwes'] = cwe_list[:division_size]
+            divided_evidence['cwe'] = cwe_list[:division_size]
 
-        # Divide CVEs
+        # Divide cve
         if target_profile['cve']:
             cve_list = list(target_profile['cve'])
             random.shuffle(cve_list)
             division_size = max(1, len(cve_list) // divider)
-            divided_evidence['cves'] = cve_list[:division_size]
+            divided_evidence['cve'] = cve_list[:division_size]
 
         # Divide Pulse
         if target_profile['pulse']:
@@ -333,8 +333,8 @@ def evaluate_profile_division_efficient(saved_data, divider=2, top_x_values=[1, 
         technique_item = divided_evidence['techniques'][0] if divided_evidence['techniques'] else -1
         software_item = divided_evidence['software'][0] if divided_evidence['software'] else -1
         capec_item = divided_evidence['capec'][0] if divided_evidence['capec'] else -1
-        cwe_item = divided_evidence['cwes'][0] if divided_evidence['cwes'] else -1
-        cve_item = divided_evidence['cves'][0] if divided_evidence['cves'] else -1
+        cwe_item = divided_evidence['cwe'][0] if divided_evidence['cwe'] else -1
+        cve_item = divided_evidence['cve'][0] if divided_evidence['cve'] else -1
         pulse_item = divided_evidence['pulse'][0] if divided_evidence['pulse'] else -1
         
         query_features = np.array([technique_item, software_item, capec_item, cwe_item, cve_item, pulse_item])
@@ -378,17 +378,17 @@ def evaluate_profile_division_efficient(saved_data, divider=2, top_x_values=[1, 
         print(f"Success rate: {(success/lengthResultDict)*100:.2f}%")
 
 def main():
-    print("🚀 EFFICIENT XGBOOST APT SIMILARITY MODEL EVALUATION")
+    print(" EFFICIENT XGBOOST APT SIMILARITY MODEL EVALUATION")
     print("=" * 60)
     
     # Load trained XGBoost model
     saved_data = load_efficient_xgboost_model()
     
     if saved_data is None:
-        print("❌ Cannot proceed without trained model. Please run train.py first.")
+        print(" Cannot proceed without trained model. Please run train.py first.")
         return
     
-    print(f"✅ Efficient XGBoost model loaded successfully!")
+    print(f" Efficient XGBoost model loaded successfully!")
     print(f"   APTs in training: {saved_data['training_info']['unique_apts']}")
     print(f"   Training records: {saved_data['training_info']['training_records']}")
     
