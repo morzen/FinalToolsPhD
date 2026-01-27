@@ -504,9 +504,9 @@ def analyze_model_impact(evidence, results):
         print(f"       TTPs: {tech_match}/{len(evidence['techniques'])}")
         print(f"       Software: {soft_match}/{len(evidence['software'])}")
         print(f"       CAPEC: {capec_match}/{len(evidence['capec'])}")
-        print(f"       cwe: {capec_match}/{len(evidence['cwe'])}")
-        print(f"       cve: {capec_match}/{len(evidence['cve'])}")
-        print(f"       Pulse: {capec_match}/{len(evidence['pulse'])}")
+        print(f"       cwe: {cwe_match}/{len(evidence['cwe'])}")
+        print(f"       cve: {cve_match}/{len(evidence['cve'])}")
+        print(f"       Pulse: {pulse_match}/{len(evidence['pulse'])}")
         print(f"       TOTAL: {total_matches} matches (Similarity: {result['similarity']:.4f})")
         print()
     
