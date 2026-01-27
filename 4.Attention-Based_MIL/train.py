@@ -47,7 +47,7 @@ class AttentionMILConfig:
     
     # New training parameters
     LEARNING_RATE = 0.001
-    EPOCHS = 100
+    EPOCHS = 50
     BATCH_SIZE = 32
     TRAIN_TEST_SPLIT = 0.2
     RANDOM_STATE = 42
