@@ -20,9 +20,9 @@ class EfficientXGBoostPredictor:
     
     def predict_similarity(self, features1, features2):
         """Predict similarity between two feature sets"""
-        if features1[0] == -1 and features1[1] == -1 and features1[2] == -1:
+        if features1[0] == -1 and features1[1] == -1 and features1[2] == -1 and features1[3] == -1 and features1[4] == -1 and features1[5] == -1:
             return 0.0
-        if features2[0] == -1 and features2[1] == -1 and features2[2] == -1:
+        if features2[0] == -1 and features2[1] == -1 and features2[2] == -1 and features2[3] == -1 and features2[4] == -1 and features2[5] == -1:
             return 0.0
             
         # Get probability distributions
