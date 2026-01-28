@@ -258,9 +258,9 @@ def evaluate_profile_division_siamese(model, divider=2):
         tech = divided_evidence['techniques'][0] if divided_evidence['techniques'] else -1
         soft = divided_evidence['software'][0] if divided_evidence['software'] else -1
         capec = divided_evidence['capec'][0] if divided_evidence['capec'] else -1
-        cve = divided_evidence['cwe'][0] if divided_evidence['cwe'] else -1
+        cwe = divided_evidence['cwe'][0] if divided_evidence['cwe'] else -1
         cve = divided_evidence['cve'][0] if divided_evidence['cve'] else -1
-        cve = divided_evidence['pulse'][0] if divided_evidence['pulse'] else -1
+        pulse = divided_evidence['pulse'][0] if divided_evidence['pulse'] else -1
         query_features = [int(tech), int(soft), int(capec), int(cwe), int(cve), int(pulse)]
         
         # Rank all APTs
