@@ -33,10 +33,10 @@ class FeatureEncoder(nn.Module):
         tech, soft, capec, cwe, cve, pulse = features[:, 0], features[:, 1], features[:, 2], features[:, 3], features[:, 4], features[:, 5]
         t_emb = self.tech_embed(tech.long() + 1)
         s_emb = self.soft_embed(soft.long() + 1)
-        ca_emb = self.cve_embed(capec.long() + 1)
-        cw_emb = self.cve_embed(cwe.long() + 1)
+        ca_emb = self.capec_embed(capec.long() + 1)
+        cw_emb = self.cwe_embed(cwe.long() + 1)
         cv_emb = self.cve_embed(cve.long() + 1)
-        p_emb = self.cve_embed(pulse.long() + 1)
+        p_emb = self.pulse_embed(pulse.long() + 1)
         x = torch.cat([t_emb, s_emb, ca_emb, cw_emb, cv_emb, p_emb], dim=-1)
         x = F.relu(self.fc1(x))
         x = self.dropout(x)
