@@ -36,7 +36,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
         self.hidden_dim = hidden_dim
         
         # Feature embedding layers
-        self.technique_embed = nn.Embedding(10000, hidden_dim)
+        self.techniques_embed = nn.Embedding(10000, hidden_dim)
         self.software_embed = nn.Embedding(10000, hidden_dim)
         self.capec_embed = nn.Embedding(10000, hidden_dim)
         self.cwe_embed = nn.Embedding(10000, hidden_dim)
@@ -79,7 +79,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
         )
 
     def init_weights(self):
-        for embed in [self.technique_embed, self.software_embed, self.capec_embed, self.cwe_embed, self.cve_embed, self.pulse_embed]:
+        for embed in [self.techniques_embed, self.software_embed, self.capec_embed, self.cwe_embed, self.cve_embed, self.pulse_embed]:
             nn.init.xavier_uniform_(embed.weight)
         
         for net in self.attention_nets.values():
@@ -99,7 +99,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
         feature_types = ['technique', 'software', 'capec', 'cwe', 'cve', 'pulse']
         
         for feat_type in feature_types:
-            dict_key = feat_type + 's' if feat_type != 'software' else feat_type
+            dict_key = feat_type
             apt_features = set(apt_dict.get(dict_key, []))
             evidence_features = set(evidence_dict.get(dict_key, []))
             
@@ -132,7 +132,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
         feature_types = ['technique', 'software', 'capec', 'cwe', 'cve', 'pulse']
         
         for i, feat_type in enumerate(feature_types):
-            dict_key = feat_type + 's' if feat_type != 'software' else feat_type
+            dict_key = feat_type
             feat = x_dict.get(dict_key, [])
             
             if len(feat) > 0:
@@ -182,10 +182,10 @@ def load_mil_model_and_data(model_path=MODEL_PATH):
 def build_apt_evidence_dict_from_profile(profile):
     """
     Build x_dict expected by MIL model:
-      {'techniques': [...], 'software': [...], 'cve': [...]}
+      {'technique': [...], 'software': [...], 'cve': [...]}
     """
     return {
-        "techniques": profile.get("techniques", []),
+        "technique": profile.get("technique", []),
         "software":   profile.get("software", []),
         "capec":        profile.get("capec", []),
         "cwe":        profile.get("cwe", []),
@@ -229,8 +229,8 @@ def build_false_flag_evidence_full(attacker_profile, mimicked_profile, rng=None,
         return result[:max_count]
 
     evidence = {
-        "techniques": sample_mixed_features(attacker_profile.get("techniques", []),
-                                            mimicked_profile.get("techniques", []),
+        "technique": sample_mixed_features(attacker_profile.get("technique", []),
+                                            mimicked_profile.get("technique", []),
                                             max_count),
         "software":   sample_mixed_features(attacker_profile.get("software", []),
                                             mimicked_profile.get("software", []),

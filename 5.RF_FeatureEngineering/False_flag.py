@@ -267,7 +267,7 @@ def process_single_false_flag_rf(args):
 
 
 # ============================================================
-# PARALLEL EVALUATION WITH ETA – GNN-STYLE
+# PARALLEL EVALUATION WITH ETA 
 # ============================================================
 
 def evaluate_false_flag_attacks_rf_parallel(model_data, top_x_values=TOP_X_VALUES, partial=False):

@@ -16,7 +16,7 @@ class APTGNN(nn.Module):
     Simple 2-layer GCN over the heterogeneous APT-TTP-SW-CAPEC-CWE-CVE-Pulse graph.
     APT embeddings are just the node embeddings of the first num_apts nodes.
     """
-    def __init__(self, in_channels, hidden_dim=128, out_dim=128):
+    def __init__(self, in_channels, hidden_dim=256, out_dim=256):
         super().__init__()
         self.conv1 = GCNConv(in_channels, hidden_dim)
         self.conv2 = GCNConv(hidden_dim, out_dim)
@@ -74,19 +74,23 @@ def convert_evidence_to_encoded(evidence, mapping_file="../BaseData/comparison_E
 
 def query_apt_similarity(evidence, saved_data):
     graph_info = saved_data['graph_info']
+
     technique_to_idx = graph_info['technique_to_idx']
     software_to_idx = graph_info['software_to_idx']
     capec_to_idx = graph_info['capec_to_idx']
     cwe_to_idx = graph_info['cwe_to_idx']
     cve_to_idx = graph_info['cve_to_idx']
     pulse_to_idx = graph_info['pulse_to_idx']
+
     num_apts = graph_info['num_apts']
+
     technique_offset = graph_info['technique_offset']
     software_offset = graph_info['software_offset']
     capec_offset = graph_info['capec_offset']
     cwe_offset = graph_info['cwe_offset']
     cve_offset = graph_info['cve_offset']
     pulse_offset = graph_info['pulse_offset']
+    
     feature_weights = graph_info['feature_weights']
 
     techniques = evidence.get('techniques', [])

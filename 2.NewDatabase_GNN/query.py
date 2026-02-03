@@ -37,7 +37,7 @@ class APTQueryModel(nn.Module):
         self.cwe_embedding = nn.Embedding(num_cwe, hidden_dim, padding_idx=0)
         self.cve_embedding = nn.Embedding(num_cve, hidden_dim, padding_idx=0)
         self.pulse_embedding = nn.Embedding(num_pulse, hidden_dim, padding_idx=0)
-        self.feature_combiner = nn.Linear(hidden_dim * 3, hidden_dim)
+        self.feature_combiner = nn.Linear(hidden_dim * 6, hidden_dim)
 
     def forward(self, techniques, software, capec, cwe, cve, pulse):
         tech_emb = self.technique_embedding(techniques).mean(dim=1)
@@ -145,10 +145,13 @@ def safe_model_config(config):
     for k in compatible_keys:
         v = config.get(k)
         if v is None or (isinstance(v, float) and np.isnan(v)):
-            if k == 'num_techniques': v = 548
-            elif k == 'num_software': v = 541
-            elif k == 'num_cve': v = 7938
-            elif k == 'hidden_dim': v = 128
+            if k == 'num_techniques': v = 4436
+            elif k == 'num_software': v = 1021
+            elif k == 'num_capec': v = 2089
+            elif k == 'num_cwe': v = 2129
+            elif k == 'num_cve': v = 68883
+            elif k == 'num_pulse': v = 85510
+            elif k == 'hidden_dim': v = 256
         clean_config[k] = v
     print(f" Using model config: {clean_config}")
     return clean_config
@@ -200,24 +203,28 @@ def compute_feature_scores(evidence, profiles, apt_name_mapping):
         feature_scores.append({
             'apt_id': apt_id,
             'apt_name': apt_name,
+
             'tech_score': harmonic_mean(tech_evid_cov, tech_prof_cov),
             'soft_score': harmonic_mean(soft_evid_cov, soft_prof_cov),
             'capec_score': harmonic_mean(capec_evid_cov, capec_prof_cov),
             'cwe_score': harmonic_mean(cwe_evid_cov, cwe_prof_cov),
             'cve_score': harmonic_mean(cve_evid_cov, cve_prof_cov),
             'pulse_score': harmonic_mean(pulse_evid_cov, pulse_prof_cov),
+
             'tech_matches': tech_matches,
             'soft_matches': soft_matches,
             'capec_matches': capec_matches,
             'cwe_matches': cwe_matches,
             'cve_matches': cve_matches,
             'pulse_matches': pulse_matches,
+
             'tech_evid_cov': tech_evid_cov,
             'soft_evid_cov': soft_evid_cov,
             'capec_evid_cov': capec_evid_cov,
             'cwe_evid_cov': cwe_evid_cov,
             'cve_evid_cov': cve_evid_cov,
             'pulse_evid_cov': pulse_evid_cov,
+
             'tech_prof_cov': tech_prof_cov,
             'soft_prof_cov': soft_prof_cov,
             'capec_prof_cov': capec_prof_cov,
@@ -376,8 +383,8 @@ def query_apt_similarity_enhanced(evidence):
     # Load GNN model to get feature node embeddings
     model_config = saved_data.get("model_config", {})
     in_channels = model_config.get("in_channels", 1)
-    hidden_dim = model_config.get("hidden_dim", 128)
-    out_dim = model_config.get("out_dim", 128)
+    hidden_dim = model_config.get("hidden_dim", 256)
+    out_dim = model_config.get("out_dim", 256)
     
     gnn_model = APTGNN(in_channels=in_channels, hidden_dim=hidden_dim, out_dim=out_dim)
     
@@ -469,12 +476,14 @@ def query_apt_similarity_enhanced(evidence):
             "rank": i + 1,
             "apt_name": apt_name,
             "similarity": sim.item(),
+            
             "tech_match": f"{tech_matches}/{len(techniques)}",
             "soft_match": f"{soft_matches}/{len(software)}",
             "capec_match": f"{capec_matches}/{len(capec)}",
             "cwe_match": f"{cwe_matches}/{len(cwe)}",
             "cve_match": f"{cve_matches}/{len(cve)}",
             "pulse_match": f"{pulse_matches}/{len(pulse)}",
+
             "weighted_match": weighted_match,
             "profile_size": f"{len(profile.get('techniques', []))}T/{len(profile.get('software', []))}S/{len(profile.get('capec', []))}Ca/{len(profile.get('cwe', []))}Cw/{len(profile.get('cve', []))}Cv/{len(profile.get('pulse', []))}P",
             "apt_id": apt_id

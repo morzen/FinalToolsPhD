@@ -305,7 +305,7 @@ def process_single_false_flag_partial_evidence(args):
     }
 
 
-def evaluate_false_flag_attacks_efficient_parallel(saved_data, top_x_values=[1, 3, 5, 10, 20]):
+def evaluate_false_flag_attacks_efficient_parallel(saved_data, top_x_values=[1, 5, 10, 20]):
     """FULL EVIDENCE: 30/70 mixed features"""
     print(" EVALUATING FALSE-FLAG ATTACKS (EFFICIENT XGBOOST - 30/70 MIX FULL)")
     print("=" * 80)
@@ -394,7 +394,7 @@ def evaluate_false_flag_attacks_efficient_parallel(saved_data, top_x_values=[1, 
     return all_results, apt_name_mapping, profiles, apt_ids
 
 
-def evaluate_false_flag_attacks_partial_evidence(saved_data, top_x_values=[1, 3, 5, 10, 20]):
+def evaluate_false_flag_attacks_partial_evidence(saved_data, top_x_values=[1, 5, 10, 20]):
     """PARTIAL EVIDENCE: 30/70 mix + volume reduction"""
     print("\n" + "="*80)
     print("FALSE-FLAG: 30/70 MIX + PARTIAL VOLUME (~33% reduction)")

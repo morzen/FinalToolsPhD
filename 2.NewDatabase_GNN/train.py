@@ -237,24 +237,28 @@ class GNNDataProcessor:
         graph_info = {
             "num_apts": num_apts,
             "apt_to_idx": apt_to_idx,
+
             "technique_to_idx": technique_to_idx,
             "software_to_idx": software_to_idx,
             "capec_to_idx": capec_to_idx,
             "cwe_to_idx": cwe_to_idx,
             "cve_to_idx": cve_to_idx,
             "pulse_to_idx": pulse_to_idx,
+
             "technique_offset": technique_offset,
             "software_offset": software_offset,
             "capec_offset": capec_offset,
             "cwe_offset": cwe_offset,
             "cve_offset": cve_offset,
             "pulse_offset": pulse_offset,
+
             "num_techniques": num_techniques,
             "num_software": num_software,
             "num_capec": num_capec,
             "num_cwe": num_cwe,
             "num_cve": num_cve,
             "num_pulse": num_pulse,
+
             "feature_weights": GNNConfig.FEATURE_WEIGHTS.copy(),
         }
 

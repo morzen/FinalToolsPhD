@@ -69,7 +69,7 @@ class EfficientXGBoostPredictor:
     
     def find_similar_apts(self, features, top_k=5):
         """Find most similar APTs to given features"""
-        if features[0] == -1 and features[1] == -1 and features[2] == -1:
+        if features[0] == -1 and features[1] == -1 and features[2] == -1 and features[3] == -1 and features[4] == -1 and features[5] == -1:
             return []
             
         probabilities = self.model.predict_proba([features])[0]
@@ -346,7 +346,7 @@ def query_apt_similarity_efficient(evidence):
     
     print(f" Query features: Techniques={query_features[0]}, Software={query_features[1]}, CAPEC={query_features[2]}, CWE={query_features[3]}, CVE={query_features[4]}, Pulse={query_features[5]}")
     
-    if query_features[0] == -1 and query_features[1] == -1 and query_features[2] == -1:
+    if query_features[0] == -1 and query_features[1] == -1 and query_features[2] == -1 and query_features[3] == -1 and query_features[4] == -1 and query_features[5] == -1:
         print("⚠  WARNING: No valid evidence features found!")
         return [], {}
     
@@ -605,25 +605,29 @@ def analyze_feature_matching_classification(encoded_evidence, results, profiles)
                 'cwe_score': cwe_score,
                 'cve_score': cve_score,
                 'pulse_score': pulse_score,
+
                 'tech_matches': tech_matches,
                 'soft_matches': soft_matches,
                 'capec_matches': capec_matches,
                 'cwe_matches': cwe_matches,
                 'cve_matches': cve_matches,
                 'pulse_matches': pulse_matches,
+
                 'tech_evidence_coverage': tech_evidence_coverage,
                 'soft_evidence_coverage': soft_evidence_coverage,
                 'capec_evidence_coverage': capec_evidence_coverage,
                 'cwe_evidence_coverage': cwe_evidence_coverage,
                 'cve_evidence_coverage': cve_evidence_coverage,
                 'pulse_evidence_coverage': pulse_evidence_coverage,
+
                 'tech_profile_coverage': tech_profile_coverage,
                 'soft_profile_coverage': soft_profile_coverage,
                 'capec_profile_coverage': capec_profile_coverage,
                 'cwe_profile_coverage': cwe_profile_coverage,
                 'cve_profile_coverage': cve_profile_coverage,
                 'pulse_profile_coverage': pulse_profile_coverage,
-                'total_matches': tech_matches + soft_matches + cve_matches
+
+                'total_matches': tech_matches + soft_matches + capec_matches + cwe_matches + cve_matches + pulse_matches
             })
     
     # TABLE 1: TOP 5 TTP MATCHING
@@ -759,8 +763,11 @@ def analyze_feature_matching_classification(encoded_evidence, results, profiles)
         distinctive = "CWE"
     elif max_avg == avg_cve:
         distinctive = "CVE"
-    else:
+    elif max_avg == avg_pulse:
         distinctive = "PULSE"
+    else:
+        print("most disinstictive feature error no planed")
+        pass
     
     print(f"Most distinctive feature: {distinctive}")
     

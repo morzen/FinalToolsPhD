@@ -99,7 +99,6 @@ def analyze_feature_matching_classification(encoded_evidence, results, apt_profi
                 'cve_evidence_coverage': cve_evidence_coverage,
                 'pulse_evidence_coverage': pulse_evidence_coverage,
 
-
                 'tech_profile_coverage': tech_profile_coverage,
                 'soft_profile_coverage': soft_profile_coverage,
                 'capec_profile_coverage': capec_profile_coverage,

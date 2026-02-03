@@ -15,7 +15,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
         self.hidden_dim = hidden_dim
         
         # Feature embedding layers
-        self.technique_embed = nn.Embedding(10000, hidden_dim)
+        self.techniques_embed = nn.Embedding(10000, hidden_dim)
         self.software_embed = nn.Embedding(10000, hidden_dim)
         self.capec_embed = nn.Embedding(10000, hidden_dim)
         self.cwe_embed = nn.Embedding(10000, hidden_dim)
@@ -59,7 +59,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
 
     def init_weights(self):
         """Initialize weights for embeddings and linear layers"""
-        for embed in [self.technique_embed, self.software_embed, self.capec_embed, self.cwe_embed, self.cve_embed, self.pulse_embed]:
+        for embed in [self.techniques_embed, self.software_embed, self.capec_embed, self.cwe_embed, self.cve_embed, self.pulse_embed]:
             nn.init.xavier_uniform_(embed.weight)
         
         for net in self.attention_nets.values():
@@ -79,7 +79,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
         feature_types = ['technique', 'software', 'capec', 'cwe', 'cve', 'pulse']
         
         for feat_type in feature_types:
-            dict_key = feat_type + 's' if feat_type != 'software' else feat_type
+            dict_key = feat_type
             apt_features = set(apt_dict.get(dict_key, []))
             evidence_features = set(evidence_dict.get(dict_key, []))
             
@@ -119,7 +119,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
         feature_types = ['technique', 'software', 'capec', 'cwe', 'cve', 'pulse']
         
         for i, feat_type in enumerate(feature_types):
-            dict_key = feat_type + 's' if feat_type != 'software' else feat_type
+            dict_key = feat_type
             feat = x_dict.get(dict_key, [])
             
             if len(feat) > 0:
@@ -174,7 +174,7 @@ def calculate_similarities(model, apt_profiles, evidence_features, apt_ids):
     with torch.no_grad():
         for apt_name in apt_ids:
             apt_features = {
-                'techniques': apt_profiles[apt_name]['techniques'],
+                'technique': apt_profiles[apt_name]['technique'],
                 'software': apt_profiles[apt_name]['software'],
                 'capec': apt_profiles[apt_name]['capec'],
                 'cwe': apt_profiles[apt_name]['cwe'],
@@ -198,7 +198,7 @@ def generate_cross_similarity_matrix(model, apt_profiles, apt_ids):
         for i in range(num_apts):
             apt1_name = apt_ids[i]
             apt1_features = {
-                'techniques': apt_profiles[apt1_name]['techniques'],
+                'technique': apt_profiles[apt1_name]['technique'],
                 'software': apt_profiles[apt1_name]['software'],
                 'capec': apt_profiles[apt1_name]['capec'],
                 'cwe': apt_profiles[apt1_name]['cwe'],
@@ -209,7 +209,7 @@ def generate_cross_similarity_matrix(model, apt_profiles, apt_ids):
             for j in range(i, num_apts):  # Only compute upper triangle to save computation
                 apt2_name = apt_ids[j]
                 apt2_features = {
-                    'techniques': apt_profiles[apt2_name]['techniques'],
+                    'technique': apt_profiles[apt2_name]['technique'],
                     'software': apt_profiles[apt2_name]['software'],
                     'capec': apt_profiles[apt2_name]['capec'],
                     'cwe': apt_profiles[apt2_name]['cwe'],
@@ -346,7 +346,7 @@ def evaluate_profile_division(model, apt_profiles, apt_name_dict, df_mapping, ap
         # Create evidence with divided data for each feature type
         divided_evidence = {}
         
-        for feature_type, evidence_key in [('techniques', 'techniques_str'),
+        for feature_type, evidence_key in [('technique', 'techniques_str'),
                                          ('software', 'software_str'), ('capec', 'CAPEC_ID'),
                                          ('cwe', 'CWE_ID'), ('cve', 'CVE_ID'), ('pulse', 'Pulse_ID'),]:
             
@@ -357,7 +357,7 @@ def evaluate_profile_division(model, apt_profiles, apt_name_dict, df_mapping, ap
                 divided_features = feature_list[:division_size]
                 
                 # Convert encoded features back to original format for sanitization
-                if feature_type == 'techniques':
+                if feature_type == 'technique':
                     mapping = dict(zip(df_mapping['techniques_Encoded'], df_mapping['techniques_Origin']))
                     divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
                 elif feature_type == 'software':
@@ -383,7 +383,7 @@ def evaluate_profile_division(model, apt_profiles, apt_name_dict, df_mapping, ap
         
         # Prepare evidence features
         evidence_features = {
-            'techniques': encoded_evidence.get('techniques', []),
+            'technique': encoded_evidence.get('technique', []),
             'software': encoded_evidence.get('software', []),
             'capec': encoded_evidence.get('capec', []),
             'cwe': encoded_evidence.get('cwe', []),

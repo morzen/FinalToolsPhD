@@ -13,7 +13,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
         self.hidden_dim = hidden_dim
         
         # Feature embedding layers
-        self.technique_embed = nn.Embedding(10000, hidden_dim)
+        self.techniques_embed = nn.Embedding(10000, hidden_dim)
         self.software_embed = nn.Embedding(10000, hidden_dim)
         self.capec_embed = nn.Embedding(10000, hidden_dim)
         self.cwe_embed = nn.Embedding(10000, hidden_dim)
@@ -57,7 +57,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
 
     def init_weights(self):
         """Initialize weights for embeddings and linear layers"""
-        for embed in [self.technique_embed, self.software_embed, self.cve_embed]:
+        for embed in [self.techniques_embed, self.software_embed, self.cve_embed]:
             nn.init.xavier_uniform_(embed.weight)
         
         for net in self.attention_nets.values():
@@ -77,7 +77,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
         feature_types = ['technique', 'software', 'capec', 'cwe', 'cve', 'pulse']
         
         for feat_type in feature_types:
-            dict_key = feat_type + 's' if feat_type != 'software' else feat_type
+            dict_key = feat_type
             apt_features = set(apt_dict.get(dict_key, []))
             evidence_features = set(evidence_dict.get(dict_key, []))
             
@@ -117,7 +117,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
         feature_types = ['technique', 'software', 'capec', 'cwe', 'cve', 'pulse']
         
         for i, feat_type in enumerate(feature_types):
-            dict_key = feat_type + 's' if feat_type != 'software' else feat_type
+            dict_key = feat_type
             feat = x_dict.get(dict_key, [])
             
             if len(feat) > 0:
@@ -144,7 +144,7 @@ def analyze_feature_matching_classification(encoded_evidence, results, apt_profi
     print("="*80)
     
     # Prepare feature matching breakdown
-    techniques = encoded_evidence.get('techniques', [])
+    technique = encoded_evidence.get('technique', [])
     software = encoded_evidence.get('software', [])
     capec = encoded_evidence.get('capec', [])
     cwe = encoded_evidence.get('cwe', [])
@@ -172,7 +172,7 @@ def analyze_feature_matching_classification(encoded_evidence, results, apt_profi
             profile = apt_profiles[apt_key]
             
             # Calculate individual feature matches
-            tech_matches = len(set(techniques) & set(profile.get('techniques', [])))
+            tech_matches = len(set(technique) & set(profile.get('technique', [])))
             soft_matches = len(set(software) & set(profile.get('software', [])))
             capec_matches = len(set(capec) & set(profile.get('capec', [])))
             cwe_matches = len(set(cwe) & set(profile.get('cwe', [])))
@@ -181,7 +181,7 @@ def analyze_feature_matching_classification(encoded_evidence, results, apt_profi
             
             # Calculate normalized scores (0-1)
             # Evidence coverage: how much of the evidence is covered by the APT profile
-            tech_evidence_coverage = tech_matches / max(1, len(techniques))
+            tech_evidence_coverage = tech_matches / max(1, len(technique))
             soft_evidence_coverage = soft_matches / max(1, len(software))
             capec_evidence_coverage = capec_matches / max(1, len(capec))
             cwe_evidence_coverage = cwe_matches / max(1, len(cwe))
@@ -189,7 +189,7 @@ def analyze_feature_matching_classification(encoded_evidence, results, apt_profi
             pulse_evidence_coverage = pulse_matches / max(1, len(pulse))
             
             # Profile coverage: how much of the APT profile matches the evidence
-            tech_profile_coverage = tech_matches / max(1, len(profile.get('techniques', [])))
+            tech_profile_coverage = tech_matches / max(1, len(profile.get('technique', [])))
             soft_profile_coverage = soft_matches / max(1, len(profile.get('software', [])))
             capec_profile_coverage = capec_matches / max(1, len(profile.get('capec', [])))
             cwe_profile_coverage = cwe_matches / max(1, len(profile.get('cwe', [])))
@@ -255,10 +255,10 @@ def analyze_feature_matching_classification(encoded_evidence, results, apt_profi
     for i, score in enumerate(ttp_sorted, 1):
         apt_key = score['apt_key']
         profile = apt_profiles[apt_key]
-        total_techniques = len(profile.get('techniques', []))
+        total_technique = len(profile.get('technique', []))
         row = f"{i:<4} {score['apt_name']:<30} {score['tech_score']:.4f}    " \
-              f"{score['tech_matches']:>2}/{len(techniques):<2} ({score['tech_evidence_coverage']:.3f})  " \
-              f"{score['tech_matches']:>2}/{total_techniques:<3} ({score['tech_profile_coverage']:.3f})  " \
+              f"{score['tech_matches']:>2}/{len(technique):<2} ({score['tech_evidence_coverage']:.3f})  " \
+              f"{score['tech_matches']:>2}/{total_technique:<3} ({score['tech_profile_coverage']:.3f})  " \
               f"{score['tech_score']:.4f}"
         print(row)
     
@@ -433,7 +433,7 @@ def analyze_feature_matching_classification(encoded_evidence, results, apt_profi
 def print_mil_results_table(results, encoded_evidence, apt_profiles, apt_name_dict):
     """Print results table for MIL model"""
     print("\n QUERY EVIDENCE:")
-    print(f"   Techniques: {len(encoded_evidence.get('techniques', []))} items")
+    print(f"   technique: {len(encoded_evidence.get('technique', []))} items")
     print(f"   Software: {len(encoded_evidence.get('software', []))} items")
     print(f"   CAPEC: {len(encoded_evidence.get('capec', []))} items")
     print(f"   cwe: {len(encoded_evidence.get('cwe', []))} items")
@@ -456,13 +456,13 @@ def print_mil_results_table(results, encoded_evidence, apt_profiles, apt_name_di
             apt_name = apt_name[:31] + "..."
         
         # Get profile information
-        total_matches = result['techniques'] + result['software'] + result['capec'] + result['cwe'] + result['cve'] + result['pulse']
+        total_matches = result['technique'] + result['software'] + result['capec'] + result['cwe'] + result['cve'] + result['pulse']
         
         # Find profile for this APT
         profile_info = ""
         for apt_key, profile in apt_profiles.items():
             if apt_name_dict[profile['encoded_id']] == result['APT']:
-                tech_count = len(profile.get('techniques', []))
+                tech_count = len(profile.get('technique', []))
                 soft_count = len(profile.get('software', []))
                 capec_count = len(profile.get('capec', []))
                 cwe_count = len(profile.get('cwe', []))
@@ -472,7 +472,7 @@ def print_mil_results_table(results, encoded_evidence, apt_profiles, apt_name_di
                 break
         
         row = (f"{result['Rank']:<4} {apt_name:<35} {result['Score']:.4f}    "
-               f"{result['techniques']}/{len(encoded_evidence.get('techniques', [])):<7} "
+               f"{result['technique']}/{len(encoded_evidence.get('technique', [])):<7} "
                f"{result['software']}/{len(encoded_evidence.get('software', [])):<7} "
                f"{result['capec']}/{len(encoded_evidence.get('capec', [])):<7} "
                f"{result['cwe']}/{len(encoded_evidence.get('cwe', [])):<7} "
@@ -518,7 +518,7 @@ def sanitize_evidence(evidence, df_mapping):
     missing = {}
     
     column_mapping = {
-        'techniques': ('techniques_Origin', 'techniques_Encoded'),
+        'technique': ('techniques_Origin', 'techniques_Encoded'),
         'software': ('software_Origin', 'software_Encoded'),
         'capec': ('CAPEC_ID_Origin', 'CAPEC_ID_Encoded'),
         'cwe': ('CWE_ID_Origin', 'CWE_ID_Encoded'),
@@ -560,7 +560,7 @@ def translate_to_encoded(evidence, df_mapping):
     encoded_evidence = {}
     
     column_mapping = {
-        'techniques': ('techniques_Encoded', 'techniques'),
+        'technique': ('techniques_Encoded', 'technique'),
         'software': ('software_Encoded', 'software'),
         'capec': ('CAPEC_ID_Encoded', 'capec'),
         'cwe': ('CWE_ID_Encoded', 'cwe'),
@@ -589,7 +589,7 @@ def calculate_similarities(model, apt_profiles, evidence_features, apt_ids):
     with torch.no_grad():
         for apt_name in apt_ids:
             apt_features = {
-                'techniques': apt_profiles[apt_name]['techniques'],
+                'technique': apt_profiles[apt_name]['technique'],
                 'software': apt_profiles[apt_name]['software'],
                 'capec': apt_profiles[apt_name]['capec'],
                 'cwe': apt_profiles[apt_name]['cwe'],
@@ -613,7 +613,7 @@ def process_custom_evidence(evidence, model, apt_profiles, apt_name_dict, df_map
     
     # Prepare evidence features
     evidence_features = {
-        'techniques': encoded_evidence.get('techniques', []),
+        'technique': encoded_evidence.get('technique', []),
         'software': encoded_evidence.get('software', []),
         'capec': encoded_evidence.get('capec', []),
         'cwe': encoded_evidence.get('cwe', []),
@@ -633,7 +633,7 @@ def process_custom_evidence(evidence, model, apt_profiles, apt_name_dict, df_map
         apt_data = apt_profiles[apt_name]
         
         common_features = {
-            'techniques': len(set(encoded_evidence.get('techniques', [])) & set(apt_data['techniques'])),
+            'technique': len(set(encoded_evidence.get('technique', [])) & set(apt_data['technique'])),
             'software': len(set(encoded_evidence.get('software', [])) & set(apt_data['software'])),
             'capec': len(set(encoded_evidence.get('capec', [])) & set(apt_data['capec'])),
             'cwe': len(set(encoded_evidence.get('cwe', [])) & set(apt_data['cwe'])),
@@ -660,7 +660,7 @@ def main():
     
     # Define your evidence here (APT29 example - replace with your own evidence)
     evidence = {
-         'techniques': ['T1001.002', 'T1003.002'],
+         'technique': ['T1001.002', 'T1003.002'],
          'software': ['S0002', 'S0029', 'S0037'],
          'capec': ['CAPEC-127', 'CAPEC-150'],
          'cwe': ['CWE-1021', 'CWE-113'],

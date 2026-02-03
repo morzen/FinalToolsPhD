@@ -18,7 +18,7 @@ import matplotlib.colors as mcolors
 warnings.filterwarnings('ignore')
 
 class APTGNN(torch.nn.Module):
-    def __init__(self, in_channels, hidden_dim=128, out_dim=128):
+    def __init__(self, in_channels, hidden_dim=256, out_dim=256):
         super().__init__()
         self.conv1 = GCNConv(in_channels, hidden_dim)
         self.conv2 = GCNConv(hidden_dim, out_dim)
@@ -291,7 +291,7 @@ def analyze_results(results, scenario="FULL"):
     print(f"FALSE-FLAG RESULTS - GNN 30/70 MIX ({scenario})")
     print("=" * 80)
     
-    topx_values = [1, 3, 5, 10, 20]
+    topx_values = [1, 5, 10, 20]
     for top_x in topx_values:
         attacker_detected = 0
         mimicked_deceived = 0

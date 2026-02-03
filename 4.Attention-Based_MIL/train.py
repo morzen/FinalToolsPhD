@@ -85,7 +85,7 @@ class AttentionMILDataLoader:
         print("\nCreating APT profiles...")
         
         profiles = {}
-        feature_types = ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']
+        feature_types = ['technique', 'software', 'capec', 'cwe', 'cve', 'pulse']
         
         for _, row in self.df_encoded.iterrows():
             apt_encoded = row['APTname']
@@ -94,7 +94,7 @@ class AttentionMILDataLoader:
             if apt_name not in profiles:
                 profiles[apt_name] = {
                     'encoded_id': apt_encoded,
-                    'techniques': set(),
+                    'technique': set(),
                     'software': set(),
                     'capec': set(),
                     'cwe': set(),
@@ -103,7 +103,7 @@ class AttentionMILDataLoader:
                 }
             
             # Add features if present
-            self._add_feature(profiles[apt_name], 'techniques', row['techniques_str'])
+            self._add_feature(profiles[apt_name], 'technique', row['technique_str'])
             self._add_feature(profiles[apt_name], 'software', row['software_str'])
             self._add_feature(profiles[apt_name], 'capec', row['CAPEC_ID'])
             self._add_feature(profiles[apt_name], 'cwe', row['CWE_ID'])
@@ -132,7 +132,7 @@ class AttentionMILDataLoader:
         print("\nProfile Statistics:")
         print("=" * 50)
         
-        feature_types = ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']
+        feature_types = ['technique', 'software', 'capec', 'cwe', 'cve', 'pulse']
         stats = {ft: 0 for ft in feature_types}
         
         for profile in profiles.values():
@@ -238,7 +238,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):  # KEEP THE ORIGINAL NAME
         feature_types = ['technique', 'software', 'capec', 'cwe', 'cve', 'pulse']
         
         for feat_type in feature_types:
-            dict_key = feat_type + 's' if feat_type != 'software' else feat_type
+            dict_key = feat_type
             apt_features = set(apt_dict.get(dict_key, []))
             evidence_features = set(evidence_dict.get(dict_key, []))
             
@@ -280,7 +280,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):  # KEEP THE ORIGINAL NAME
         feature_types = ['technique', 'software', 'capec', 'cwe', 'cve', 'pulse']
         
         for i, feat_type in enumerate(feature_types):
-            dict_key = feat_type + 's' if feat_type != 'software' else feat_type
+            dict_key = feat_type 
             feat = x_dict.get(dict_key, [])
             
             if len(feat) > 0:

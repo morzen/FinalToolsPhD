@@ -151,12 +151,14 @@ def query_siamese_with_features(model, apt_embeddings, encoded_evidence, apt_ids
             'apt_id': apt_id,
             'apt_name': apt_name,
             'similarity': similarities[idx],
+
             'tech_matches': tech_matches,
             'soft_matches': soft_matches, 
             'capec_matches': capec_matches,
             'cwe_matches': cwe_matches,
             'cve_matches': cve_matches,
             'pulse_matches': pulse_matches,
+
             'total_matches': total_matches,
             'profile_size': profile_size,
             'profile_total': len(profile.get('techniques',[])) + len(profile.get('software',[])) + len(profile.get('capec',[])) + len(profile.get('cwe',[])) + len(profile.get('cve',[])) + len(profile.get('pulse',[]))
@@ -262,18 +264,21 @@ def analyze_feature_matching(results, encoded_evidence, profiles):
             'cwe_score': cwe_score,
             'cve_score': cve_score,
             'pulse_score': pulse_score,
+
             'tech_matches': tech_matches,
             'soft_matches': soft_matches,
             'capec_matches': capec_matches,
             'cwe_matches': cwe_matches,
             'cve_matches': cve_matches,
             'pulse_matches': pulse_matches,
+
             'tech_evid_cov': tech_matches/max(1,tech_len),
             'soft_evid_cov': soft_matches/max(1,soft_len),
             'capec_evid_cov': capec_matches/max(1,capec_len),
             'cwe_evid_cov': cwe_matches/max(1,cwe_len),
             'cve_evid_cov': cve_matches/max(1,cve_len),
             'pulse_evid_cov': pulse_matches/max(1,pulse_len),
+            
             'tech_prof_cov': tech_matches/max(1,len(profile.get('techniques',[]))),
             'soft_prof_cov': soft_matches/max(1,len(profile.get('software',[]))),
             'capec_prof_cov': capec_matches/max(1,len(profile.get('capec',[]))),
