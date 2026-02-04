@@ -1,0 +1,99 @@
+ EFFICIENT XGBOOST APT SIMILARITY MODEL EVALUATION
+============================================================
+ LOADING EFFICIENT XGBOOST MODEL...
+ Loaded efficient_apt_similarity.pkl
+ Efficient XGBoost model loaded successfully!
+   APTs in training: 180
+   Training records: 603176
+
+================================================================================
+CREATING EFFICIENT XGBOOST SIMILARITY MATRIX
+================================================================================
+Creating similarity matrix using efficient XGBoost model...
+ LOADING APT PROFILES FROM DATA...
+ Loaded profiles for 181 APTs
+Computing pairwise similarities...
+  Processed 0/181 APTs...
+  Processed 20/181 APTs...
+  Processed 40/181 APTs...
+  Processed 60/181 APTs...
+  Processed 80/181 APTs...
+  Processed 100/181 APTs...
+  Processed 120/181 APTs...
+  Processed 140/181 APTs...
+  Processed 160/181 APTs...
+  Processed 180/181 APTs...
+Similarity DataFrame sample (first 5x5):
+             Axiom    Moafee   Cleaver  Ke3chang     APT12
+Axiom     1.000000  0.001796  0.014330  0.066790  0.159052
+Moafee    0.001796  1.000000  0.002650  0.018234  0.006251
+Cleaver   0.014330  0.002650  1.000000  0.123309  0.125509
+Ke3chang  0.066790  0.018234  0.123309  1.000000  0.144382
+APT12     0.159052  0.006251  0.125509  0.144382  1.000000
+
+Matrix shape: (181, 181)
+
+Plotting Efficient XGBoost similarity heatmap...
+
+================================================================================
+EVALUATING EFFICIENT XGBOOST SIMILARITY MATRIX (FULL DATA)
+================================================================================
+
+Settings: Top 1 (Full Data)
+Success/Failure: 177/4 Total: 181
+Success rate: 97.79%
+
+Settings: Top 5 (Full Data)
+Success/Failure: 181/0 Total: 181
+Success rate: 100.00%
+
+Settings: Top 10 (Full Data)
+Success/Failure: 181/0 Total: 181
+Success rate: 100.00%
+
+Settings: Top 20 (Full Data)
+Success/Failure: 181/0 Total: 181
+Success rate: 100.00%
+
+================================================================================
+EVALUATING EFFICIENT XGBOOST PROFILE DIVISION PERFORMANCE
+================================================================================
+ LOADING APT PROFILES FROM DATA...
+ Loaded profiles for 181 APTs
+
+Evaluating Efficient XGBoost with divider: 2 (using 50.0% of profile data)
+  Processing 0/181 APTs...
+  Processing 20/181 APTs...
+  Processing 40/181 APTs...
+  Processing 60/181 APTs...
+  Processing 80/181 APTs...
+  Processing 100/181 APTs...
+  Processing 120/181 APTs...
+  Processing 140/181 APTs...
+  Processing 160/181 APTs...
+  Processing 180/181 APTs...
+
+Settings: Top 1, Divider: 2
+Success/Failure: 31/150 Total: 181
+Success rate: 17.13%
+
+Settings: Top 5, Divider: 2
+Success/Failure: 47/134 Total: 181
+Success rate: 25.97%
+
+Settings: Top 10, Divider: 2
+Success/Failure: 55/126 Total: 181
+Success rate: 30.39%
+
+Settings: Top 20, Divider: 2
+Success/Failure: 66/115 Total: 181
+Success rate: 36.46%
+
+==================================================
+RESOURCE USAGE REPORT
+==================================================
+Execution Time: 314.21 seconds
+Memory Usage: 914.06 MB
+Current Memory: 956.39 MB
+CPU Usage: 0.0%
+System CPU: 19.2%

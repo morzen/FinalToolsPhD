@@ -1,0 +1,72 @@
+Model loaded successfully
+Creating similarity matrix for all APTs...
+Similarity DataFrame sample (first 5x5):
+          Axiom  Moafee  Cleaver  Ke3chang  APT12
+Axiom       1.0    0.00     0.00       0.0    0.0
+Moafee      0.0    1.00     0.05       0.0    0.0
+Cleaver     0.0    0.05     1.00       0.0    0.0
+Ke3chang    0.0    0.00     0.00       1.0    0.0
+APT12       0.0    0.00     0.00       0.0    1.0
+
+Matrix shape: (181, 181)
+Plotting similarity heatmap...
+
+================================================================================
+SIMILARITY MATRIX EVALUATION (NO DATA DIVISION)
+================================================================================
+Using complete similarity matrix without data division...
+
+settings: Topx: 1
+Random Forest for this set had a success failure rate of 
+181/0 Total: 181
+in percentage success rate: 100.0
+
+settings: Topx: 5
+Random Forest for this set had a success failure rate of 
+181/0 Total: 181
+in percentage success rate: 100.0
+
+settings: Topx: 10
+Random Forest for this set had a success failure rate of 
+181/0 Total: 181
+in percentage success rate: 100.0
+
+settings: Topx: 20
+Random Forest for this set had a success failure rate of 
+181/0 Total: 181
+in percentage success rate: 100.0
+
+================================================================================
+PROFILE DIVISION EVALUATION
+================================================================================
+
+Evaluating with divider: 2 (using 50.0% of profile data)
+
+settings: Topx: 1 Divider: 2
+Random Forest for this set had a success failure rate of 
+46/135 Total: 181
+in percentage success rate: 25.41436464088398
+
+settings: Topx: 5 Divider: 2
+Random Forest for this set had a success failure rate of 
+62/119 Total: 181
+in percentage success rate: 34.25414364640884
+
+settings: Topx: 10 Divider: 2
+Random Forest for this set had a success failure rate of 
+70/111 Total: 181
+in percentage success rate: 38.67403314917127
+
+settings: Topx: 20 Divider: 2
+Random Forest for this set had a success failure rate of 
+90/91 Total: 181
+in percentage success rate: 49.72375690607735
+
+==================================================
+RESOURCE USAGE REPORT
+==================================================
+Execution Time: 258.80 seconds
+Memory Usage: 802.70 MB
+Current Memory: 844.58 MB
+CPU Usage: 0.0%
+System CPU: 47.5%

@@ -1,0 +1,94 @@
+ GNN APT SIMILARITY MODEL EVALUATION
+============================================================
+ LOADING TRAINED MODEL...
+ Model loaded successfully!
+   APTs: 181
+   Embedding dimension: 128
+   Profiles: 181
+
+================================================================================
+TESTING SAMPLE QUERIES
+================================================================================
+Testing with evidence:
+  Techniques: ['faketest', 'T1001.002', 'T1003.002']
+  Software: ['faketest', 'S0002', 'S0029', 'S0037']
+  CAPEC: ['faketest', 'CAPEC-127', 'CAPEC-150']
+  cwe: ['faketest', 'CWE-1021', 'CWE-113']
+  cve: ['faketest', 'CVE-2012-0433', 'CVE-2013-10007']
+  Pulse: ['faketest', '5c88e255d5fbbe1cb7c54534', '5cb741fb29d3ac01c1ac01ea']
+
+Top 5 most similar APTs:
+  1. Andariel: 0.9899
+  2. Higaisa: 0.9899
+  3. Akira: 0.9885
+  4. BlackTech: 0.9873
+  5. HCINT: 0.9862
+
+================================================================================
+CREATING SIMILARITY MATRIX
+================================================================================
+Creating similarity matrix using trained GNN model...
+Similarity DataFrame sample (first 5x5):
+                          "No Problems" - OTX 2096  ...    Agrius
+"No Problems" - OTX 2096                  1.000000  ...  0.911070
+2MISP                                     0.979072  ...  0.970888
+aavega                                    0.532883  ...  0.796235
+admin@338                                 0.673729  ...  0.917927
+Agrius                                    0.911070  ...  1.000000
+
+[5 rows x 5 columns]
+
+Matrix shape: (181, 181)
+
+Plotting similarity heatmap...
+
+================================================================================
+EVALUATING SIMILARITY MATRIX (FULL DATA)
+================================================================================
+
+Settings: Top 1 (Full Data)
+Success/Failure: 181/0 Total: 181
+Success rate: 100.00%
+
+Settings: Top 5 (Full Data)
+Success/Failure: 181/0 Total: 181
+Success rate: 100.00%
+
+Settings: Top 10 (Full Data)
+Success/Failure: 181/0 Total: 181
+Success rate: 100.00%
+
+Settings: Top 20 (Full Data)
+Success/Failure: 181/0 Total: 181
+Success rate: 100.00%
+
+================================================================================
+EVALUATING PROFILE DIVISION PERFORMANCE
+================================================================================
+
+Evaluating with divider: 2 (using 50.0% of profile data)
+
+Settings: Top 1, Divider: 2
+Success/Failure: 4/177 Total: 181
+Success rate: 2.21%
+
+Settings: Top 5, Divider: 2
+Success/Failure: 10/171 Total: 181
+Success rate: 5.52%
+
+Settings: Top 10, Divider: 2
+Success/Failure: 21/160 Total: 181
+Success rate: 11.60%
+
+Settings: Top 20, Divider: 2
+Success/Failure: 34/147 Total: 181
+Success rate: 18.78%
+
+==================================================
+RESOURCE USAGE REPORT
+==================================================
+Execution Time: 76.93 seconds
+Memory Usage: 1307.88 MB
+Current Memory: 1350.22 MB
+CPU Usage: 0.0%
+System CPU: 58.8%

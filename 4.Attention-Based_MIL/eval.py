@@ -71,7 +71,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
         self.hidden_dim = hidden_dim
         
         # Feature embedding layers
-        self.techniques_embed = nn.Embedding(10000, hidden_dim)
+        self.technique_embed = nn.Embedding(10000, hidden_dim)
         self.software_embed = nn.Embedding(10000, hidden_dim)
         self.capec_embed = nn.Embedding(10000, hidden_dim)
         self.cwe_embed = nn.Embedding(10000, hidden_dim)
@@ -115,7 +115,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
 
     def init_weights(self):
         """Initialize weights for embeddings and linear layers"""
-        for embed in [self.techniques_embed, self.software_embed, self.capec_embed, self.cwe_embed, self.cve_embed, self.pulse_embed]:
+        for embed in [self.technique_embed, self.software_embed, self.capec_embed, self.cwe_embed, self.cve_embed, self.pulse_embed]:
             nn.init.xavier_uniform_(embed.weight)
         
         for net in self.attention_nets.values():

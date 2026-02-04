@@ -148,7 +148,7 @@ class AttentionMILDataLoader:
                 }
             
             # Add features if present
-            self._add_feature(profiles[apt_name], 'technique', row['technique_str'])
+            self._add_feature(profiles[apt_name], 'technique', row['techniques_str'])
             self._add_feature(profiles[apt_name], 'software', row['software_str'])
             self._add_feature(profiles[apt_name], 'capec', row['CAPEC_ID'])
             self._add_feature(profiles[apt_name], 'cwe', row['CWE_ID'])
