@@ -15,23 +15,23 @@ Computing cross-similarity matrix for all APT pairs...
 Cross-similarity matrix computation completed!
 Similarity DataFrame sample (first 5x5):
              Axiom    Moafee   Cleaver  Ke3chang     APT12
-Axiom     0.997902  0.957544  0.500588  0.501705  0.500447
-Moafee    0.957544  0.992306  0.500465  0.503277  0.500369
-Cleaver   0.500588  0.500465  0.997978  0.938580  0.500534
-Ke3chang  0.501705  0.503277  0.938580  0.997634  0.500760
-APT12     0.500447  0.500369  0.500534  0.500760  0.997831
+Axiom     0.999934  0.998390  0.500799  0.500376  0.500679
+Moafee    0.998390  0.999627  0.500410  0.508927  0.500414
+Cleaver   0.500799  0.500410  0.999926  0.759061  0.500601
+Ke3chang  0.500376  0.508927  0.759061  0.999949  0.500540
+APT12     0.500679  0.500414  0.500601  0.500540  0.999944
 
 Matrix shape: (181, 181)
 
 Plotting similarity heatmap...
 Data statistics:
-Min: 0.500219
-Max: 0.997978
-Range: 0.497759
-Mean: 0.523683
-Std: 0.086669
+Min: 0.500257
+Max: 0.999953
+Range: 0.499696
+Mean: 0.522857
+Std: 0.090049
 Using full color scale
-Color scale limits: 0.500219 to 0.997978
+Color scale limits: 0.500257 to 0.999953
 
 ================================================================================
 EVALUATING SIMILARITY MATRIX
@@ -39,7 +39,7 @@ EVALUATING SIMILARITY MATRIX
 
 Evaluating similarity matrix for top X matches:
 ==================================================
-Top 1: 179/181 (98.90%)
+Top 1: 175/181 (96.69%)
 Top 5: 181/181 (100.00%)
 Top 10: 181/181 (100.00%)
 Top 20: 181/181 (100.00%)
@@ -55,9 +55,9 @@ RESOURCE USAGE REPORT
 ==================================================
 Execution Time: 0.00 seconds
 Memory Usage: 0.00 MB
-Current Memory: 1074.50 MB
-CPU Usage: 1.0%
-System CPU: 21.2%
+Current Memory: 1166.88 MB
+CPU Usage: 0.7%
+System CPU: 100.0%
 
 Settings: TopX: 1 Divider: 2
 Attention MIL Model for this set had a success/failure rate of:
@@ -82,8 +82,8 @@ Success rate: 11.049723756906078%
 ==================================================
 RESOURCE USAGE REPORT
 ==================================================
-Execution Time: 202.86 seconds
-Memory Usage: 1028.94 MB
-Current Memory: 1071.27 MB
+Execution Time: 888.33 seconds
+Memory Usage: 666.06 MB
+Current Memory: 708.84 MB
 CPU Usage: 0.0%
-System CPU: 24.5%
+System CPU: 100.0%

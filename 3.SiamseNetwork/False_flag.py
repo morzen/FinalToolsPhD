@@ -89,8 +89,8 @@ class FeatureEncoder(nn.Module):
         self.cve_embed = nn.Embedding(num_cve+1, embed_per_feature)
         self.pulse_embed = nn.Embedding(num_pulse+1, embed_per_feature)
         total_embed_size = embed_per_feature * 6
-        self.fc1 = nn.Linear(total_embed_size, 64)
-        self.fc2 = nn.Linear(64, embed_dim)
+        self.fc1 = nn.Linear(total_embed_size, 256)
+        self.fc2 = nn.Linear(256, embed_dim)
         self.dropout = nn.Dropout(0.3)
         self.layer_norm = nn.LayerNorm(embed_dim)
         
