@@ -86,7 +86,7 @@ class APTGNN(torch.nn.Module):
         x = self.conv2(x, edge_index, edge_weight=edge_weight)
         return F.normalize(x, p=2, dim=-1)
 
-def load_trained_gnn_model(path="trained_apt_gnn_model.pkl"):
+def load_trained_gnn_model(path="6feat_trained_apt_gnn_model.pkl"):
     print(" LOADING ENHANCED TRAINED GNN MODEL...")
     with open(path, 'rb') as f:
         saved = pickle.load(f)

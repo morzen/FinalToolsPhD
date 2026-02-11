@@ -73,7 +73,7 @@ class SiameseConfig:
     """Configuration for Siamese Network"""
 #variable shared by all models:
     DATA_PATH = "../BaseData/EncodedData.csv"
-    MODEL_PATH = "apt_siamese_feature_model.pkl"
+    MODEL_PATH = "6feat_apt_siamese_feature_model.pkl"
 
 
 #variables share by some models:

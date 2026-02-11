@@ -68,7 +68,7 @@ class RandomForestConfig:
     """Configuration for Random Forest model"""
 #variable shared by all models:
     DATA_PATH = "../BaseData/EncodedData.csv"
-    MODEL_PATH = "apt_similarity_model.joblib"
+    MODEL_PATH = "6feat_apt_similarity_model.joblib"
 
 
 #variables share by some models:

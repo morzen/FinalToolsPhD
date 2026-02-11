@@ -61,14 +61,7 @@ from itertools import islice
 import random
 import math
 
-# Load data files
-pwd = "../BaseData/"
-df_encoded = pd.read_csv(pwd+'EncodedData.csv')
-df_mapping = pd.read_csv(pwd+'comparison_Encoded_df.csv')
 
-# Create APT name mapping
-apt_name_mapping = df_mapping[['APTnameEncoded', 'APTnameOrigin']].drop_duplicates()
-apt_name_dict = dict(zip(apt_name_mapping['APTnameEncoded'], apt_name_mapping['APTnameOrigin']))
 
 # Create APT profiles with actual names as keys
 def create_apt_profiles_with_names(df_encoded, name_mapping):
@@ -104,14 +97,7 @@ def create_apt_profiles_with_names(df_encoded, name_mapping):
     
     return profiles
 
-apt_profiles = create_apt_profiles_with_names(df_encoded, apt_name_dict)
 
-# Convert sets to lists and add counts
-for apt_name in apt_profiles:
-    profile = apt_profiles[apt_name]
-    for key in ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']:
-        profile[key] = list(profile[key])
-        profile[f'{key}_count'] = len(profile[key])
 
 # Evidence processing functions
 def sanitize_evidence(evidence, df_mapping):
@@ -220,101 +206,9 @@ def calculate_jaccard_similarity(encoded_evidence, apt_profiles, feature_weights
     
     return similarities
 
-# Feature weights for Jaccard calculation
-feature_weights = {
-    'techniques': 1.5,
-    'software': 1.3,
-    'capec': 1.0,
-    'cwe': 1.0,
-    'cve': 0.8,
-    'pulse': 0.7
-}
 
-# Evidence data (same as PSL code)
-evidence = {
-    'techniques_str': [
-        'T0865', 'T1001.003', 'T1005', 'T1008', 'T1010', 'T1012', 'T1016', 
-        'T1021.001', 'T1021.002', 'T1021.004', 'T1027.002', 'T1027.007', 
-        'T1027.013', 'T1033', 'T1036.003', 'T1036.004', 'T1036.005', 
-        'T1036.008', 'T1041', 'T1046', 'T1047', 'T1048.003', 'T1049', 
-        'T1053.005', 'T1055.001', 'T1056.001', 'T1057', 'T1059.001', 
-        'T1059.003', 'T1059.005', 'T1070', 'T1070.003', 'T1070.004', 
-        'T1070.006', 'T1071.001', 'T1074.001', 'T1078', 'T1082', 'T1083', 
-        'T1087.002', 'T1090.001', 'T1090.002', 'T1098', 'T1102.002', 
-        'T1104', 'T1105', 'T1106', 'T1110.003', 'T1124', 'T1132.001', 
-        'T1134.002', 'T1140', 'T1189', 'T1202', 'T1203', 'T1204.001', 
-        'T1204.002', 'T1218', 'T1218.005', 'T1218.010', 'T1218.011', 
-        'T1220', 'T1221', 'T1485', 'T1489', 'T1491.001', 'T1497.001', 
-        'T1497.003', 'T1505.004', 'T1529', 'T1534', 'T1542.003', 
-        'T1543.003', 'T1547.001', 'T1547.009', 'T1553.002', 'T1557.001', 
-        'T1560', 'T1560.001', 'T1560.002', 'T1560.003', 'T1561.001', 
-        'T1561.002', 'T1562.001', 'T1562.004', 'T1564.001', 'T1566.001', 
-        'T1566.002', 'T1566.003', 'T1567.002', 'T1571', 'T1573.001', 
-        'T1574.002', 'T1574.013', 'T1583.001', 'T1583.004', 'T1583.006', 
-        'T1584.001', 'T1584.004', 'T1585.001', 'T1585.002', 'T1587.001', 
-        'T1587.002', 'T1588.002', 'T1588.003', 'T1588.004', 'T1589.002', 
-        'T1591', 'T1591.004', 'T1593.001', 'T1608.001', 'T1608.002', 
-        'T1614.001', 'T1620', 'T1622', 'T1656'
-    ],
-    'software_str': [
-        'S0181', 'S0239', 'S0245', 'S0246', 'S0586', 'S0238', 'S0498', 
-        'S0520', 'S0567', 'S0665', 'S0694', 'S0376', 'S0431', 'S0180', 
-        'S0241', 'S0103', 'S0271', 'S0366', 'S0678', 'S0263', 'S0347', 
-        'S0497', 'S0584', 'S0593', 'S0364', 'S0174', 'S0108'
-    ],
-    'CAPEC_ID': [
-        'CAPEC-204', 'CAPEC-37', 'CAPEC-545', 'CAPEC-647', 'CAPEC-309', 
-        'CAPEC-561', 'CAPEC-577', 'CAPEC-165', 'CAPEC-504', 'CAPEC-543', 
-        'CAPEC-616', 'CAPEC-300', 'CAPEC-568', 'CAPEC-573', 'CAPEC-268', 
-        'CAPEC-560', 'CAPEC-70', 'CAPEC-312', 'CAPEC-313', 'CAPEC-580', 
-        'CAPEC-127', 'CAPEC-497', 'CAPEC-465', 'CAPEC-565', 'CAPEC-295', 
-        'CAPEC-196', 'CAPEC-698', 'CAPEC-163', 'CAPEC-552', 'CAPEC-478', 
-        'CAPEC-132', 'CAPEC-206', 'CAPEC-473', 'CAPEC-68', 'CAPEC-578', 
-        'CAPEC-641', 'CAPEC-640', 'CAPEC-542'
-    ],
-    'CWE_ID': [
-        'CWE-524', 'CWE-311', 'CWE-1258', 'CWE-226', 'CWE-312', 'CWE-318', 
-        'CWE-1278', 'CWE-285', 'CWE-200', 'CWE-522', 'CWE-294', 'CWE-521', 
-        'CWE-1021', 'CWE-117', 'CWE-307', 'CWE-798', 'CWE-204', 'CWE-208', 
-        'CWE-425', 'CWE-288', 'CWE-732', 'CWE-276', 'CWE-693', 'CWE-441', 
-        'CWE-384', 'CWE-664', 'CWE-829', 'CWE-451', 'CWE-284', 'CWE-59', 
-        'CWE-20', 'CWE-327', 'CWE-290', 'CWE-325', 'CWE-706', 'CWE-114'
-    ],
-    'CVE_ID': [],  # No CVE data provided in the original
-    'Pulse_ID': []  # No Pulse data provided in the original
-}
 
-# Process evidence
-clean_evidence = sanitize_evidence(evidence, df_mapping)
-encoded_evidence = translate_to_encoded(clean_evidence, df_mapping)
 
-# Calculate similarities using Jaccard
-jaccard_similarities = calculate_jaccard_similarity(encoded_evidence, apt_profiles, feature_weights)
-
-# Create ranked results
-apt_ids = list(apt_profiles.keys())
-ranked_results = sorted(zip(apt_ids, jaccard_similarities), key=lambda x: x[1], reverse=True)
-
-# Format and print results
-print("\nAPT Ranking using Jaccard Similarity:")
-print("="*110)
-print(f"{'Rank':<5} | {'APT':<30} | {'Encoded ID':<10} | {'Score':<8} | {'Techniques':<10} | {'Software':<8} | {'CAPEC':<6} | {'CWE':<4} | {'CVE':<4} | {'Pulse':<5}")
-print("-"*110)
-
-for rank, (apt_name, score) in enumerate(ranked_results, 1):
-    apt_data = apt_profiles[apt_name]
-    common_features = {
-        'techniques': len(set(encoded_evidence.get('techniques', [])) & set(apt_data['techniques'])),
-        'software': len(set(encoded_evidence.get('software', [])) & set(apt_data['software'])),
-        'capec': len(set(encoded_evidence.get('capec', [])) & set(apt_data['capec'])),
-        'cwe': len(set(encoded_evidence.get('cwe', [])) & set(apt_data['cwe'])),
-        'cve': len(set(encoded_evidence.get('cve', [])) & set(apt_data['cve'])),
-        'pulse': len(set(encoded_evidence.get('pulse', [])) & set(apt_data['pulse']))
-    }
-    
-    # Truncate long APT names to fit column width
-    display_name = (apt_name[:27] + '..') if len(apt_name) > 29 else apt_name
-    print(f"{rank:<5} | {display_name:<30} | {apt_data['encoded_id']:<10} | {score:.4f} | {common_features['techniques']:<10} | {common_features['software']:<8} | {common_features['capec']:<6} | {common_features['cwe']:<4} | {common_features['cve']:<4} | {common_features['pulse']:<5}")
 
 # ==============================================
 # SIMILARITY MATRIX GENERATION
@@ -362,69 +256,6 @@ def calculate_jaccard_matrix(apt_profiles, feature_weights):
     print("Jaccard similarity matrix computation completed!")
     return similarity_matrix
 
-# Calculate the full similarity matrix
-jaccard_similarity_matrix = calculate_jaccard_matrix(apt_profiles, feature_weights)
-
-# Get display names for APTs
-display_names = [apt_name_dict[apt_profiles[apt]['encoded_id']] for apt in apt_profiles.keys()]
-
-# ==============================================
-# VISUALIZATION
-# ==============================================
-
-# Create the heatmap
-plt.figure(figsize=(16, 14))
-sns.set(font_scale=0.7)
-
-# Create custom green-to-red colormap (reversed YlOrRd)
-from matplotlib.colors import LinearSegmentedColormap
-colors = ["red", "yellow", "green"]  # Red for low, green for high
-n_bins = 100
-cmap = LinearSegmentedColormap.from_list("red_green", colors, N=n_bins)
-
-ax = sns.heatmap(
-    jaccard_similarity_matrix,
-    cmap=cmap,
-    vmin=0,  # Minimum similarity value
-    vmax=1,  # Maximum similarity value
-    center=0.5,  # Center the colormap
-    xticklabels=display_names,
-    yticklabels=display_names,
-    annot=False,  # Don't show values to avoid clutter
-    square=True,
-    cbar_kws={'label': 'Similarity Score', 'shrink': 0.8}
-)
-
-# Adjust layout
-plt.title("APT Group Similarity Matrix (Jaccard Similarity)\nGreen = High Similarity, Red = Low Similarity", 
-          fontsize=14, fontweight='bold')
-plt.xticks(rotation=90, fontsize=8)
-plt.yticks(rotation=0, fontsize=8)
-plt.tight_layout()
-
-# Show the plot
-plt.show()
-
-# Also show a text version of the top 10x10 for verification
-print("\nText version of Jaccard similarity matrix (first 10x10):")
-print("="*90)
-print(f"{'':<20}", end="")
-for name in display_names[:10]:
-    print(f"{name[:8]:<8}", end="")
-print("\n" + "-"*90)
-
-for i in range(10):
-    print(f"{display_names[i][:20]:<20}", end="")
-    for j in range(10):
-        print(f"{jaccard_similarity_matrix[i,j]:.2f}  ", end="")
-    print()
-
-# Convert the numpy array to a DataFrame
-similarity_df = pd.DataFrame(
-    jaccard_similarity_matrix,
-    index=display_names,
-    columns=display_names
-)
 
 # ==============================================
 # EVALUATION FUNCTIONS
@@ -464,7 +295,7 @@ def evaluate_similarity_matrix(similarity_df, top_x_values=[1, 5, 10, 20]):
         
         print(f"Top {topX}: {success}/{failure} (Success rate: {(success/lengthResultDict)*100:.2f}%)")
 
-def evaluate_profile_division(apt_profiles, apt_name_dict, df_mapping, divider=2, top_x_values=[1, 5, 10, 20]):
+def evaluate_profile_division(feature_weights, apt_profiles, apt_name_dict, df_mapping, divider=2, top_x_values=[1, 5, 10, 20]):
     """Evaluate model performance with divided profile data"""
     print(f"Using {100/divider:.1f}% of profile data")
     
@@ -549,26 +380,265 @@ def evaluate_profile_division(apt_profiles, apt_name_dict, df_mapping, divider=2
         success_rate = (success / len(resultdict)) * 100
         print(f"Top {topX}: {success_rate:.1f}% success rate")
 
-# ==============================================
-# EVALUATION CALLS
-# ==============================================
-
-print("\n" + "="*80)
-print("EVALUATION WITH FULL PROFILE")
-print("="*80)
-evaluate_similarity_matrix(similarity_df)
-
-print("\n" + "="*80)
-print("EVALUATION WITH DIVIDED PROFILES")
-print("="*80)
-
-# Set your custom divider value here
-CUSTOM_DIVIDER = 2  # Change this to your desired value
-evaluate_profile_division(apt_profiles, apt_name_dict, df_mapping, divider=CUSTOM_DIVIDER)
 
 
+def hybrid_query(evidence_forhybrid):
+    # print("WENT IN ")
+    # print(list(evidence_forhybrid.keys()))
+
+    key_mapping = {
+        'techniques' : 'techniques_str',
+        'software' : 'software_str',
+        'capec' : 'CAPEC_ID',
+        'cwe' : 'CWE_ID',
+        'cve' : 'CVE_ID',
+        'pulse' : 'Pulse_ID'
+    }
+    
+    # Replace keys using mapping
+    renamed_evidence = {}
+    for old_key, new_key in key_mapping.items():
+        if old_key in evidence_forhybrid:
+            renamed_evidence[new_key] = evidence_forhybrid[old_key]
+    
+    # print(list(renamed_evidence.keys()))
+
+
+    # Load data files
+    pwd = "../BaseData/"
+    df_mapping = pd.read_csv(pwd+'comparison_Encoded_df.csv')
+    df_encoded = pd.read_csv(pwd+'EncodedData.csv')
+
+    # Create APT name mapping
+    apt_name_mapping = df_mapping[['APTnameEncoded', 'APTnameOrigin']].drop_duplicates()
+    apt_name_dict = dict(zip(apt_name_mapping['APTnameEncoded'], apt_name_mapping['APTnameOrigin']))
+
+    apt_profiles = create_apt_profiles_with_names(df_encoded, apt_name_dict)
+
+    clean_evidence = sanitize_evidence(renamed_evidence, df_mapping)
+    encoded_evidence = translate_to_encoded(clean_evidence, df_mapping)
+
+    # Feature weights for Jaccard calculation
+    feature_weights = {
+        'techniques': 1.5,
+        'software': 1.3,
+        'capec': 1.0,
+        'cwe': 1.0,
+        'cve': 0.8,
+        'pulse': 0.7
+    }
+    # Calculate similarities using Jaccard
+    jaccard_similarities = calculate_jaccard_similarity(encoded_evidence, apt_profiles, feature_weights)
+    apt_ids = list(apt_profiles.keys())
+    ranked_results = sorted(zip(apt_ids, jaccard_similarities), key=lambda x: x[1], reverse=True)
+    transformed_list = [
+    {'rank': idx + 1, 'apt_name': item[0], 'Score': item[1]} 
+    for idx, item in enumerate(ranked_results)
+    ]
+    return transformed_list
+
+def main():
+    # Load data files
+    pwd = "../BaseData/"
+    df_encoded = pd.read_csv(pwd+'EncodedData.csv')
+    df_mapping = pd.read_csv(pwd+'comparison_Encoded_df.csv')
+
+    # Create APT name mapping
+    apt_name_mapping = df_mapping[['APTnameEncoded', 'APTnameOrigin']].drop_duplicates()
+    apt_name_dict = dict(zip(apt_name_mapping['APTnameEncoded'], apt_name_mapping['APTnameOrigin']))
+
+    apt_profiles = create_apt_profiles_with_names(df_encoded, apt_name_dict)
+
+    # Convert sets to lists and add counts
+    for apt_name in apt_profiles:
+        profile = apt_profiles[apt_name]
+        for key in ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']:
+            profile[key] = list(profile[key])
+            profile[f'{key}_count'] = len(profile[key])
+
+
+        
+    # Feature weights for Jaccard calculation
+    feature_weights = {
+        'techniques': 1.5,
+        'software': 1.3,
+        'capec': 1.0,
+        'cwe': 1.0,
+        'cve': 0.8,
+        'pulse': 0.7
+    }
+
+    # Evidence data (same as PSL code)
+    evidence = {
+        'techniques_str': [
+            'T0865', 'T1001.003', 'T1005', 'T1008', 'T1010', 'T1012', 'T1016', 
+            'T1021.001', 'T1021.002', 'T1021.004', 'T1027.002', 'T1027.007', 
+            'T1027.013', 'T1033', 'T1036.003', 'T1036.004', 'T1036.005', 
+            'T1036.008', 'T1041', 'T1046', 'T1047', 'T1048.003', 'T1049', 
+            'T1053.005', 'T1055.001', 'T1056.001', 'T1057', 'T1059.001', 
+            'T1059.003', 'T1059.005', 'T1070', 'T1070.003', 'T1070.004', 
+            'T1070.006', 'T1071.001', 'T1074.001', 'T1078', 'T1082', 'T1083', 
+            'T1087.002', 'T1090.001', 'T1090.002', 'T1098', 'T1102.002', 
+            'T1104', 'T1105', 'T1106', 'T1110.003', 'T1124', 'T1132.001', 
+            'T1134.002', 'T1140', 'T1189', 'T1202', 'T1203', 'T1204.001', 
+            'T1204.002', 'T1218', 'T1218.005', 'T1218.010', 'T1218.011', 
+            'T1220', 'T1221', 'T1485', 'T1489', 'T1491.001', 'T1497.001', 
+            'T1497.003', 'T1505.004', 'T1529', 'T1534', 'T1542.003', 
+            'T1543.003', 'T1547.001', 'T1547.009', 'T1553.002', 'T1557.001', 
+            'T1560', 'T1560.001', 'T1560.002', 'T1560.003', 'T1561.001', 
+            'T1561.002', 'T1562.001', 'T1562.004', 'T1564.001', 'T1566.001', 
+            'T1566.002', 'T1566.003', 'T1567.002', 'T1571', 'T1573.001', 
+            'T1574.002', 'T1574.013', 'T1583.001', 'T1583.004', 'T1583.006', 
+            'T1584.001', 'T1584.004', 'T1585.001', 'T1585.002', 'T1587.001', 
+            'T1587.002', 'T1588.002', 'T1588.003', 'T1588.004', 'T1589.002', 
+            'T1591', 'T1591.004', 'T1593.001', 'T1608.001', 'T1608.002', 
+            'T1614.001', 'T1620', 'T1622', 'T1656'
+        ],
+        'software_str': [
+            'S0181', 'S0239', 'S0245', 'S0246', 'S0586', 'S0238', 'S0498', 
+            'S0520', 'S0567', 'S0665', 'S0694', 'S0376', 'S0431', 'S0180', 
+            'S0241', 'S0103', 'S0271', 'S0366', 'S0678', 'S0263', 'S0347', 
+            'S0497', 'S0584', 'S0593', 'S0364', 'S0174', 'S0108'
+        ],
+        'CAPEC_ID': [
+            'CAPEC-204', 'CAPEC-37', 'CAPEC-545', 'CAPEC-647', 'CAPEC-309', 
+            'CAPEC-561', 'CAPEC-577', 'CAPEC-165', 'CAPEC-504', 'CAPEC-543', 
+            'CAPEC-616', 'CAPEC-300', 'CAPEC-568', 'CAPEC-573', 'CAPEC-268', 
+            'CAPEC-560', 'CAPEC-70', 'CAPEC-312', 'CAPEC-313', 'CAPEC-580', 
+            'CAPEC-127', 'CAPEC-497', 'CAPEC-465', 'CAPEC-565', 'CAPEC-295', 
+            'CAPEC-196', 'CAPEC-698', 'CAPEC-163', 'CAPEC-552', 'CAPEC-478', 
+            'CAPEC-132', 'CAPEC-206', 'CAPEC-473', 'CAPEC-68', 'CAPEC-578', 
+            'CAPEC-641', 'CAPEC-640', 'CAPEC-542'
+        ],
+        'CWE_ID': [
+            'CWE-524', 'CWE-311', 'CWE-1258', 'CWE-226', 'CWE-312', 'CWE-318', 
+            'CWE-1278', 'CWE-285', 'CWE-200', 'CWE-522', 'CWE-294', 'CWE-521', 
+            'CWE-1021', 'CWE-117', 'CWE-307', 'CWE-798', 'CWE-204', 'CWE-208', 
+            'CWE-425', 'CWE-288', 'CWE-732', 'CWE-276', 'CWE-693', 'CWE-441', 
+            'CWE-384', 'CWE-664', 'CWE-829', 'CWE-451', 'CWE-284', 'CWE-59', 
+            'CWE-20', 'CWE-327', 'CWE-290', 'CWE-325', 'CWE-706', 'CWE-114'
+        ],
+        'CVE_ID': [],  # No CVE data provided in the original
+        'Pulse_ID': []  # No Pulse data provided in the original
+    }
+
+
+    # Process evidence
+    clean_evidence = sanitize_evidence(evidence, df_mapping)
+    encoded_evidence = translate_to_encoded(clean_evidence, df_mapping)
+
+    # Calculate similarities using Jaccard
+    jaccard_similarities = calculate_jaccard_similarity(encoded_evidence, apt_profiles, feature_weights)
+
+    # Create ranked results
+    apt_ids = list(apt_profiles.keys())
+    ranked_results = sorted(zip(apt_ids, jaccard_similarities), key=lambda x: x[1], reverse=True)
+
+    # Format and print results
+    print("\nAPT Ranking using Jaccard Similarity:")
+    print("="*110)
+    print(f"{'Rank':<5} | {'APT':<30} | {'Encoded ID':<10} | {'Score':<8} | {'Techniques':<10} | {'Software':<8} | {'CAPEC':<6} | {'CWE':<4} | {'CVE':<4} | {'Pulse':<5}")
+    print("-"*110)
+
+    for rank, (apt_name, score) in enumerate(ranked_results, 1):
+        apt_data = apt_profiles[apt_name]
+        common_features = {
+            'techniques': len(set(encoded_evidence.get('techniques', [])) & set(apt_data['techniques'])),
+            'software': len(set(encoded_evidence.get('software', [])) & set(apt_data['software'])),
+            'capec': len(set(encoded_evidence.get('capec', [])) & set(apt_data['capec'])),
+            'cwe': len(set(encoded_evidence.get('cwe', [])) & set(apt_data['cwe'])),
+            'cve': len(set(encoded_evidence.get('cve', [])) & set(apt_data['cve'])),
+            'pulse': len(set(encoded_evidence.get('pulse', [])) & set(apt_data['pulse']))
+        }
+        
+        # Truncate long APT names to fit column width
+        display_name = (apt_name[:27] + '..') if len(apt_name) > 29 else apt_name
+        print(f"{rank:<5} | {display_name:<30} | {apt_data['encoded_id']:<10} | {score:.4f} | {common_features['techniques']:<10} | {common_features['software']:<8} | {common_features['capec']:<6} | {common_features['cwe']:<4} | {common_features['cve']:<4} | {common_features['pulse']:<5}")
+
+
+    # Calculate the full similarity matrix
+    jaccard_similarity_matrix = calculate_jaccard_matrix(apt_profiles, feature_weights)
+
+    # Get display names for APTs
+    display_names = [apt_name_dict[apt_profiles[apt]['encoded_id']] for apt in apt_profiles.keys()]
+
+    # ==============================================
+    # VISUALIZATION
+    # ==============================================
+
+    # Create the heatmap
+    plt.figure(figsize=(16, 14))
+    sns.set(font_scale=0.7)
+
+    # Create custom green-to-red colormap (reversed YlOrRd)
+    from matplotlib.colors import LinearSegmentedColormap
+    colors = ["red", "yellow", "green"]  # Red for low, green for high
+    n_bins = 100
+    cmap = LinearSegmentedColormap.from_list("red_green", colors, N=n_bins)
+
+    ax = sns.heatmap(
+        jaccard_similarity_matrix,
+        cmap=cmap,
+        vmin=0,  # Minimum similarity value
+        vmax=1,  # Maximum similarity value
+        center=0.5,  # Center the colormap
+        xticklabels=display_names,
+        yticklabels=display_names,
+        annot=False,  # Don't show values to avoid clutter
+        square=True,
+        cbar_kws={'label': 'Similarity Score', 'shrink': 0.8}
+    )
+
+    # Adjust layout
+    plt.title("APT Group Similarity Matrix (Jaccard Similarity)\nGreen = High Similarity, Red = Low Similarity", 
+            fontsize=14, fontweight='bold')
+    plt.xticks(rotation=90, fontsize=8)
+    plt.yticks(rotation=0, fontsize=8)
+    plt.tight_layout()
+
+    # Show the plot
+    plt.show()
+
+    # Also show a text version of the top 10x10 for verification
+    print("\nText version of Jaccard similarity matrix (first 10x10):")
+    print("="*90)
+    print(f"{'':<20}", end="")
+    for name in display_names[:10]:
+        print(f"{name[:8]:<8}", end="")
+    print("\n" + "-"*90)
+
+    for i in range(10):
+        print(f"{display_names[i][:20]:<20}", end="")
+        for j in range(10):
+            print(f"{jaccard_similarity_matrix[i,j]:.2f}  ", end="")
+        print()
+
+    # Convert the numpy array to a DataFrame
+    similarity_df = pd.DataFrame(
+        jaccard_similarity_matrix,
+        index=display_names,
+        columns=display_names
+    )
 
 
 
+    print("\n" + "="*80)
+    print("EVALUATION WITH FULL PROFILE")
+    print("="*80)
+    evaluate_similarity_matrix(similarity_df)
+
+    print("\n" + "="*80)
+    print("EVALUATION WITH DIVIDED PROFILES")
+    print("="*80)
+
+    # Set your custom divider value here
+    CUSTOM_DIVIDER = 2  # Change this to your desired value
+    evaluate_profile_division(feature_weights, apt_profiles, apt_name_dict, df_mapping, divider=CUSTOM_DIVIDER)
+
+
+
+
+if __name__ == "__main__":
+    main()
 
 monitor.stop()

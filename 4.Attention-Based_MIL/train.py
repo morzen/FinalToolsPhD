@@ -71,7 +71,7 @@ class AttentionMILConfig:
     """Configuration for Attention-based MIL"""
     #variable shared by all models:
     DATA_PATH = "../BaseData/EncodedData.csv"
-    MODEL_PATH = "apt_similarity_model_complete.pth"
+    MODEL_PATH = "6feat_apt_similarity_model_complete.pth"
 
     #variables share by some models:
     MAPPING_PATH = "../BaseData/comparison_Encoded_df.csv"
@@ -465,6 +465,9 @@ class AttentionMILTrainer:
 # ============================
 # 7. MODEL SAVING
 # ============================
+# ============================
+# 7. MODEL SAVING - FIXED VERSION
+# ============================
 class AttentionMILModelSaver:
     """Handles saving of Attention MIL model"""
     
@@ -474,13 +477,14 @@ class AttentionMILModelSaver:
         """Save complete model with all required data"""
         print("\nSaving model and data...")
         
+        # DO NOT SAVE THE CLASS ITSELF - it causes pickling issues
         save_data = {
             'model_state_dict': model.state_dict(),
             'apt_profiles': apt_profiles,
             'apt_name_dict': apt_name_dict,
             'df_mapping': df_mapping,
             'apt_ids': apt_ids,
-            'model_class': OptimizedAttentionMILSimilarity,  # MUST MATCH ORIGINAL NAME
+            # DO NOT SAVE THE CLASS: 'model_class': OptimizedAttentionMILSimilarity,  # REMOVE THIS LINE
             'config': {
                 'hidden_dim': AttentionMILConfig.HIDDEN_DIM,
                 'embedding_vocab_size': AttentionMILConfig.EMBEDDING_VOCAB_SIZE,
@@ -489,19 +493,10 @@ class AttentionMILModelSaver:
             }
         }
         
-        # Add safe globals for PyTorch compatibility
-        import torch.serialization
-        # Fix for PyTorch 2.6+ compatibility
-        try:
-            torch.serialization.add_safe_globals([np.core.multiarray.scalar])
-            torch.serialization.add_safe_globals([np.dtypes.Int64DType])
-        except AttributeError:
-            # For older versions of PyTorch or numpy
-            torch.serialization.add_safe_globals([np._core.multiarray.scalar])
-            torch.serialization.add_safe_globals([np.dtypes.Int64DType])
-        
-        # Save the model
-        torch.save(save_data, filename)
+        # Save with pickle protocol 2 for compatibility
+        import pickle
+        with open(filename, 'wb') as f:
+            pickle.dump(save_data, f, protocol=2)
         
         print(f"Model saved to '{filename}'")
         print(f"  APT profiles: {len(apt_profiles)}")
@@ -509,7 +504,8 @@ class AttentionMILModelSaver:
         print(f"  File size: {os.path.getsize(filename) / 1024 / 1024:.2f} MB")
         
         return save_data
-
+    
+    
 # ============================
 # 8. MAIN EXECUTION
 # ============================

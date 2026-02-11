@@ -53,8 +53,6 @@ monitor.start()
 
 
 
-
-
 import pandas as pd
 import pickle
 import numpy as np
@@ -71,42 +69,90 @@ import math
 
 
 #####################################################################
-# EFFICIENT MODEL PREDICTOR FOR XGBOOST - PURE MODEL OUTPUT
+# EFFICIENT MODEL PREDICTOR FOR XGBOOST PCA - UPDATED FOR PCA MODEL
 #####################################################################
 
-class EfficientXGBoostPredictor:
-    """Predictor for the efficient XGBoost model - uses ONLY model predict_proba"""
-    def __init__(self, model, apt_features, apt_encoder):
+class EfficientXGBoostPredictorPCA:
+    """Predictor for the efficient XGBoost model with PCA"""
+    def __init__(self, model, apt_features, apt_encoder, feature_metadata):
         self.model = model
         self.apt_features = apt_features
         self.apt_encoder = apt_encoder
         self.reverse_encoder = {v: k for k, v in apt_encoder.items()}
+        self.feature_metadata = feature_metadata
     
-    def predict_similarity(self, features1, features2):
-        """Predict similarity between two feature sets"""
-        if features1[0] == -1 and features1[1] == -1 and features1[2] == -1 and features1[3] == -1 and features1[4] == -1 and features1[5] == -1:
-            return 0.0
-        if features2[0] == -1 and features2[1] == -1 and features2[2] == -1 and features2[3] == -1 and features2[4] == -1 and features2[5] == -1:
-            return 0.0
-            
-        # Get probability distributions
-        prob1 = self.model.predict_proba([features1])[0]
-        prob2 = self.model.predict_proba([features2])[0]
+    def create_vector_from_evidence(self, evidence):
+        """Create PCA vector from evidence dictionary"""
+        techniques = evidence.get('techniques', [])
+        software = evidence.get('software', [])
+        capec = evidence.get('capec', [])
+        cwe = evidence.get('cwe', [])
+        cve = evidence.get('cve', [])
+        pulse = evidence.get('pulse', [])
         
-        # Multiple similarity measures
-        cosine_sim = np.dot(prob1, prob2) / (np.linalg.norm(prob1) * np.linalg.norm(prob2))
-
-        # Combined similarity
-        combined_similarity = cosine_sim
+        # Create binary vector
+        vector = np.zeros(self.feature_metadata['pulse_offset'] + 
+                        len(self.feature_metadata['all_pulse']), dtype=np.float32)
         
-        return np.clip(combined_similarity, 0.0, 1.0)
+        # Mark all features from evidence
+        for t in techniques:
+            if t in self.feature_metadata['all_techniques']:
+                idx = self.feature_metadata['all_techniques'].index(t)
+                vector[idx] = 1.0
+        
+        for s in software:
+            if s in self.feature_metadata['all_software']:
+                idx = self.feature_metadata['all_software'].index(s) + self.feature_metadata['software_offset']
+                vector[idx] = 1.0
+        
+        for c in capec:
+            if c in self.feature_metadata['all_capec']:
+                idx = self.feature_metadata['all_capec'].index(c) + self.feature_metadata['capec_offset']
+                vector[idx] = 1.0
+        
+        for w in cwe:
+            if w in self.feature_metadata['all_cwe']:
+                idx = self.feature_metadata['all_cwe'].index(w) + self.feature_metadata['cwe_offset']
+                vector[idx] = 1.0
+        
+        for v in cve:
+            if v in self.feature_metadata['all_cve']:
+                idx = self.feature_metadata['all_cve'].index(v) + self.feature_metadata['cve_offset']
+                vector[idx] = 1.0
+        
+        for p in pulse:
+            if p in self.feature_metadata['all_pulse']:
+                idx = self.feature_metadata['all_pulse'].index(p) + self.feature_metadata['pulse_offset']
+                vector[idx] = 1.0
+        
+        # Apply PCA transformation
+        if 'pca' in self.feature_metadata:
+            pca_model = self.feature_metadata['pca']
+            vector_pca = pca_model.transform([vector])[0]
+            return vector_pca
+        else:
+            print("⚠  WARNING: No PCA model found")
+            return vector
+    
+    def predict_vector_similarity(self, vector1, vector2):
+        """Predict similarity between two PCA vectors using cosine similarity"""
+        # Simple cosine similarity
+        dot_product = np.dot(vector1, vector2)
+        norm1 = np.linalg.norm(vector1)
+        norm2 = np.linalg.norm(vector2)
+        
+        if norm1 == 0 or norm2 == 0:
+            return 0.0
+        
+        similarity = dot_product / (norm1 * norm2)
+        return np.clip(similarity, 0.0, 1.0)
 
 
 def load_efficient_xgboost_model():
     """Load the efficient XGBoost model and data"""
     print(" LOADING EFFICIENT XGBOOST MODEL...")
     try:
-        with open('efficient_apt_similarity.pkl', 'rb') as f:
+        with open('6feat_efficient_apt_similarity.pkl', 'rb') as f:
             saved_data = pickle.load(f)
         print(" Loaded efficient_apt_similarity.pkl")
         return saved_data
@@ -189,22 +235,41 @@ def load_mappings():
     return technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping
 
 
-def create_feature_matrix(profiles, apt_ids):
-    """Create feature matrix for all APTs using representative features"""
-    X_apts = []
-    for apt_id in apt_ids:
-        profile = profiles[apt_id]
-        technique_item = next(iter(profile['techniques'])) if profile['techniques'] else -1
-        software_item = next(iter(profile['software'])) if profile['software'] else -1
-        capec_item = next(iter(profile['capec'])) if profile['capec'] else -1
-        cwe_item = next(iter(profile['cwe'])) if profile['cwe'] else -1
-        cve_item = next(iter(profile['cve'])) if profile['cve'] else -1
-        pulse_item = next(iter(profile['pulse'])) if profile['pulse'] else -1
-        
-        apt_features = np.array([technique_item, software_item, capec_item, cwe_item, cve_item, pulse_item])
-        X_apts.append(apt_features)
+def create_pca_vector_matrix(saved_data, profiles, apt_ids):
+    """Create PCA vector matrix for all APTs"""
+    print(" Creating PCA vectors for all APTs...")
     
-    return np.array(X_apts)
+    # Create predictor for vector creation
+    predictor = EfficientXGBoostPredictorPCA(
+        saved_data['model'], 
+        saved_data['apt_features'], 
+        saved_data['apt_encoder'],
+        saved_data['feature_metadata']
+    )
+    
+    # Get pre-computed APT vectors if available
+    all_apt_vectors = saved_data.get('all_apt_vectors', {})
+    
+    apt_vectors = []
+    for apt_id in apt_ids:
+        if apt_id in all_apt_vectors:
+            # Use pre-computed vector
+            apt_vectors.append(all_apt_vectors[apt_id])
+        else:
+            # Create vector from profile
+            profile = profiles[apt_id]
+            evidence = {
+                'techniques': list(profile['techniques']),
+                'software': list(profile['software']),
+                'capec': list(profile['capec']),
+                'cwe': list(profile['cwe']),
+                'cve': list(profile['cve']),
+                'pulse': list(profile['pulse'])
+            }
+            vector = predictor.create_vector_from_evidence(evidence)
+            apt_vectors.append(vector)
+    
+    return np.array(apt_vectors)
 
 
 def sample_mixed_features(attacker_profile, mimicked_profile, rng=None, attacker_fraction=0.3):
@@ -231,31 +296,41 @@ def sample_mixed_features(attacker_profile, mimicked_profile, rng=None, attacker
 
     def pick_feature(atk_list, mim_list):
         if not atk_list and not mim_list:
-            return -1
+            return []
 
         use_attacker = (rng.random() < attacker_fraction)
         if use_attacker and atk_list:
-            return rng.choice(atk_list)
+            # Return all attacker features for this category
+            return list(atk_list)
         elif mim_list:
-            return rng.choice(mim_list)
+            # Return all mimicked features for this category
+            return list(mim_list)
         elif atk_list:
-            return rng.choice(atk_list)
+            return list(atk_list)
         else:
-            return -1
+            return []
 
-    technique = pick_feature(atk_tech, mim_tech)
+    # Collect all features for each category
+    techniques = pick_feature(atk_tech, mim_tech)
     software  = pick_feature(atk_soft, mim_soft)
     capec     = pick_feature(atk_capec,  mim_capec)
     cwe       = pick_feature(atk_cwe,  mim_cwe)
     cve       = pick_feature(atk_cve,  mim_cve)
     pulse     = pick_feature(atk_pulse,  mim_pulse)
 
-    return np.array([technique, software, capec, cwe, cve, pulse])
+    return {
+        'techniques': techniques,
+        'software': software,
+        'capec': capec,
+        'cwe': cwe,
+        'cve': cve,
+        'pulse': pulse
+    }
 
 
-def process_single_false_flag_efficient(args):
-    """Process single false-flag with 30/70 mixed evidence (FULL)"""
-    attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping, profiles, X_apts, apt_ids, seed = args
+def process_single_false_flag_pca(args):
+    """Process single false-flag with 30/70 mixed evidence using PCA vectors"""
+    attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping, profiles, apt_vectors, apt_ids, seed = args
     
     rng = random.Random(seed)  # Reproducible randomness
     
@@ -266,21 +341,28 @@ def process_single_false_flag_efficient(args):
     mimicked_profile = profiles[mimicked_apt_id]
     
     # 30% ATTACKER / 70% MIMICKED mixed evidence (FULL volume)
-    false_flag_features = sample_mixed_features(
+    mixed_evidence = sample_mixed_features(
         attacker_profile, mimicked_profile, rng=rng, attacker_fraction=0.3
     )
     
-    predictor = EfficientXGBoostPredictor(
+    # Create predictor
+    predictor = EfficientXGBoostPredictorPCA(
         saved_data['model'], 
         saved_data['apt_features'], 
-        saved_data['apt_encoder']
+        saved_data['apt_encoder'],
+        saved_data['feature_metadata']
     )
     
+    # Create PCA vector from mixed evidence
+    false_flag_vector = predictor.create_vector_from_evidence(mixed_evidence)
+    
+    # Calculate similarities with all APT PCA vectors
     similarities = []
-    for apt_features in X_apts:
-        similarity = predictor.predict_similarity(false_flag_features, apt_features)
+    for apt_vector in apt_vectors:
+        similarity = predictor.predict_vector_similarity(false_flag_vector, apt_vector)
         similarities.append(similarity)
     
+    # Rank results
     ranked_results = {}
     sorted_indices = np.argsort(similarities)[::-1]
     
@@ -298,13 +380,13 @@ def process_single_false_flag_efficient(args):
         'mimicked_rank': mimicked_rank,
         'attacker_similarity': ranked_results.get(attacker_apt_id),
         'mimicked_similarity': ranked_results.get(mimicked_apt_id),
-        'false_flag_features': false_flag_features
+        'false_flag_evidence': mixed_evidence
     }
 
 
-def process_single_false_flag_partial_evidence(args):
-    """Process single false-flag with 30/70 mixed evidence (PARTIAL volume)"""
-    attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, capec_mapping, apt_name_mapping, profiles, X_apts, apt_ids, seed = args
+def process_single_false_flag_partial_pca(args):
+    """Process single false-flag with 30/70 mixed evidence (HALVED after mixing) using PCA"""
+    attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping, profiles, apt_vectors, apt_ids, seed = args
     
     rng = random.Random(seed)
     
@@ -314,33 +396,85 @@ def process_single_false_flag_partial_evidence(args):
     attacker_profile = profiles[attacker_apt_id]
     mimicked_profile = profiles[mimicked_apt_id]
     
-    # Start with 30/70 mix
-    full_mixed = sample_mixed_features(
-        attacker_profile, mimicked_profile, rng=rng, attacker_fraction=0.3
-    )
+    def process_feature_category(atk_features, mim_features, feature_type):
+        """Process a single feature category: get 30% attacker, 70% mimicked, then halve both"""
+        # Get attacker features (30%)
+        if atk_features:
+            attacker_selected = list(atk_features)
+            rng.shuffle(attacker_selected)
+            attacker_count = max(1, int(len(attacker_selected) * 0.3))
+            attacker_final = attacker_selected[:attacker_count]
+            # Halve the attacker features
+            attacker_final = attacker_final[:max(1, len(attacker_final) // 2)]
+        else:
+            attacker_final = []
+        
+        # Get mimicked features (70%)
+        if mim_features:
+            mimicked_selected = list(mim_features)
+            rng.shuffle(mimicked_selected)
+            mimicked_count = max(1, int(len(mimicked_selected) * 0.7))
+            mimicked_final = mimicked_selected[:mimicked_count]
+            # Halve the mimicked features
+            mimicked_final = mimicked_final[:max(1, len(mimicked_final) // 2)]
+        else:
+            mimicked_final = []
+        
+        # Combine halved features
+        return attacker_final + mimicked_final
     
-    # PARTIAL: randomly drop ~50% evidence (mask 1-2 slots)
-    mask = [0, 1, 2, 3, 4, 5]
-    rng.shuffle(mask)
-    to_drop = mask[:1]  # Drop 1 slot = ~33% reduction
+    # Create evidence with halved features for each category
+    partial_evidence = {
+        'techniques': process_feature_category(
+            attacker_profile['techniques'], 
+            mimicked_profile['techniques'],
+            'techniques'
+        ),
+        'software': process_feature_category(
+            attacker_profile['software'], 
+            mimicked_profile['software'],
+            'software'
+        ),
+        'capec': process_feature_category(
+            attacker_profile['capec'], 
+            mimicked_profile['capec'],
+            'capec'
+        ),
+        'cwe': process_feature_category(
+            attacker_profile['cwe'], 
+            mimicked_profile['cwe'],
+            'cwe'
+        ),
+        'cve': process_feature_category(
+            attacker_profile['cve'], 
+            mimicked_profile['cve'],
+            'cve'
+        ),
+        'pulse': process_feature_category(
+            attacker_profile['pulse'], 
+            mimicked_profile['pulse'],
+            'pulse'
+        )
+    }
     
-    partial = full_mixed.copy()
-    for idx in to_drop:
-        partial[idx] = -1
-    
-    false_flag_features = partial
-    
-    predictor = EfficientXGBoostPredictor(
+    # Create predictor
+    predictor = EfficientXGBoostPredictorPCA(
         saved_data['model'], 
         saved_data['apt_features'], 
-        saved_data['apt_encoder']
+        saved_data['apt_encoder'],
+        saved_data['feature_metadata']
     )
     
+    # Create PCA vector from partial evidence
+    false_flag_vector = predictor.create_vector_from_evidence(partial_evidence)
+    
+    # Calculate similarities
     similarities = []
-    for apt_features in X_apts:
-        similarity = predictor.predict_similarity(false_flag_features, apt_features)
+    for apt_vector in apt_vectors:
+        similarity = predictor.predict_vector_similarity(false_flag_vector, apt_vector)
         similarities.append(similarity)
     
+    # Rank results
     ranked_results = {}
     sorted_indices = np.argsort(similarities)[::-1]
     
@@ -358,34 +492,38 @@ def process_single_false_flag_partial_evidence(args):
         'mimicked_rank': mimicked_rank,
         'attacker_similarity': ranked_results.get(attacker_apt_id),
         'mimicked_similarity': ranked_results.get(mimicked_apt_id),
-        'false_flag_features': false_flag_features
+        'false_flag_evidence': partial_evidence
     }
 
 
-def evaluate_false_flag_attacks_efficient_parallel(saved_data, top_x_values=[1, 5, 10, 20]):
-    """FULL EVIDENCE: 30/70 mixed features"""
-    print(" EVALUATING FALSE-FLAG ATTACKS (EFFICIENT XGBOOST - 30/70 MIX FULL)")
+def evaluate_false_flag_attacks_pca_parallel(saved_data, top_x_values=[1, 5, 10, 20]):
+    """FULL EVIDENCE: 30/70 mixed features using PCA vectors"""
+    print(" EVALUATING FALSE-FLAG ATTACKS (XGBOOST PCA - 30/70 MIX FULL)")
     print("=" * 80)
-    print(" FALSE-FLAG: 30% Attacker + 70% Mimicked features per slot")
+    print(" FALSE-FLAG: 30% Attacker + 70% Mimicked features per category")
+    print(" Using PCA-transformed vectors with cosine similarity")
     print("=" * 80)
     
     profiles = load_apt_profiles_from_data()
     apt_ids = list(profiles.keys())
-    X_apts = create_feature_matrix(profiles, apt_ids)
+    
+    # Create PCA vectors for all APTs
+    apt_vectors = create_pca_vector_matrix(saved_data, profiles, apt_ids)
     
     technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping = load_mappings()
     
     all_combinations = [(a, m) for a in apt_ids for m in apt_ids if a != m]
     total_combinations = len(all_combinations)
     
-    print(f"Testing {total_combinations} false-flag combinations (30/70 FULL)...")
+    print(f"Testing {total_combinations} false-flag combinations (30/70 FULL PCA)...")
+    print(f"Vector dimension: {apt_vectors.shape[1]}")
     print(f"Using {mp.cpu_count()} CPU cores")
     
     args_list = []
     for i, (attacker_apt_id, mimicked_apt_id) in enumerate(all_combinations):
         args = (attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, 
                 software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping,
-                apt_name_mapping, profiles, X_apts, apt_ids, i)
+                apt_name_mapping, profiles, apt_vectors, apt_ids, i)
         args_list.append(args)
     
     all_results = {}
@@ -393,7 +531,7 @@ def evaluate_false_flag_attacks_efficient_parallel(saved_data, top_x_values=[1, 
     max_workers = min(mp.cpu_count(), 8)
     
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        future_to_combination = {executor.submit(process_single_false_flag_efficient, args): args 
+        future_to_combination = {executor.submit(process_single_false_flag_pca, args): args 
                                for args in args_list}
         
         completed = 0
@@ -422,7 +560,7 @@ def evaluate_false_flag_attacks_efficient_parallel(saved_data, top_x_values=[1, 
     
     # Top-k analysis
     print("\n" + "="*80)
-    print("FALSE-FLAG RESULTS - XGBOOST 30/70 FULL EVIDENCE")
+    print("FALSE-FLAG RESULTS - XGBOOST PCA 30/70 FULL EVIDENCE")
     print("="*80)
     
     for top_x in top_x_values:
@@ -451,28 +589,31 @@ def evaluate_false_flag_attacks_efficient_parallel(saved_data, top_x_values=[1, 
     return all_results, apt_name_mapping, profiles, apt_ids
 
 
-def evaluate_false_flag_attacks_partial_evidence(saved_data, top_x_values=[1, 5, 10, 20]):
-    """PARTIAL EVIDENCE: 30/70 mix + volume reduction"""
+def evaluate_false_flag_attacks_partial_pca(saved_data, top_x_values=[1, 5, 10, 20]):
+    """PARTIAL EVIDENCE: 30/70 mix + volume reduction using PCA"""
     print("\n" + "="*80)
-    print("FALSE-FLAG: 30/70 MIX + PARTIAL VOLUME (~33% reduction)")
+    print("FALSE-FLAG: 30/70 MIX + PARTIAL VOLUME (~33% reduction, PCA)")
     print("=" * 80)
     
     profiles = load_apt_profiles_from_data()
     apt_ids = list(profiles.keys())
-    X_apts = create_feature_matrix(profiles, apt_ids)
+    
+    # Create PCA vectors for all APTs
+    apt_vectors = create_pca_vector_matrix(saved_data, profiles, apt_ids)
     
     technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping = load_mappings()
     
     all_combinations = [(a, m) for a in apt_ids for m in apt_ids if a != m]
     total_combinations = len(all_combinations)
     
-    print(f"Testing {total_combinations} partial evidence combinations...")
+    print(f"Testing {total_combinations} partial evidence combinations (PCA)...")
+    print(f"Vector dimension: {apt_vectors.shape[1]}")
     
     args_list = []
     for i, (attacker_apt_id, mimicked_apt_id) in enumerate(all_combinations):
         args = (attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, 
-                software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, 
-                apt_name_mapping, profiles, X_apts, apt_ids, i)
+                software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping,
+                apt_name_mapping, profiles, apt_vectors, apt_ids, i)
         args_list.append(args)
     
     all_results = {}
@@ -480,7 +621,7 @@ def evaluate_false_flag_attacks_partial_evidence(saved_data, top_x_values=[1, 5,
     max_workers = min(mp.cpu_count(), 8)
     
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        future_to_combination = {executor.submit(process_single_false_flag_partial_evidence, args): args 
+        future_to_combination = {executor.submit(process_single_false_flag_partial_pca, args): args 
                                for args in args_list}
         
         completed = 0
@@ -506,7 +647,7 @@ def evaluate_false_flag_attacks_partial_evidence(saved_data, top_x_values=[1, 5,
     
     # Same analysis format
     print("\n" + "="*80)
-    print("FALSE-FLAG RESULTS - XGBOOST 30/70 PARTIAL EVIDENCE")
+    print("FALSE-FLAG RESULTS - XGBOOST PCA 30/70 PARTIAL EVIDENCE")
     print("="*80)
     
     for top_x in top_x_values:
@@ -535,16 +676,15 @@ def evaluate_false_flag_attacks_partial_evidence(saved_data, top_x_values=[1, 5,
     return all_results
 
 
-# VISUALIZATION FUNCTIONS REMAIN IDENTICAL - just pass results
-def plot_false_flag_analysis_efficient(results, apt_name_mapping, profiles, apt_ids):
+def plot_false_flag_analysis_pca(results, apt_name_mapping, profiles, apt_ids):
     """
-    XGBoost continuous deception heatmap:
+    XGBoost PCA continuous deception heatmap:
     deception_score = attacker_rank - mimicked_rank
     
     > 0: mimicked ranked better (smaller rank) -> successful deception (RED)
     < 0: attacker ranked better                -> successful detection (BLUE)
     """
-    print("\n CREATING XGBOOST FALSE-FLAG DECEPTION HEATMAP (30/70, CONTINUOUS)...")
+    print("\n CREATING XGBOOST PCA FALSE-FLAG DECEPTION HEATMAP (30/70, CONTINUOUS)...")
     
     n = len(apt_ids)
     apt_names = [apt_name_mapping.get(aid, f"APT{aid}") for aid in apt_ids]
@@ -609,7 +749,7 @@ def plot_false_flag_analysis_efficient(results, apt_name_mapping, profiles, apt_
     )
     
     plt.title(
-        'XGBoost False-Flag Deception (30/70 Mixed Evidence, Continuous)\n'
+        'XGBoost PCA False-Flag Deception (30/70 Mixed Evidence, Continuous)\n'
         'Rows=Actual Attacker | Columns=Mimicked Target',
         fontsize=14, fontweight='bold', pad=20
     )
@@ -620,48 +760,48 @@ def plot_false_flag_analysis_efficient(results, apt_name_mapping, profiles, apt_
     plt.tight_layout()
     
     # Save AND display
-    out_name = 'false_flag_deception_matrix_xgboost_30_70_continuous.png'
+    out_name = 'false_flag_deception_matrix_xgboost_pca_30_70_continuous.png'
     plt.savefig(out_name, dpi=300, bbox_inches='tight')
     plt.show()
     print(f" Saved & displayed: {out_name}")
 
 
 def main():
-    print(" FALSE-FLAG EVALUATION: XGBOOST 30/70 MIX (PURE MODEL OUTPUT)")
+    print(" FALSE-FLAG EVALUATION: XGBOOST PCA 30/70 MIX (PCA VECTORS)")
     print("=" * 70)
-    print("Each test uses XGBoost predict_proba cosine similarity ONLY")
-    print("30% attacker + 70% mimicked features per evidence triple")
+    print("Each test creates PCA vectors from mixed evidence")
+    print("30% attacker + 70% mimicked features per category")
+    print("Similarity = cosine similarity between PCA vectors")
     print("=" * 70)
     
     saved_data = load_efficient_xgboost_model()
     if saved_data is None:
         return
     
-    print(f"XGBoost model loaded: {saved_data['training_info']['unique_apts']} APTs")
+    print(f"XGBoost PCA model loaded: {saved_data['training_info']['unique_apts']} APTs")
+    print(f"PCA components: {saved_data['feature_metadata']['pca'].n_components_}")
     
-    # FULL 30/70 evidence
-    results_full, apt_name_mapping, profiles, apt_ids = evaluate_false_flag_attacks_efficient_parallel(
+    # FULL 30/70 evidence with PCA
+    results_full, apt_name_mapping, profiles, apt_ids = evaluate_false_flag_attacks_pca_parallel(
         saved_data, top_x_values=[1, 5, 10, 20]
     )
 
     # Visualizations (FULL evidence only)
-    plot_false_flag_analysis_efficient(results_full, apt_name_mapping, profiles, apt_ids)
+    plot_false_flag_analysis_pca(results_full, apt_name_mapping, profiles, apt_ids)
     
-    # PARTIAL 30/70 + volume reduction
-    results_partial = evaluate_false_flag_attacks_partial_evidence(
+    # PARTIAL 30/70 + volume reduction with PCA
+    results_partial = evaluate_false_flag_attacks_partial_pca(
         saved_data, top_x_values=[1, 5, 10, 20]
     )
     
     
-    print("\n XGBOOST 30/70 FALSE-FLAG COMPLETE!")
-    print("Pure XGBoost model output, no custom similarity heuristics")
+    print("\n XGBOOST PCA 30/70 FALSE-FLAG COMPLETE!")
+    print("PCA vector similarity evaluation finished")
 
 
 if __name__ == "__main__":
     mp.set_start_method('spawn', force=True)
     main()
-
-
 
 
 

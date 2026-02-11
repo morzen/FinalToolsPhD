@@ -1,58 +1,3 @@
-import time
-import psutil
-import GPUtil
-
-class ResourceMonitor:
-    def __init__(self):
-        self.process = psutil.Process()
-        self.start_time = None
-        self.start_memory = None
-        
-    def start(self):
-        self.start_time = time.time()
-        self.start_memory = self.process.memory_info().rss / 1024 / 1024  # MB
-        
-    def stop(self):
-        end_time = time.time()
-        end_memory = self.process.memory_info().rss / 1024 / 1024
-        
-        print("\n" + "="*50)
-        print("RESOURCE USAGE REPORT")
-        print("="*50)
-        
-        # Time
-        print(f"Execution Time: {end_time - self.start_time:.2f} seconds")
-        
-        # Memory
-        print(f"Memory Usage: {end_memory - self.start_memory:.2f} MB")
-        print(f"Current Memory: {end_memory:.2f} MB")
-        
-        # CPU
-        cpu_percent = self.process.cpu_percent(interval=0.1)
-        print(f"CPU Usage: {cpu_percent}%")
-        
-        # System-wide CPU
-        sys_cpu = psutil.cpu_percent(interval=0.1)
-        print(f"System CPU: {sys_cpu}%")
-        
-        # GPU (if available)
-        try:
-            gpus = GPUtil.getGPUs()
-            for gpu in gpus:
-                print(f"\nGPU {gpu.id} ({gpu.name}):")
-                print(f"  Utilization: {gpu.load*100:.1f}%")
-                print(f"  Memory: {gpu.memoryUsed}/{gpu.memoryTotal} MB")
-        except:
-            print("\nGPU: Not available or not detected")
-
-# Usage
-monitor = ResourceMonitor()
-monitor.start()
-
-
-
-
-
 import pandas as pd
 import torch
 import torch.nn as nn
@@ -209,7 +154,7 @@ def analyze_feature_matching_classification(encoded_evidence, results, apt_profi
     # Create a mapping from APT name to profile key
     apt_name_to_key = {}
     for result in results:
-        apt_name = result['APT']
+        apt_name = result['apt_name']
         # Find the apt profile key that matches this APT name
         for apt_key, profile in apt_profiles.items():
             if apt_name_dict[profile['encoded_id']] == apt_name:
@@ -220,7 +165,7 @@ def analyze_feature_matching_classification(encoded_evidence, results, apt_profi
     all_feature_scores = []
     
     for result in results:
-        apt_name = result['APT']
+        apt_name = result['apt_name']
         apt_key = apt_name_to_key.get(apt_name)
         
         if apt_key and apt_key in apt_profiles:
@@ -301,7 +246,7 @@ def analyze_feature_matching_classification(encoded_evidence, results, apt_profi
     # TABLE 1: TOP 5 TTP MATCHING
     print("\n TOP 5 APTs BY TTP MATCHING")
     print("-" * 85)
-    header = f"{'Rank':<4} {'APT Name':<30} {'Score':<10} {'Evidence':<15} {'Profile':<15} {'Harmonic':<10}"
+    header = f"{'rank':<4} {'APT Name':<30} {'Score':<10} {'Evidence':<15} {'Profile':<15} {'Harmonic':<10}"
     print(header)
     print("-" * 85)
     
@@ -320,7 +265,7 @@ def analyze_feature_matching_classification(encoded_evidence, results, apt_profi
     # TABLE 2: TOP 5 SOFTWARE MATCHING
     print("\n  TOP 5 APTs BY SOFTWARE MATCHING")
     print("-" * 85)
-    header = f"{'Rank':<4} {'APT Name':<30} {'Score':<10} {'Evidence':<15} {'Profile':<15} {'Harmonic':<10}"
+    header = f"{'rank':<4} {'APT Name':<30} {'Score':<10} {'Evidence':<15} {'Profile':<15} {'Harmonic':<10}"
     print(header)
     print("-" * 85)
     
@@ -339,7 +284,7 @@ def analyze_feature_matching_classification(encoded_evidence, results, apt_profi
     # TABLE 3: TOP 5 CAPEC MATCHING
     print("\n TOP 5 APTs BY CAPEC MATCHING")
     print("-" * 85)
-    header = f"{'Rank':<4} {'APT Name':<30} {'Score':<10} {'Evidence':<15} {'Profile':<15} {'Harmonic':<10}"
+    header = f"{'rank':<4} {'APT Name':<30} {'Score':<10} {'Evidence':<15} {'Profile':<15} {'Harmonic':<10}"
     print(header)
     print("-" * 85)
     
@@ -358,7 +303,7 @@ def analyze_feature_matching_classification(encoded_evidence, results, apt_profi
     # TABLE 4: TOP 5 CWE MATCHING
     print("\n TOP 5 APTs BY CWE MATCHING")
     print("-" * 85)
-    header = f"{'Rank':<4} {'APT Name':<30} {'Score':<10} {'Evidence':<15} {'Profile':<15} {'Harmonic':<10}"
+    header = f"{'rank':<4} {'APT Name':<30} {'Score':<10} {'Evidence':<15} {'Profile':<15} {'Harmonic':<10}"
     print(header)
     print("-" * 85)
     
@@ -377,7 +322,7 @@ def analyze_feature_matching_classification(encoded_evidence, results, apt_profi
     # TABLE 5: TOP 5 CVE MATCHING
     print("\n TOP 5 APTs BY CVE MATCHING")
     print("-" * 85)
-    header = f"{'Rank':<4} {'APT Name':<30} {'Score':<10} {'Evidence':<15} {'Profile':<15} {'Harmonic':<10}"
+    header = f"{'rank':<4} {'APT Name':<30} {'Score':<10} {'Evidence':<15} {'Profile':<15} {'Harmonic':<10}"
     print(header)
     print("-" * 85)
 
@@ -396,7 +341,7 @@ def analyze_feature_matching_classification(encoded_evidence, results, apt_profi
     # TABLE 6: TOP 5 pulse MATCHING
     print("\n TOP 5 APTs BY pulse MATCHING")
     print("-" * 85)
-    header = f"{'Rank':<4} {'APT Name':<30} {'Score':<10} {'Evidence':<15} {'Profile':<15} {'Harmonic':<10}"
+    header = f"{'rank':<4} {'APT Name':<30} {'Score':<10} {'Evidence':<15} {'Profile':<15} {'Harmonic':<10}"
     print(header)
     print("-" * 85)
     
@@ -500,13 +445,13 @@ def print_mil_results_table(results, encoded_evidence, apt_profiles, apt_name_di
     print("=" * 160)
     
     # Header
-    header = f"{'Rank':<4} {'APT Name':<35} {'Similarity':<10} {'Tech':<8} {'Soft':<8} {'CAPEC':<8} {'CWE':<8}{'CVE':<8}{'Pulse':<8}{'Matches':<8} {'Profile'}"
+    header = f"{'rank':<4} {'APT Name':<35} {'Similarity':<10} {'Tech':<8} {'Soft':<8} {'CAPEC':<8} {'CWE':<8}{'CVE':<8}{'Pulse':<8}{'Matches':<8} {'Profile'}"
     print(header)
     print("-" * 160)
     
     for result in results:  # Show ALL results
         # Truncate long APT names
-        apt_name = result['APT']
+        apt_name = result['apt_name']
         if len(apt_name) > 34:
             apt_name = apt_name[:31] + "..."
         
@@ -516,7 +461,7 @@ def print_mil_results_table(results, encoded_evidence, apt_profiles, apt_name_di
         # Find profile for this APT
         profile_info = ""
         for apt_key, profile in apt_profiles.items():
-            if apt_name_dict[profile['encoded_id']] == result['APT']:
+            if apt_name_dict[profile['encoded_id']] == result['apt_name']:
                 tech_count = len(profile.get('technique', []))
                 soft_count = len(profile.get('software', []))
                 capec_count = len(profile.get('capec', []))
@@ -526,7 +471,7 @@ def print_mil_results_table(results, encoded_evidence, apt_profiles, apt_name_di
                 profile_info = f"{tech_count}T/{soft_count}S/{capec_count}Ca/{cwe_count}Cw/{cve_count}Cv/{pulse_count}P"
                 break
         
-        row = (f"{result['Rank']:<4} {apt_name:<35} {result['Score']:.4f}    "
+        row = (f"{result['rank']:<4} {apt_name:<35} {result['Score']:.4f}    "
                f"{result['technique']}/{len(encoded_evidence.get('technique', [])):<7} "
                f"{result['software']}/{len(encoded_evidence.get('software', [])):<7} "
                f"{result['capec']}/{len(encoded_evidence.get('capec', [])):<7} "
@@ -539,31 +484,72 @@ def print_mil_results_table(results, encoded_evidence, apt_profiles, apt_name_di
     print("-" * 160)
 
 # Load the complete model and data from a single file
-def load_complete_model():
-    # Add safe globals for PyTorch 2.6+ compatibility
-    import torch.serialization
-    torch.serialization.add_safe_globals([np.core.multiarray.scalar])
-    torch.serialization.add_safe_globals([np.dtype])
+def load_complete_model(status):
+    import pickle
+    import torch
     
+    if status == "hybrid":
+        # Try the fixed version first, then original
+        fixed_path = '../4.Attention-Based_MIL/6feat_apt_similarity_model_fixed.pth'
+        original_path = '../4.Attention-Based_MIL/6feat_apt_similarity_model_complete.pth'
+        
+        # Check which file exists
+        import os
+        if os.path.exists(fixed_path):
+            model_path = fixed_path
+            print(f"Loading model from: {model_path} (FIXED VERSION)")
+        else:
+            model_path = original_path
+            print(f"Loading model from: {model_path} (ORIGINAL)")
+    else:
+        model_path = '6feat_apt_similarity_model_complete.pth'
+        print(f"Loading model from: {model_path}")
+    
+    # SIMPLE LOADING - NO BULLSHIT
     try:
-        # First try with weights_only=True (safer)
-        save_data = torch.load('apt_similarity_model_complete.pth', weights_only=True)
+        # Method 1: Try pickle first
+        with open(model_path, 'rb') as f:
+            save_data = pickle.load(f)
+        print("✓ Loaded with pickle")
     except Exception as e:
-        print(f"Error with weights_only=True: {e}")
-        print("Trying with weights_only=False...")
-        # If that fails, try with weights_only=False (less secure but works)
-        save_data = torch.load('apt_similarity_model_complete.pth', weights_only=False)
+        print(f"Pickle failed: {e}")
+        
+        # Method 2: Try torch.load as fallback
+        try:
+            save_data = torch.load(model_path, weights_only=False, map_location='cpu')
+            print("✓ Loaded with torch.load")
+        except Exception as e2:
+            print(f"Torch.load failed: {e2}")
+            raise
     
     # Initialize the model
     model = OptimizedAttentionMILSimilarity()
-    model.load_state_dict(save_data['model_state_dict'])
-    model.eval()  # Set to evaluation mode
     
-    # Extract other data
-    apt_profiles = save_data['apt_profiles']
-    apt_name_dict = save_data['apt_name_dict']
-    df_mapping = save_data['df_mapping']
-    apt_ids = save_data['apt_ids']
+    # Check what we loaded
+    if isinstance(save_data, dict) and 'model_state_dict' in save_data:
+        # It's a dict with state_dict
+        model.load_state_dict(save_data['model_state_dict'])
+        apt_profiles = save_data['apt_profiles']
+        apt_name_dict = save_data['apt_name_dict']
+        df_mapping = save_data['df_mapping']
+        apt_ids = save_data['apt_ids']
+    elif isinstance(save_data, OptimizedAttentionMILSimilarity):
+        # It's already a model object
+        model = save_data
+        # Extract other data from somewhere else or use defaults
+        apt_profiles = {}
+        apt_name_dict = {}
+        df_mapping = pd.DataFrame()
+        apt_ids = []
+    else:
+        # Try to extract from the object
+        model.load_state_dict(save_data)
+        apt_profiles = {}
+        apt_name_dict = {}
+        df_mapping = pd.DataFrame()
+        apt_ids = []
+    
+    model.eval()
     
     return model, apt_profiles, apt_name_dict, df_mapping, apt_ids
 
@@ -573,7 +559,7 @@ def sanitize_evidence(evidence, df_mapping):
     missing = {}
     
     column_mapping = {
-        'technique': ('techniques_Origin', 'techniques_Encoded'),
+        'techniques': ('techniques_Origin', 'techniques_Encoded'),
         'software': ('software_Origin', 'software_Encoded'),
         'capec': ('CAPEC_ID_Origin', 'CAPEC_ID_Encoded'),
         'cwe': ('CWE_ID_Origin', 'CWE_ID_Encoded'),
@@ -615,7 +601,7 @@ def translate_to_encoded(evidence, df_mapping):
     encoded_evidence = {}
     
     column_mapping = {
-        'technique': ('techniques_Encoded', 'technique'),
+        'techniques': ('techniques_Encoded', 'technique'),
         'software': ('software_Encoded', 'software'),
         'capec': ('CAPEC_ID_Encoded', 'capec'),
         'cwe': ('CWE_ID_Encoded', 'cwe'),
@@ -668,7 +654,7 @@ def process_custom_evidence(evidence, model, apt_profiles, apt_name_dict, df_map
     
     # Prepare evidence features
     evidence_features = {
-        'technique': encoded_evidence.get('technique', []),
+        'technique': encoded_evidence.get('techniques', []),
         'software': encoded_evidence.get('software', []),
         'capec': encoded_evidence.get('capec', []),
         'cwe': encoded_evidence.get('cwe', []),
@@ -697,8 +683,8 @@ def process_custom_evidence(evidence, model, apt_profiles, apt_name_dict, df_map
         }
         
         full_results.append({
-            'Rank': rank,
-            'APT': apt_name_dict[apt_data['encoded_id']],
+            'rank': rank,
+            'apt_name': apt_name_dict[apt_data['encoded_id']],
             'Score': score,
             'Encoded_ID': apt_data['encoded_id'],
             **common_features
@@ -706,22 +692,34 @@ def process_custom_evidence(evidence, model, apt_profiles, apt_name_dict, df_map
     
     return full_results, encoded_evidence
 
+def hybrid_query(evidence):
+    model, apt_profiles, apt_name_dict, df_mapping, apt_ids = load_complete_model("hybrid")
+    results, encoded_evidence = process_custom_evidence(evidence, model, apt_profiles, apt_name_dict, df_mapping, apt_ids)
+    
+    return results
+
 def main():
     # Load everything
-    model, apt_profiles, apt_name_dict, df_mapping, apt_ids = load_complete_model()
+    model, apt_profiles, apt_name_dict, df_mapping, apt_ids = load_complete_model("nonhybrid")
     
     print("Model loaded successfully!")
     print(f"Number of APTs: {len(apt_ids)}")
     
     # Define your evidence here (APT29 example - replace with your own evidence)
-    evidence = {
-         'technique': ['T1001.002', 'T1003.002'],
-         'software': ['S0002', 'S0029', 'S0037'],
-         'capec': ['CAPEC-127', 'CAPEC-150'],
-         'cwe': ['CWE-1021', 'CWE-113'],
-         'cve': ['CVE-2012-0433', 'CVE-2013-10007'],
-         'pulse': ['5c88e255d5fbbe1cb7c54534', '5cb741fb29d3ac01c1ac01ea']
-     }
+    # evidence = {
+    #      'techniques': ['T1001.002', 'T1003.002'],
+    #      'software': ['S0002', 'S0029', 'S0037'],
+    #      'capec': ['CAPEC-127', 'CAPEC-150'],
+    #      'cwe': ['CWE-1021', 'CWE-113'],
+    #      'cve': ['CVE-2012-0433', 'CVE-2013-10007'],
+    #      'pulse': ['5c88e255d5fbbe1cb7c54534', '5cb741fb29d3ac01c1ac01ea']
+    #  }
+    
+    import json
+
+    # Read evidence from JSON file
+    with open('../query_input.json', 'r') as f:
+        evidence = json.load(f)
     
     # Process custom evidence and get results
     results, encoded_evidence = process_custom_evidence(evidence, model, apt_profiles, apt_name_dict, df_mapping, apt_ids)
@@ -738,14 +736,10 @@ def main():
     )
     
     print(f"\n ATTENTION MIL QUERY COMPLETE!")
-    print(f" Most similar: {results[0]['APT']} (score: {results[0]['Score']:.4f})")
-    print(f" Least similar: {results[-1]['APT']} (score: {results[-1]['Score']:.4f})")
+    print(f" Most similar: {results[0]['apt_name']} (score: {results[0]['Score']:.4f})")
+    print(f" Least similar: {results[-1]['apt_name']} (score: {results[-1]['Score']:.4f})")
     print(f" Total APTs ranked: {len(results)}")
     print(f" Using Attention MIL with perfect match boosting")
 
 if __name__ == "__main__":
     main()
-
-
-
-monitor.stop()

@@ -70,7 +70,7 @@ from sklearn.ensemble import RandomForestClassifier
 # CONFIG
 # ============================================================
 
-MODEL_PATH = "apt_similarity_model.joblib"
+MODEL_PATH = "6feat_apt_similarity_model.joblib"
 TOP_X_VALUES = [1, 5, 10, 20]
 MAX_WORKERS = min(mp.cpu_count(), 8)
 

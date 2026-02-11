@@ -73,7 +73,7 @@ from matplotlib.colors import LinearSegmentedColormap
 # ============================================================
 # CONFIG - SAME AS XGBoost/GNN
 # ============================================================
-MODEL_PATH = "apt_siamese_feature_model.pkl"
+MODEL_PATH = "6feat_apt_siamese_feature_model.pkl"
 TOP_X_VALUES = [1, 5, 10, 20]
 MAX_WORKERS = min(mp.cpu_count(), 8)
 

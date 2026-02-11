@@ -196,20 +196,26 @@ class OptimizedAttentionMILSimilarity(nn.Module):
         return torch.cat(features, dim=-1)
 
 # Load the complete model and data from a single file
+# Load the complete model and data from a single file
 def load_complete_model():
-    # Add safe globals for PyTorch 2.6+ compatibility
-    import torch.serialization
-    torch.serialization.add_safe_globals([np.core.multiarray.scalar])
-    torch.serialization.add_safe_globals([np.dtype])
+    import pickle
     
     try:
-        # First try with weights_only=True (safer)
-        save_data = torch.load('apt_similarity_model_complete.pth', weights_only=True)
+        # Load with pickle (since the model was saved with pickle)
+        with open('6feat_apt_similarity_model_complete.pth', 'rb') as f:
+            save_data = pickle.load(f)
+        
+        print("✓ Model loaded successfully with pickle")
+        
     except Exception as e:
-        print(f"Error with weights_only=True: {e}")
-        print("Trying with weights_only=False...")
-        # If that fails, try with weights_only=False (less secure but works)
-        save_data = torch.load('apt_similarity_model_complete.pth', weights_only=False)
+        print(f"Pickle load failed: {e}")
+        print("Trying with torch.load as fallback...")
+        
+        # Fallback to torch.load if it's actually a torch file
+        import torch
+        save_data = torch.load('6feat_apt_similarity_model_complete.pth', 
+                              weights_only=False, 
+                              map_location='cpu')
     
     # Initialize the model
     model = OptimizedAttentionMILSimilarity()

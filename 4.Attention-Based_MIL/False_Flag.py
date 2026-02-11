@@ -72,7 +72,7 @@ import seaborn as sns
 # CONFIG
 # ============================================================
 
-MODEL_PATH = "apt_similarity_model_complete.pth"
+MODEL_PATH = "6feat_apt_similarity_model_complete.pth"
 TOP_X_VALUES = [1, 5, 10, 20]
 MAX_WORKERS = min(mp.cpu_count(), 8)
 DEVICE = torch.device("cpu")
@@ -204,7 +204,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
 
 
 # ============================================================
-# LOADING MODEL + DATA
+# LOADING MODEL + DATA - UPDATED FOR PICKLE FORMAT
 # ============================================================
 
 def load_mil_model_and_data(model_path=MODEL_PATH):
@@ -212,18 +212,32 @@ def load_mil_model_and_data(model_path=MODEL_PATH):
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"{model_path} not found.")
     
-    save_data = torch.load(model_path, map_location="cpu", weights_only=False)
+    # Try pickle first (since model is saved with pickle)
+    import pickle
     
-    model_class = save_data["model_class"]
-    model = model_class()
-    model.load_state_dict(save_data["model_state_dict"])
+    try:
+        with open(model_path, 'rb') as f:
+            save_data = pickle.load(f)
+        print("✓ Model loaded with pickle")
+        
+    except Exception as e:
+        print(f"Pickle load failed: {e}")
+        print("Trying torch.load as fallback...")
+        
+        # Fallback to torch.load
+        save_data = torch.load(model_path, map_location="cpu", weights_only=False)
+    
+    # Initialize the model
+    model = OptimizedAttentionMILSimilarity()
+    model.load_state_dict(save_data['model_state_dict'])
     model.to(DEVICE)
     model.eval()
     
-    apt_profiles = save_data["apt_profiles"]   # keyed by APT name
-    apt_name_dict = save_data["apt_name_dict"]
-    df_mapping = save_data["df_mapping"]
-    apt_ids = save_data["apt_ids"]             # list of APT names
+    # Extract other data
+    apt_profiles = save_data['apt_profiles']
+    apt_name_dict = save_data['apt_name_dict']
+    df_mapping = save_data['df_mapping']
+    apt_ids = save_data['apt_ids']
     
     print(f" MIL model and data loaded from {model_path}")
     print(f"   APTs in profiles: {len(apt_profiles)}")

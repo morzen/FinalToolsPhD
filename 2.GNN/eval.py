@@ -86,7 +86,7 @@ class APTGNN(nn.Module):
 
 def load_trained_model():
     print(" LOADING TRAINED MODEL...")
-    with open('trained_apt_gnn_model.pkl', 'rb') as f:
+    with open('6feat_trained_apt_gnn_model.pkl', 'rb') as f:
         saved_data = pickle.load(f)
     return saved_data
 

@@ -72,7 +72,7 @@ class GNNConfig:
     """Configuration for GNN model"""
 #variable shared by all models:
     DATA_PATH = "../BaseData/EncodedData.csv"
-    MODEL_PATH = "trained_apt_gnn_model.pkl"
+    MODEL_PATH = "6feat_trained_apt_gnn_model.pkl"
     
 #variables share by some models:
     MAPPING_PATH = "../BaseData/comparison_Encoded_df.csv"

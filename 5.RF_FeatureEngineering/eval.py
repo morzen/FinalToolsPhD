@@ -63,7 +63,7 @@ import random
 
 def load_model():
     """Load the pre-trained model and all necessary data"""
-    model_data = joblib.load('apt_similarity_model.joblib')
+    model_data = joblib.load('6feat_apt_similarity_model.joblib')
     print("Model loaded successfully")
     return model_data
 

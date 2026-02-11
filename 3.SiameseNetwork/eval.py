@@ -123,7 +123,7 @@ def load_apt_profiles_from_data():
 def load_model_and_mapping():
     """Load Siamese model + name mapping"""
     print(" LOADING SIAMESE MODEL...")
-    with open('apt_siamese_feature_model.pkl', 'rb') as f:
+    with open('6feat_apt_siamese_feature_model.pkl', 'rb') as f:
         data = pickle.load(f)
     
     config = data['model_config']
