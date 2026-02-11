@@ -565,7 +565,8 @@ def main():
     # ==============================================
     # VISUALIZATION
     # ==============================================
-
+    print("DATA FOR THE HEATMAP: ")
+    print(jaccard_similarity_matrix)
     # Create the heatmap
     plt.figure(figsize=(16, 14))
     sns.set(font_scale=0.7)

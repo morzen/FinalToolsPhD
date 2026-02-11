@@ -41,10 +41,10 @@ def process_apt_data(csv_file_path, apt_name):
 
 def main():
     # Get CSV file path from user
-    csv_file_path = "../BaseData/TestFinal_df.csv"
+    csv_file_path = "./BaseData/TestFinal_df.csv"
     
     # Get APT name from user
-    apt_name = "APT29"
+    apt_name = "PROMETHIUM"
     
     try:
         # Process the data
