@@ -9,6 +9,8 @@ import seaborn as sns
 from matplotlib.colors import LinearSegmentedColormap
 
 
+sys.stdout = open(os.devnull, 'w')
+sys.stderr = open(os.devnull, 'w')
 
 # Path to Jaccards_correlation.py
 jaccard_dir = Path("..") / "Jaccards_Correlation"
@@ -94,6 +96,9 @@ rf_query = modules.get("rf")
 print(f"\n✓ Successfully imported {len(modules)} modules")
 for name in modules.keys():
     print(f"  - {name}")
+
+sys.stdout = sys.__stdout__
+sys.stderr = sys.__stderr__
 
 ##########################################################################################
 
@@ -362,6 +367,32 @@ def shuffler_and_divider(evidence_dict):
     
     return shuffled_and_divided
 
+
+def eval_precision(unique_apt_names_list, givenEvidence):
+
+    fulldata_top1 = 0
+    fulldata_top5 = 0
+    fulldata_top10 = 0
+    fulldata_top20 = 0
+    total = 181
+    for name in unique_apt_names_list:
+        if int(givenEvidence[name][1]) == 1:
+            fulldata_top1 = fulldata_top1 + 1
+        elif 1 <= int(givenEvidence[name][1]) <= 5 :
+            fulldata_top5 = fulldata_top5 + 1
+        elif 1 <= int(givenEvidence[name][1]) <= 10 :
+            fulldata_top10 = fulldata_top10 + 1
+        elif 1 <= int(givenEvidence[name][1]) <= 20 :
+            fulldata_top20 = fulldata_top20 + 1
+        else:
+            pass
+
+    print(f"fulldata_top1: {fulldata_top1} success, {total - fulldata_top1} failure, overall: {fulldata_top1}/{total} ({fulldata_top1/total*100:.2f}%)")
+    print(f"fulldata_top5: {fulldata_top5} success, {total - fulldata_top5} failure, overall: {fulldata_top5}/{total} ({fulldata_top5/total*100:.2f}%)")
+    print(f"fulldata_top10: {fulldata_top10} success, {total - fulldata_top10} failure, overall: {fulldata_top10}/{total} ({fulldata_top10/total*100:.2f}%)")
+    print(f"fulldata_top20: {fulldata_top20} success, {total - fulldata_top20} failure, overall: {fulldata_top20}/{total} ({fulldata_top20/total*100:.2f}%)")
+
+
 def main():
     csv_file_path = "../BaseData/TestFinal_df.csv"
     
@@ -373,7 +404,7 @@ def main():
 
     Fullevidencetable = {}
     for name in unique_apt_names_list:
-        print(name)
+        print("\n"+"1st_batch_"+name)
         try:
             # Process the data
             # Get APT name from user
@@ -392,15 +423,12 @@ def main():
     
 
 
-
-    # Create the heatmap
-    create_apt_ranking_heatmap(Fullevidencetable)
     
 
 
     shuffled_divided_evidence_table = {}
     for name in unique_apt_names_list:
-        print(name)
+        print("\n"+"2nd_batch_"+name)
         try:
             # Process the data
             # Get APT name from user
@@ -416,6 +444,20 @@ def main():
             print(f"Error: File '{csv_file_path}' not found.")
         except Exception as e:
             print(f"Error: {e}")
+
+
+
+    eval_precision(unique_apt_names_list, Fullevidencetable)
+
+    print("RESULT FOR DATA SHUFFLED AND DIVIDED by 2")
+
+    eval_precision(unique_apt_names_list, shuffled_divided_evidence_table)
+
+
+    # Create the heatmap for full data check
+    create_apt_ranking_heatmap(Fullevidencetable)
+
+
 
 
 if __name__ == "__main__":
