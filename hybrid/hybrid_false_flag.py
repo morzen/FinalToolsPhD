@@ -372,41 +372,65 @@ def shuffler_and_divider(evidence_dict):
 
 
 def eval_precision(unique_apt_names_list, givenEvidence):
-
+    """
+    Evaluate false-flag attack precision metrics.
+    
+    Args:
+        unique_apt_names_list: list of all APT names
+        givenEvidence: dict {attacker_name: {mimicked_name: [(apt, rank), ...], ...}}
+    """
     # Initialize counters using dictionary for cleaner code
     metrics = {
         'real': {'top1': 0, 'top5': 0, 'top10': 0, 'top20': 0},
         'mimicked': {'top1': 0, 'top5': 0, 'top10': 0, 'top20': 0},
-        'both': {'top1': 0, 'top5': 0, 'top10': 0, 'top20': 0},  # Added top1
-        'neither': {'top1': 0, 'top5': 0, 'top10': 0, 'top20': 0}  # Added top1
+        'both': {'top1': 0, 'top5': 0, 'top10': 0, 'top20': 0},
+        'neither': {'top1': 0, 'top5': 0, 'top10': 0, 'top20': 0}
     }
 
     # Calculate total number of valid comparisons (excluding self-comparisons)
     total_comparisons = 0
-    for name1, outer_dict in givenEvidence.items():
-        for name2 in outer_dict.keys():
-            if name1 != name2:
+    for attacker_name, mimicked_dict in givenEvidence.items():
+        for mimicked_name in mimicked_dict.keys():
+            if attacker_name != mimicked_name:
                 total_comparisons += 1
 
     # Pre-define rank thresholds
     thresholds = [1, 5, 10, 20]
 
-    for name1, outer_dict in givenEvidence.items():
-        # Get self-rank once
-        self_rank = int(outer_dict.get(name1, 0))
+    for attacker_name, mimicked_dict in givenEvidence.items():
+        # Get self-rank: find where attacker_name ranks against itself
+        self_rank = None
+        if attacker_name in mimicked_dict:
+            ranking_list = mimicked_dict[attacker_name]  # This is a list of (apt, rank) tuples
+            for apt_name, rank in ranking_list:
+                if apt_name == attacker_name:
+                    self_rank = int(rank)
+                    break
         
-        for name2, rank in outer_dict.items():
-            if name1 == name2:
-                continue
-                
-            rank_val = int(rank)
-            total_comparisons  # Already counted above
+        # If self not found, use worst rank as default
+        if self_rank is None:
+            self_rank = len(unique_apt_names_list)  # Worst possible rank
+        
+        for mimicked_name, ranking_list in mimicked_dict.items():
+            if attacker_name == mimicked_name:
+                continue  # Skip self-comparisons
+            
+            # Find the rank of the mimicked APT in this ranking
+            mimicked_rank = None
+            for apt_name, rank in ranking_list:
+                if apt_name == mimicked_name:
+                    mimicked_rank = int(rank)
+                    break
+            
+            # If mimicked APT not found in ranking, use worst rank
+            if mimicked_rank is None:
+                mimicked_rank = len(unique_apt_names_list)
             
             # Check each threshold
             for threshold in thresholds:
                 # Check if within threshold
                 self_in_threshold = 1 <= self_rank <= threshold
-                other_in_threshold = 1 <= rank_val <= threshold
+                other_in_threshold = 1 <= mimicked_rank <= threshold
                 
                 # Update individual counters
                 if self_in_threshold:
@@ -442,15 +466,15 @@ def eval_precision(unique_apt_names_list, givenEvidence):
         detection_pct = attacker_pct
         
         print(f"\n Top-{threshold}:")
-        print(f"  Attacker: {attacker}/{total_comparisons} ({attacker_pct:.1f}%)")
-        print(f"  Mimicked: {mimicked}/{total_comparisons} ({mimicked_pct:.1f}%)")
+        print(f"  Attacker (Detection): {attacker}/{total_comparisons} ({attacker_pct:.1f}%)")
+        print(f"  Mimicked (Deception): {mimicked}/{total_comparisons} ({mimicked_pct:.1f}%)")
         print(f"  Both: {both}/{total_comparisons} ({both_pct:.1f}%)")
         print(f"  Neither: {neither}/{total_comparisons} ({neither_pct:.1f}%)")
         print(f"   Deception: {deception_pct:.1f}% |  Detection: {detection_pct:.1f}%")
 
     print(f"\nTotal comparisons analyzed: {total_comparisons:,}")
 
-    return(metrics)
+    return metrics
 
 
 

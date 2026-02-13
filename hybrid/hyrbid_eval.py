@@ -274,22 +274,27 @@ def create_apt_ranking_heatmap(apt_dict):
     """
     Create a single heatmap from APT ranking dictionary.
     Color scale: Red = Rank 181 (lowest), Green = Rank 1 (highest)
+    Both X and Y axes will be in the same order (alphabetically or as provided)
     """
     
-    # Convert dictionary to DataFrame
-    df_list = []
+    # Get all unique APT names in a consistent order
+    all_apt_names = sorted(apt_dict.keys())  # Sort alphabetically for consistency
     
-    for query_apt, rankings in apt_dict.items():
-        row = {'Query_APT': query_apt}
-        for ranked_apt, rank in rankings:
-            # Invert rank: 1 becomes max value (green), 181 becomes min value (red)
-            inverted_score = 181 - rank + 1  # 1->181, 181->1
-            row[ranked_apt] = inverted_score
-        df_list.append(row)
-    
-    # Create DataFrame
-    df = pd.DataFrame(df_list).set_index('Query_APT')
+    # Create DataFrame with consistent row and column order
+    df = pd.DataFrame(index=all_apt_names, columns=all_apt_names)
     df = df.fillna(0)
+    
+    # Fill the DataFrame
+    for query_apt in all_apt_names:
+        rankings = apt_dict[query_apt]
+        ranking_dict = dict(rankings)  # Convert to dict for easier lookup
+        
+        for ranked_apt in all_apt_names:
+            if ranked_apt in ranking_dict:
+                # Invert rank: 1 becomes max value (green), 181 becomes min value (red)
+                rank = ranking_dict[ranked_apt]
+                inverted_score = 181 - rank + 1  # 1->181, 181->1
+                df.loc[query_apt, ranked_apt] = inverted_score
     
     # Create heatmap
     plt.figure(figsize=(24, 20))
@@ -326,11 +331,11 @@ def create_apt_ranking_heatmap(apt_dict):
     plt.tight_layout()
     plt.savefig('apt_ranking_heatmap.png', dpi=300, bbox_inches='tight')
     print("✓ Heatmap saved as 'apt_ranking_heatmap.png'")
-    plt.show()
-
+    
     # Save the figure
     plt.savefig('fulldataheatmap.png', dpi=300, bbox_inches='tight')
     print("✓ Heatmap saved as 'fulldataheatmap.png'")
+    plt.show()
 
 
 import random
@@ -369,29 +374,42 @@ def shuffler_and_divider(evidence_dict):
 
 
 def eval_precision(unique_apt_names_list, givenEvidence):
-
     fulldata_top1 = 0
     fulldata_top5 = 0
     fulldata_top10 = 0
     fulldata_top20 = 0
-    total = 181
+    total = len(unique_apt_names_list)
+    
     for name in unique_apt_names_list:
-        if int(givenEvidence[name][1]) == 1:
-            fulldata_top1 = fulldata_top1 + 1
-        elif 1 <= int(givenEvidence[name][1]) <= 5 :
-            fulldata_top5 = fulldata_top5 + 1
-        elif 1 <= int(givenEvidence[name][1]) <= 10 :
-            fulldata_top10 = fulldata_top10 + 1
-        elif 1 <= int(givenEvidence[name][1]) <= 20 :
-            fulldata_top20 = fulldata_top20 + 1
-        else:
-            pass
+        # Get the list of (apt_name, rank) tuples for this query
+        ranking_list = givenEvidence[name]
+        
+        # Find the tuple where the apt_name matches the query name
+        rank = None
+        for apt_name, apt_rank in ranking_list:
+            if apt_name == name:
+                rank = apt_rank
+                break
+        
+        if rank == 1:
+            fulldata_top1 += 1
+            fulldata_top5 += 1
+            fulldata_top10 += 1
+            fulldata_top20 += 1
+        elif 1 <= rank <= 5:
+            fulldata_top5 += 1
+            fulldata_top10 += 1
+            fulldata_top20 += 1
+        elif 1 <= rank <= 10:
+            fulldata_top10 += 1
+            fulldata_top20 += 1
+        elif 1 <= rank <= 20:
+            fulldata_top20 += 1
 
     print(f"fulldata_top1: {fulldata_top1} success, {total - fulldata_top1} failure, overall: {fulldata_top1}/{total} ({fulldata_top1/total*100:.2f}%)")
     print(f"fulldata_top5: {fulldata_top5} success, {total - fulldata_top5} failure, overall: {fulldata_top5}/{total} ({fulldata_top5/total*100:.2f}%)")
     print(f"fulldata_top10: {fulldata_top10} success, {total - fulldata_top10} failure, overall: {fulldata_top10}/{total} ({fulldata_top10/total*100:.2f}%)")
     print(f"fulldata_top20: {fulldata_top20} success, {total - fulldata_top20} failure, overall: {fulldata_top20}/{total} ({fulldata_top20/total*100:.2f}%)")
-
 
 def main():
     csv_file_path = "../BaseData/TestFinal_df.csv"
