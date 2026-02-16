@@ -7,8 +7,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.colors import LinearSegmentedColormap
+import random
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
+import threading
+from functools import lru_cache
+import time
+import traceback
 
-
+# Suppress output during imports
 sys.stdout = open(os.devnull, 'w')
 sys.stderr = open(os.devnull, 'w')
 
@@ -55,11 +61,19 @@ directories = {
 # Dictionary to store all imported modules
 modules = {}
 
+# Thread lock for safe printing
+print_lock = threading.Lock()
+
+def safe_print(*args, **kwargs):
+    """Thread-safe print function"""
+    with print_lock:
+        print(*args, **kwargs)
+
 try:
     for module_name, dir_path in directories.items():
         # Check if directory exists
         if not dir_path.exists():
-            print(f"⚠️  Directory not found: {dir_path}")
+            safe_print(f"⚠️  Directory not found: {dir_path}")
             continue
             
         # Change to the module's directory
@@ -76,7 +90,7 @@ try:
         # Store the module
         modules[module_name] = module
         
-        print(f"✓ Imported {module_name} from {os.getcwd()}/query.py")
+        safe_print(f"✓ Imported {module_name} from {os.getcwd()}/query.py")
         
         # IMPORTANT: Reset path before next import
         sys.path.remove(os.getcwd())
@@ -93,9 +107,9 @@ siamese_query = modules.get("siamese")
 mil_query = modules.get("mil")
 rf_query = modules.get("rf")
 
-print(f"\n✓ Successfully imported {len(modules)} modules")
+safe_print(f"\n✓ Successfully imported {len(modules)} modules")
 for name in modules.keys():
-    print(f"  - {name}")
+    safe_print(f"  - {name}")
 
 sys.stdout = sys.__stdout__
 sys.stderr = sys.__stderr__
@@ -103,10 +117,18 @@ sys.stderr = sys.__stderr__
 ##########################################################################################
 
 ##########################################################################################
+# Cache for processed APT data
+processed_data_cache = {}
+
 def process_apt_data(csv_file_path, apt_name):
     """
     Process CSV file and extract all 7 features for a specific APT
     """
+    # Check cache first
+    cache_key = f"{csv_file_path}_{apt_name}"
+    if cache_key in processed_data_cache:
+        return processed_data_cache[cache_key]
+    
     # Read CSV data from file
     df = pd.read_csv(csv_file_path)
     
@@ -131,7 +153,7 @@ def process_apt_data(csv_file_path, apt_name):
     # Extract unique Pulse_ID (excluding empty values and -1)
     pulse = sorted([x for x in apt_data['Pulse_ID'].dropna().unique().tolist() if x != -1])
     
-    return {
+    result = {
         'techniques': techniques,
         'software': software,
         'capec': capec,
@@ -139,6 +161,10 @@ def process_apt_data(csv_file_path, apt_name):
         'cve': cves,
         'pulse': pulse
     }
+    
+    # Cache the result
+    processed_data_cache[cache_key] = result
+    return result
 
 
 def hybrid_rank_aggregate(lists):
@@ -161,19 +187,20 @@ def hybrid_rank_aggregate(lists):
     results = []
     for name, ranks in rank_matrix.items():
         ranks = [r for r in ranks if r is not None]
-        avg_rank = np.mean(ranks)
-        median_rank = np.median(ranks)
-        min_rank = min(ranks)
-        max_rank = max(ranks)
-        rank_range = max_rank - min_rank
-        
-        results.append({
-            'name': name,
-            'avg': avg_rank,
-            'median': median_rank,
-            'min': min_rank,
-            'range': rank_range
-        })
+        if ranks:  # Only if we have ranks
+            avg_rank = np.mean(ranks)
+            median_rank = np.median(ranks)
+            min_rank = min(ranks)
+            max_rank = max(ranks)
+            rank_range = max_rank - min_rank
+            
+            results.append({
+                'name': name,
+                'avg': avg_rank,
+                'median': median_rank,
+                'min': min_rank,
+                'range': rank_range
+            })
     
     # Sort with multiple tie-breakers
     results.sort(key=lambda x: (
@@ -187,98 +214,248 @@ def hybrid_rank_aggregate(lists):
     return [(item['name'], i+1) for i, item in enumerate(results)]
 
 
-
-def automated_query_for_eval(evidence_first_batch):
+def run_single_query(evidence, module, module_name, timeout_seconds=20):
+    """Run a single query with a specific module - with timeout"""
     try:
-        # # Save original outputs
+        # Save original outputs
         original_stdout = sys.stdout
         original_stderr = sys.stderr
-
+        
         # Redirect to null
         sys.stdout = open(os.devnull, 'w')
         sys.stderr = open(os.devnull, 'w')
-
-        XGboost_results = xgboost_query.hybrid_query(evidence_first_batch)
-
-        GNN_results = gnn_query.hybrid_query(evidence_first_batch)
-
-        Siamese_results = siamese_query.hybrid_query(evidence_first_batch)
-
-        MIL_results = mil_query.hybrid_query(evidence_first_batch)
-
-        RF_results = rf_query.hybrid_query(evidence_first_batch)
-
-        Jaccards_result = jaccard_module.hybrid_query(evidence_first_batch)
-
-        TVD_result = TVD_module.hybrid_query(evidence_first_batch)
-
-        featureMatching_result = featureMatching_module.hybrid_query(evidence_first_batch)
-
-        all_lists = [XGboost_results, GNN_results, Siamese_results, MIL_results, RF_results, Jaccards_result, TVD_result, featureMatching_result]
-
-        result = hybrid_rank_aggregate(all_lists)
-
-        # # Restore outputs
+        
+        # Run the query with timeout
+        result = None
+        start_time = time.time()
+        
+        # Execute in a separate thread with timeout
+        def target():
+            nonlocal result
+            try:
+                result = module.hybrid_query(evidence)
+            except Exception as e:
+                safe_print(f"  ⚠️ {module_name} error: {str(e)[:50]}")
+                result = None
+        
+        thread = threading.Thread(target=target)
+        thread.daemon = True
+        thread.start()
+        thread.join(timeout=timeout_seconds)
+        
+        if thread.is_alive():
+            safe_print(f"  ⚠️ {module_name} timed out after {timeout_seconds}s")
+            result = None
+        
+        # Restore outputs
         sys.stdout.close()
         sys.stderr.close()
         sys.stdout = original_stdout
         sys.stderr = original_stderr
-
-        # print(result)
+        
         return result
-
     except Exception as e:
-        print(f"Error: {e}")
+        safe_print(f"  ⚠️ {module_name} failed: {str(e)[:50]}")
+        # Ensure outputs are restored
+        try:
+            sys.stdout.close()
+            sys.stderr.close()
+            sys.stdout = original_stdout
+            sys.stderr = original_stderr
+        except:
+            pass
+        return None
 
 
-
-def process_apt_data(csv_file_path, apt_name):
+def automated_query_for_eval(evidence_first_batch):
     """
-    Process CSV file and extract all 7 features for a specific APT
+    Parallelized version of automated_query_for_eval with better error handling
     """
-    # Read CSV data from file
-    df = pd.read_csv(csv_file_path)
+    # Define all modules to run
+    modules_to_run = [
+        ("xgboost", xgboost_query),
+        ("gnn", gnn_query),
+        ("siamese", siamese_query),
+        ("mil", mil_query),
+        ("rf", rf_query),
+        ("jaccard", jaccard_module),
+        ("tvd", TVD_module),
+        ("featureMatching", featureMatching_module)
+    ]
     
-    # Filter data for the specified APT
-    apt_data = df[df['APTname'] == apt_name]
+    # Filter out None modules
+    valid_modules = [(name, module) for name, module in modules_to_run if module is not None]
     
-    # Extract unique techniques (excluding empty values and -1)
-    techniques = sorted(apt_data['techniques_str'].dropna().unique().tolist())
+    if not valid_modules:
+        return []
     
-    # Extract unique software (excluding empty values and -1)
-    software = sorted(apt_data['software_str'].dropna().unique().tolist())
+    results = []
     
-    # Extract unique CAPEC_ID (excluding empty values and -1)
-    capec = sorted([x for x in apt_data['CAPEC_ID'].dropna().unique().tolist() if x != -1])
+    # Run queries sequentially but with timeout protection
+    # This is safer than parallel for this use case
+    for name, module in valid_modules:
+        try:
+            # Save original outputs
+            original_stdout = sys.stdout
+            original_stderr = sys.stderr
+            
+            # Redirect to null
+            sys.stdout = open(os.devnull, 'w')
+            sys.stderr = open(os.devnull, 'w')
+            
+            # Run with timeout using signal (simpler approach)
+            import signal
+            
+            def timeout_handler(signum, frame):
+                raise TimeoutError(f"{name} query timed out")
+            
+            # Set timeout
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(20)  # 20 second timeout
+            
+            try:
+                result = module.hybrid_query(evidence_first_batch)
+                signal.alarm(0)  # Disable alarm
+                if result is not None:
+                    results.append(result)
+            except TimeoutError:
+                safe_print(f"  ⚠️ {name} timed out")
+                signal.alarm(0)
+            except Exception as e:
+                safe_print(f"  ⚠️ {name} error: {str(e)[:50]}")
+                signal.alarm(0)
+            
+            # Restore outputs
+            sys.stdout.close()
+            sys.stderr.close()
+            sys.stdout = original_stdout
+            sys.stderr = original_stderr
+            
+        except Exception as e:
+            safe_print(f"  ⚠️ Error in {name}: {str(e)[:50]}")
+            # Ensure outputs are restored
+            try:
+                sys.stdout.close()
+                sys.stderr.close()
+                sys.stdout = original_stdout
+                sys.stderr = original_stderr
+            except:
+                pass
     
-    # Extract unique CWE_ID (excluding empty values and -1)
-    cwe = sorted([x for x in apt_data['CWE_ID'].dropna().unique().tolist() if x != -1])
+    # Aggregate results if we have any
+    if len(results) >= 3:  # Need at least 3 results for meaningful aggregation
+        return hybrid_rank_aggregate(results)
+    else:
+        safe_print(f"  ⚠️ Only {len(results)} modules succeeded, skipping")
+        return []
+
+
+def shuffler_and_divider(evidence_dict):
+    """
+    Shuffle the evidence items for each category and keep only half.
+    """
+    shuffled_and_divided = {}
     
-    # Extract unique CVEs (excluding empty values and -1)
-    cves = sorted([x for x in apt_data['CVE_ID'].dropna().unique().tolist() if x != -1])
+    for key, items in evidence_dict.items():
+        if key in ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']:
+            # Make a copy and shuffle
+            shuffled_items = items.copy()
+            random.shuffle(shuffled_items)
+            
+            # Keep only half
+            half_length = len(shuffled_items) // 2
+            shuffled_and_divided[key] = shuffled_items[:half_length]
+        else:
+            # Keep other keys as-is (if any)
+            shuffled_and_divided[key] = items
     
-    # Extract unique Pulse_ID (excluding empty values and -1)
-    pulse = sorted([x for x in apt_data['Pulse_ID'].dropna().unique().tolist() if x != -1])
+    return shuffled_and_divided
+
+
+def eval_precision(unique_apt_names_list, givenEvidence):
+    """
+    Evaluate precision at different ranks
+    """
+    total = len(unique_apt_names_list)
     
-    return {
-        'techniques': techniques,
-        'software': software,
-        'capec': capec,
-        'cwe': cwe,
-        'cve': cves,
-        'pulse': pulse
-    }
+    fulldata_top1 = 0
+    fulldata_top5 = 0
+    fulldata_top10 = 0
+    fulldata_top20 = 0
+    
+    for name in unique_apt_names_list:
+        # Get the list of (apt_name, rank) tuples for this query
+        ranking_list = givenEvidence.get(name, [])
+        
+        if not ranking_list:
+            continue
+        
+        # Find the tuple where the apt_name matches the query name
+        rank = None
+        for apt_name, apt_rank in ranking_list:
+            if apt_name == name:
+                rank = apt_rank
+                break
+        
+        if rank is not None:
+            if rank == 1:
+                fulldata_top1 += 1
+                fulldata_top5 += 1
+                fulldata_top10 += 1
+                fulldata_top20 += 1
+            elif rank <= 5:
+                fulldata_top5 += 1
+                fulldata_top10 += 1
+                fulldata_top20 += 1
+            elif rank <= 10:
+                fulldata_top10 += 1
+                fulldata_top20 += 1
+            elif rank <= 20:
+                fulldata_top20 += 1
+
+    if total > 0:
+        print(f"Top-1: {fulldata_top1}/{total} ({fulldata_top1/total*100:.2f}%)")
+        print(f"Top-5: {fulldata_top5}/{total} ({fulldata_top5/total*100:.2f}%)")
+        print(f"Top-10: {fulldata_top10}/{total} ({fulldata_top10/total*100:.2f}%)")
+        print(f"Top-20: {fulldata_top20}/{total} ({fulldata_top20/total*100:.2f}%)")
+
+
+def process_single_apt(args):
+    """Process a single APT - for parallel execution"""
+    name, csv_file_path, is_shuffled, index, total = args
+    
+    batch_type = "2nd_batch" if is_shuffled else "1st_batch"
+    safe_print(f"\n[{index+1}/{total}] {batch_type}_{name}")
+    
+    try:
+        # Process the data
+        evidence_first_batch = process_apt_data(csv_file_path, name)
+        
+        if is_shuffled:
+            evidence_to_use = shuffler_and_divider(evidence_first_batch)
+        else:
+            evidence_to_use = evidence_first_batch
+        
+        result = automated_query_for_eval(evidence_to_use)
+        
+        if result:
+            safe_print(f"  ✓ {name} completed")
+            return name, result
+        else:
+            safe_print(f"  ⚠️ {name} returned no results")
+            return name, []
+    except Exception as e:
+        safe_print(f"  ✗ Error processing {name}: {str(e)[:100]}")
+        traceback.print_exc(file=sys.stdout)
+        return name, []
 
 
 def create_apt_ranking_heatmap(apt_dict):
     """
     Create a single heatmap from APT ranking dictionary.
-    Color scale: Red = Rank 181 (lowest), Green = Rank 1 (highest)
-    Both X and Y axes will be in the same order (alphabetically or as provided)
     """
-    
     # Get all unique APT names in a consistent order
-    all_apt_names = sorted(apt_dict.keys())  # Sort alphabetically for consistency
+    all_apt_names = sorted(apt_dict.keys())
     
     # Create DataFrame with consistent row and column order
     df = pd.DataFrame(index=all_apt_names, columns=all_apt_names)
@@ -286,14 +463,14 @@ def create_apt_ranking_heatmap(apt_dict):
     
     # Fill the DataFrame
     for query_apt in all_apt_names:
-        rankings = apt_dict[query_apt]
-        ranking_dict = dict(rankings)  # Convert to dict for easier lookup
+        rankings = apt_dict.get(query_apt, [])
+        ranking_dict = dict(rankings)
         
         for ranked_apt in all_apt_names:
             if ranked_apt in ranking_dict:
                 # Invert rank: 1 becomes max value (green), 181 becomes min value (red)
                 rank = ranking_dict[ranked_apt]
-                inverted_score = 181 - rank + 1  # 1->181, 181->1
+                inverted_score = 181 - rank + 1
                 df.loc[query_apt, ranked_apt] = inverted_score
     
     # Create heatmap
@@ -306,8 +483,8 @@ def create_apt_ranking_heatmap(apt_dict):
     # Create heatmap
     sns.heatmap(df,
                 cmap=cmap,
-                vmin=1,        # Red = Rank 181
-                vmax=181,      # Green = Rank 1
+                vmin=1,
+                vmax=181,
                 square=True,
                 xticklabels=True,
                 yticklabels=True,
@@ -330,164 +507,79 @@ def create_apt_ranking_heatmap(apt_dict):
     
     plt.tight_layout()
     plt.savefig('apt_ranking_heatmap.png', dpi=300, bbox_inches='tight')
-    print("✓ Heatmap saved as 'apt_ranking_heatmap.png'")
-    
-    # Save the figure
-    plt.savefig('fulldataheatmap.png', dpi=300, bbox_inches='tight')
-    print("✓ Heatmap saved as 'fulldataheatmap.png'")
+    print("\n✓ Heatmap saved as 'apt_ranking_heatmap.png'")
     plt.show()
 
-
-import random
-
-def shuffler_and_divider(evidence_dict):
-    """
-    Shuffle the evidence items for each category and keep only half.
-    
-    Parameters:
-    -----------
-    evidence_dict : dict
-        Dictionary with keys 'techniques', 'software', 'capec', 'cwe', 'cves', 'pulse'
-        each containing a list of items
-    
-    Returns:
-    --------
-    dict : New dictionary with shuffled and halved evidence
-    """
-    
-    shuffled_and_divided = {}
-    
-    for key, items in evidence_dict.items():
-        if key in ['techniques', 'software', 'capec', 'cwe', 'cves', 'pulse']:
-            # Make a copy and shuffle
-            shuffled_items = items.copy()
-            random.shuffle(shuffled_items)
-            
-            # Keep only half
-            half_length = len(shuffled_items) // 2
-            shuffled_and_divided[key] = shuffled_items[:half_length]
-        else:
-            # Keep other keys as-is (if any)
-            shuffled_and_divided[key] = items
-    
-    return shuffled_and_divided
-
-
-def eval_precision(unique_apt_names_list, givenEvidence):
-    fulldata_top1 = 0
-    fulldata_top5 = 0
-    fulldata_top10 = 0
-    fulldata_top20 = 0
-    total = len(unique_apt_names_list)
-    
-    for name in unique_apt_names_list:
-        # Get the list of (apt_name, rank) tuples for this query
-        ranking_list = givenEvidence[name]
-        
-        # Find the tuple where the apt_name matches the query name
-        rank = None
-        for apt_name, apt_rank in ranking_list:
-            if apt_name == name:
-                rank = apt_rank
-                break
-        
-        if rank == 1:
-            fulldata_top1 += 1
-            fulldata_top5 += 1
-            fulldata_top10 += 1
-            fulldata_top20 += 1
-        elif 1 <= rank <= 5:
-            fulldata_top5 += 1
-            fulldata_top10 += 1
-            fulldata_top20 += 1
-        elif 1 <= rank <= 10:
-            fulldata_top10 += 1
-            fulldata_top20 += 1
-        elif 1 <= rank <= 20:
-            fulldata_top20 += 1
-
-    print(f"fulldata_top1: {fulldata_top1} success, {total - fulldata_top1} failure, overall: {fulldata_top1}/{total} ({fulldata_top1/total*100:.2f}%)")
-    print(f"fulldata_top5: {fulldata_top5} success, {total - fulldata_top5} failure, overall: {fulldata_top5}/{total} ({fulldata_top5/total*100:.2f}%)")
-    print(f"fulldata_top10: {fulldata_top10} success, {total - fulldata_top10} failure, overall: {fulldata_top10}/{total} ({fulldata_top10/total*100:.2f}%)")
-    print(f"fulldata_top20: {fulldata_top20} success, {total - fulldata_top20} failure, overall: {fulldata_top20}/{total} ({fulldata_top20/total*100:.2f}%)")
 
 def main():
     csv_file_path = "../BaseData/TestFinal_df.csv"
     
+    # Read APT names
     df = pd.read_csv(csv_file_path)
     unique_apt_names = df['APTname'].unique()
-
-    # Convert to list if you need a list
     unique_apt_names_list = unique_apt_names.tolist()
-
+    total_apts = len(unique_apt_names_list)
+    
+    print(f"Processing {total_apts} APTs...")
+    
+    # Process first batch (full data)
+    print("\n" + "="*50)
+    print("Processing First Batch (Full Data)")
+    print("="*50)
+    
     Fullevidencetable = {}
-    for name in unique_apt_names_list:
-        print("\n"+"1st_batch_"+name)
+    
+    # Process sequentially to avoid threading issues
+    # This is slower but more reliable
+    for i, name in enumerate(unique_apt_names_list):
+        safe_print(f"\n[{i+1}/{total_apts}] Processing {name} (Full Data)")
         try:
-            # Process the data
-            # Get APT name from user
-            apt_name = name
-            evidence_first_batch = process_apt_data(csv_file_path, apt_name)
-
-            result = automated_query_for_eval(evidence_first_batch)
-            # print(result)
-            Fullevidencetable[str(name)] = result
-
-            # print(Fullevidencetable)
-        except FileNotFoundError:
-            print(f"Error: File '{csv_file_path}' not found.")
+            evidence = process_apt_data(csv_file_path, name)
+            result = automated_query_for_eval(evidence)
+            if result:
+                Fullevidencetable[str(name)] = result
+                safe_print(f"  ✓ {name} completed")
+            else:
+                safe_print(f"  ⚠️ {name} returned no results")
         except Exception as e:
-            print(f"Error: {e}")
+            safe_print(f"  ✗ Error: {str(e)[:100]}")
     
-
-
+    # Process second batch (shuffled data)
+    print("\n" + "="*50)
+    print("Processing Second Batch (Shuffled & Divided Data)")
+    print("="*50)
     
-
-
     shuffled_divided_evidence_table = {}
-    for name in unique_apt_names_list:
-        print("\n"+"2nd_batch_"+name)
+    
+    for i, name in enumerate(unique_apt_names_list):
+        safe_print(f"\n[{i+1}/{total_apts}] Processing {name} (Shuffled)")
         try:
-            # Process the data
-            # Get APT name from user
-            apt_name = name
-            evidence_first_batch = process_apt_data(csv_file_path, apt_name)
-            shuffled_and_divided_evidence = shuffler_and_divider(evidence_first_batch)
-            result = automated_query_for_eval(shuffled_and_divided_evidence)
-            # print(result)
-            shuffled_divided_evidence_table[str(name)] = result
-
-            # print(shuffled_divided_evidence_table)
-        except FileNotFoundError:
-            print(f"Error: File '{csv_file_path}' not found.")
+            evidence = process_apt_data(csv_file_path, name)
+            shuffled_evidence = shuffler_and_divider(evidence)
+            result = automated_query_for_eval(shuffled_evidence)
+            if result:
+                shuffled_divided_evidence_table[str(name)] = result
+                safe_print(f"  ✓ {name} completed")
+            else:
+                safe_print(f"  ⚠️ {name} returned no results")
         except Exception as e:
-            print(f"Error: {e}")
-
-
-
+            safe_print(f"  ✗ Error: {str(e)[:100]}")
+    
+    # Evaluate results
+    print("\n" + "="*50)
+    print("Results for Full Data")
+    print("="*50)
     eval_precision(unique_apt_names_list, Fullevidencetable)
-
-    print("RESULT FOR DATA SHUFFLED AND DIVIDED by 2")
-
+    
+    print("\n" + "="*50)
+    print("Results for Shuffled & Divided Data")
+    print("="*50)
     eval_precision(unique_apt_names_list, shuffled_divided_evidence_table)
-
-
+    
     # Create the heatmap for full data check
-    create_apt_ranking_heatmap(Fullevidencetable)
-
-
+    if Fullevidencetable:
+        create_apt_ranking_heatmap(Fullevidencetable)
 
 
 if __name__ == "__main__":
     main()
-
-
-
-
-##################################
-
-
-
-
-
-
