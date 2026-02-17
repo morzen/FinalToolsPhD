@@ -665,6 +665,55 @@ def plot_false_flag_deception_heatmap(Full_FalseFlag_evidencetable, apt_names):
     
     return deception_matrix
 
+
+def worker_function(evidence1, evidence2, shuffle_n_divide):
+
+    custom_falsflag_mimick_test = shuffle_remove_and_combine(evidence1, evidence2)
+
+    if(shuffle_n_divide == True):
+        shuffled_and_divided_evidence = shuffler_and_divider(custom_falsflag_mimick_test)
+        result = automated_query_for_eval(shuffled_and_divided_evidence)
+    else:
+        result = automated_query_for_eval(custom_falsflag_mimick_test)
+
+    return result
+
+
+from multiprocessing import Pool
+from itertools import product
+from functools import partial
+from tqdm import tqdm
+import time
+from multiprocessing import Manager
+
+def process_pair(name1, name2, csv_file_path, progress_queue=None):
+    start_time = time.time()
+    if(name1 == name2):
+        pass
+    else:
+        # print("\n"+"1st_batch:  "+name1+" __ "+name2)
+        try:
+            # Process the data
+            # Get APT name from user
+            evidence1 = process_apt_data(csv_file_path, name1)
+            evidence2 = process_apt_data(csv_file_path, name2)
+            evidence_first_batch_n2 = process_apt_data(csv_file_path, name2)
+            result_full = worker_function(evidence1, evidence_first_batch_n2, False)
+            result_divided_n_shuffled = worker_function(evidence2, evidence_first_batch_n2, True)
+            
+            # Calculate elapsed time
+            elapsed = time.time() - start_time
+            
+            # Send progress update
+            if progress_queue:
+                progress_queue.put(1)
+
+            return (name1, name2, result_full, result_divided_n_shuffled, elapsed)
+
+        except Exception as e:
+            print(f"Error processing {name1}-{name2}: {e}")
+        
+
 def main():
     csv_file_path = "../BaseData/TestFinal_df.csv"
     
@@ -673,78 +722,180 @@ def main():
 
     # Convert to list if you need a list
     unique_apt_names_list = unique_apt_names.tolist()
+    #below for testing comment out for full data
+    # unique_apt_names_list = unique_apt_names_list[:4]
 
-    Full_FalseFlag_evidencetable = {}
-    total_len = len(unique_apt_names_list) * len(unique_apt_names_list) - len(unique_apt_names_list)
-    start_count = 0
-    for name1 in unique_apt_names_list:
-        evidence_first_batch_n1 = process_apt_data(csv_file_path, name1)
-        TempFalseFlag = {}
-        for name2 in unique_apt_names_list:
-            if(name1 == name2):
-                pass
-            else:
-                start_count = start_count + 1
-                print(str(start_count)+"/"+str(total_len))
-                # print("\n"+"1st_batch:  "+name1+" __ "+name2)
-                try:
-                    # Process the data
-                    # Get APT name from user
-                    evidence_first_batch_n2 = process_apt_data(csv_file_path, name2)
 
-                    custom_falsflag_mimick_test = shuffle_remove_and_combine(evidence_first_batch_n1, evidence_first_batch_n2)
+    # Generate all pairs
+    pairs = [(name1, name2) for name1 in unique_apt_names_list 
+             for name2 in unique_apt_names_list if name1 != name2]
+    
+    total_pairs = len(pairs)
+    print(f"Total pairs to process: {total_pairs}")
 
-                    result = automated_query_for_eval(custom_falsflag_mimick_test)
-                    # print(result)
-                    TempFalseFlag[str(name2)] = result
+    # ===== CHECKPOINTING: Load existing results =====
+    import pickle
+    import os
+    
+    checkpoint_file = 'false_flag_checkpoint.pkl'
+    processed_pairs = set()
+    
+    # Initialize dictionaries
+    Full_FalseFlag_evidencetable = {name: {} for name in unique_apt_names_list}
+    shuffled_divided_FalseFlag_evidence_table = {name: {} for name in unique_apt_names_list}
+    
+    # Load checkpoint if exists
+    if os.path.exists(checkpoint_file):
+        print(f"📦 Found checkpoint file. Loading existing results...")
+        with open(checkpoint_file, 'rb') as f:
+            checkpoint_data = pickle.load(f)
+            Full_FalseFlag_evidencetable = checkpoint_data['full']
+            shuffled_divided_FalseFlag_evidence_table = checkpoint_data['shuffled']
+            processed_pairs = checkpoint_data['processed_pairs']
+        print(f"✅ Loaded {len(processed_pairs)} already processed pairs")
+        
+        # Filter out already processed pairs
+        pairs_to_process = [p for p in pairs if p not in processed_pairs]
+        print(f"🔄 Remaining pairs to process: {len(pairs_to_process)}/{total_pairs}")
+    else:
+        print(f"🆕 No checkpoint found. Starting fresh...")
+        pairs_to_process = pairs
+    # =================================================
 
-                    # print(TempFalseFlag)
-                    # print(Fullevidencetable)
-                except FileNotFoundError:
-                    print(f"Error: File '{csv_file_path}' not found.")
-                except Exception as e:
-                    print(f"Error: {e}")
+    # Create progress queue
+    manager = Manager()
+    progress_queue = manager.Queue()
+    
+    # Track start time for entire process
+    global_start = time.time()
+    
+    if pairs_to_process:
+        with Pool(processes=9) as pool:
+            async_results = []
+            for name1, name2 in pairs_to_process:  # Use pairs_to_process instead of pairs
+                async_results.append(
+                    pool.apply_async(process_pair, 
+                                   args=(name1, name2, csv_file_path, progress_queue))
+                )
+            
+            # Monitor progress
+            completed = 0
+            total_elapsed = 0
+            
+            with tqdm(total=len(pairs_to_process), desc="Processing pairs", 
+                     bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]') as pbar:
+                
+                results = []
+                for async_result in async_results:
+                    result = async_result.get()
+                    if result:
+                        results.append(result)
+                        name1, name2, ranking_full, ranking_shuffled, elapsed = result
+                        
+                        # Add to dictionaries
+                        Full_FalseFlag_evidencetable[name1][name2] = ranking_full
+                        shuffled_divided_FalseFlag_evidence_table[name1][name2] = ranking_shuffled
+                        
+                        # ===== CHECKPOINTING: Save after each result =====
+                        processed_pairs.add((name1, name2))
+                        
+                        # Save every 10 pairs or at 25%, 50%, 75% progress
+                        if len(processed_pairs) % 10 == 0 or len(processed_pairs) in [len(pairs)//4, len(pairs)//2, 3*len(pairs)//4]:
+                            checkpoint_data = {
+                                'full': Full_FalseFlag_evidencetable,
+                                'shuffled': shuffled_divided_FalseFlag_evidence_table,
+                                'processed_pairs': processed_pairs
+                            }
+                            with open(checkpoint_file, 'wb') as f:
+                                pickle.dump(checkpoint_data, f)
+                            print(f"\n💾 Checkpoint saved at {len(processed_pairs)}/{total_pairs} pairs")
+                        # =================================================
+                        
+                        total_elapsed += elapsed
+                    
+                    completed += 1
+                    pbar.update(1)
+                    
+                    # Calculate and display ETA
+                    avg_time = total_elapsed / completed if completed > 0 else 0
+                    remaining = avg_time * (len(pairs_to_process) - completed)
+                    
+                    pbar.set_postfix({
+                        'Avg': f'{avg_time:.2f}s',
+                        'ETA': f'{remaining/60:.1f}min'
+                    })
+        
+        # ===== CHECKPOINTING: Final save after all processing =====
+        checkpoint_data = {
+            'full': Full_FalseFlag_evidencetable,
+            'shuffled': shuffled_divided_FalseFlag_evidence_table,
+            'processed_pairs': processed_pairs
+        }
+        with open(checkpoint_file, 'wb') as f:
+            pickle.dump(checkpoint_data, f)
+        print(f"\n💾 Final checkpoint saved with all {len(processed_pairs)} pairs")
+        # =========================================================
+    else:
+        print("✨ All pairs already processed! Loading from checkpoint.")
+    
+    global_end = time.time()
+    
+    # Print summary statistics
+    print("\n" + "="*50)
+    print("PROCESSING COMPLETED")
+    print("="*50)
+    print(f"Total pairs processed: {len(results)}/{total_pairs}")
+    print(f"Total time: {global_end - global_start:.2f} seconds ({ (global_end - global_start)/60:.2f} minutes)")
+    print(f"Average time per pair: {(global_end - global_start)/len(results):.2f} seconds")
+    print(f"Processing rate: {len(results)/(global_end - global_start):.2f} pairs/second")
+    
+    # Reconstruct dictionaries
+    Full_FalseFlag_evidencetable = {name: {} for name in unique_apt_names_list}
+    shuffled_divided_FalseFlag_evidence_table = {name: {} for name in unique_apt_names_list}
+    
+    for result in results:
+        if result:
+            name1, name2, ranking_full, ranking_shuffled, elapsed = result
+            Full_FalseFlag_evidencetable[name1][name2] = ranking_full
+            shuffled_divided_FalseFlag_evidence_table[name1][name2] = ranking_shuffled
 
-        Full_FalseFlag_evidencetable[str(name1)] = TempFalseFlag
+    #OLD SIMPLE FLOW CODE _ DEFAULT TOO SLOW
+    # Full_FalseFlag_evidencetable = {}
+    # shuffled_divided_FalseFlag_evidence_table = {}
+    # total_len = len(unique_apt_names_list) * len(unique_apt_names_list) - len(unique_apt_names_list)
+    # start_count = 0
+    # for name1 in unique_apt_names_list:
+    #     evidence_first_batch_n1 = process_apt_data(csv_file_path, name1)
+    #     TempFalseFlag1 = {}
+    #     TempFalseFlag2 = {}
+    #     for name2 in unique_apt_names_list:
+    #         if(name1 == name2):
+    #             pass
+    #         else:
+    #             start_count = start_count + 1
+    #             print(str(start_count)+"/"+str(total_len))
+    #             # print("\n"+"1st_batch:  "+name1+" __ "+name2)
+    #             try:
+    #                 # Process the data
+    #                 # Get APT name from user
+    #                 evidence_first_batch_n2 = process_apt_data(csv_file_path, name2)
+    #                 result_full = worker_function(evidence_first_batch_n1, evidence_first_batch_n2, False)
+    #                 result_divided_n_shuffled = worker_function(evidence_first_batch_n1, evidence_first_batch_n2, True)
+    #                 # print(result)
+    #                 TempFalseFlag1[str(name2)] = result_full
+    #                 TempFalseFlag2[str(name2)] = result_divided_n_shuffled
+
+    #                 # print(TempFalseFlag)
+    #                 # print(Fullevidencetable)
+    #             except FileNotFoundError:
+    #                 print(f"Error: File '{csv_file_path}' not found.")
+    #             except Exception as e:
+    #                 print(f"Error: {e}")
+
+    #     Full_FalseFlag_evidencetable[str(name1)] = TempFalseFlag1
+    #     shuffled_divided_FalseFlag_evidence_table[str(name1)] = TempFalseFlag2
         # print(Full_FalseFlag_evidencetable)
-    
-
-
-    
-
-    print("\n BATCH 2 \n")
-    shuffled_divided_FalseFlag_evidence_table = {}
-    total_len = len(unique_apt_names_list) * len(unique_apt_names_list) - len(unique_apt_names_list)
-    start_count = 0
-    for name1 in unique_apt_names_list:
-        evidence_first_batch_n1 = process_apt_data(csv_file_path, name1)
-        evidence_first_batch_n1 = shuffler_and_divider(evidence_first_batch_n1)
-        TempFalseFlag = {}
-        for name2 in unique_apt_names_list:
-            if(name1 == name2):
-                pass
-            else:
-                start_count = start_count + 1
-                print(str(start_count)+"/"+str(total_len))
-                # print("\n"+"2st_batch:  "+name1+" __ "+name2)
-                try:
-                    # Process the data
-                    # Get APT name from user
-                    evidence_first_batch_n2 = process_apt_data(csv_file_path, name2)
-
-                    custom_falsflag_mimick_test = shuffle_remove_and_combine(evidence_first_batch_n1, evidence_first_batch_n2)
-                    shuffled_and_divided_evidence = shuffler_and_divider(custom_falsflag_mimick_test)
-                    result = automated_query_for_eval(shuffled_and_divided_evidence)
-                    # print(result)
-                    TempFalseFlag[str(name2)] = result
-
-                    # print(Fullevidencetable)
-                except FileNotFoundError:
-                    print(f"Error: File '{csv_file_path}' not found.")
-                except Exception as e:
-                    print(f"Error: {e}")
-
-        shuffled_divided_FalseFlag_evidence_table[str(name1)] = TempFalseFlag
+        
 
     print("RESULT FOR FULL DATA ")
 
@@ -754,7 +905,7 @@ def main():
 
     eval_precision(unique_apt_names_list, shuffled_divided_FalseFlag_evidence_table)
 
-    plot_false_flag_deception_heatmap(Full_FalseFlag_evidencetable)
+    plot_false_flag_deception_heatmap(Full_FalseFlag_evidencetable, unique_apt_names_list)
 
     # Create the heatmap for full data check
     # create_apt_ranking_heatmap(Full_FalseFlag_evidencetable)
