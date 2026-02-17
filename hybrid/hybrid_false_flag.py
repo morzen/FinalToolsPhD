@@ -770,7 +770,7 @@ def main():
     global_start = time.time()
     
     if pairs_to_process:
-        with Pool(processes=9) as pool:
+        with Pool(processes=10) as pool:
             async_results = []
             for name1, name2 in pairs_to_process:  # Use pairs_to_process instead of pairs
                 async_results.append(
@@ -800,7 +800,7 @@ def main():
                         processed_pairs.add((name1, name2))
                         
                         # Save every 10 pairs or at 25%, 50%, 75% progress
-                        if len(processed_pairs) % 10 == 0 or len(processed_pairs) in [len(pairs)//4, len(pairs)//2, 3*len(pairs)//4]:
+                        if len(processed_pairs) % 100 == 0 or len(processed_pairs) in [len(pairs)//4, len(pairs)//2, 3*len(pairs)//4]:
                             checkpoint_data = {
                                 'full': Full_FalseFlag_evidencetable,
                                 'shuffled': shuffled_divided_FalseFlag_evidence_table,
