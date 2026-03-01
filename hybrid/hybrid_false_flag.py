@@ -8,39 +8,38 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.colors import LinearSegmentedColormap
 import random
+import pickle
+from multiprocessing import Pool
+from tqdm import tqdm
+import time
 
 # Set random seed for reproducibility
 random.seed(42)
 
+# ===== LOAD MODULES (same as your original) =====
 sys.stdout = open(os.devnull, 'w')
 sys.stderr = open(os.devnull, 'w')
 
 # Path to Jaccards_correlation.py
 jaccard_dir = Path("..") / "Jaccards_Correlation"
 jaccard_file = jaccard_dir / "Jaccards_correlation.py"
-
 spec = importlib.util.spec_from_file_location("jaccards_module", jaccard_file)
 jaccard_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(jaccard_module)
 
-
 # Path to TVD_featureIng.py
 TVD_dir = Path("..") / "TVD_Total_Variation_Distance"
 TVD_file = TVD_dir / "TVD_featureIng.py"
-
 spec = importlib.util.spec_from_file_location("TVD_module", TVD_file)
 TVD_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(TVD_module)
 
-
 # Path to featureMatching.py
 featureMatching_dir = Path("..") / "featureMatching"
 featureMatching_file = featureMatching_dir / "featureMatching.py"
-
 spec = importlib.util.spec_from_file_location("featureMatching_module", featureMatching_file)
 featureMatching_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(featureMatching_module)
-
 
 # Store original state
 original_dir = os.getcwd()
@@ -60,98 +59,54 @@ modules = {}
 
 try:
     for module_name, dir_path in directories.items():
-        # Check if directory exists
         if not dir_path.exists():
             print(f"⚠️  Directory not found: {dir_path}")
             continue
             
-        # Change to the module's directory
         os.chdir(dir_path)
-        
-        # Add current directory to path
         sys.path.insert(0, os.getcwd())
-        
-        # Import from the current directory
         spec = importlib.util.spec_from_file_location(f"{module_name}_query", "query.py")
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        
-        # Store the module
         modules[module_name] = module
-        
-        print(f"✓ Imported {module_name} from {os.getcwd()}/query.py")
-        
-        # IMPORTANT: Reset path before next import
         sys.path.remove(os.getcwd())
         
 finally:
-    # Always restore original state
     os.chdir(original_dir)
     sys.path = original_sys_path
 
-# Now you have all modules in the dictionary
 xgboost_query = modules.get("xgboost")
 gnn_query = modules.get("gnn")
 siamese_query = modules.get("siamese")
 mil_query = modules.get("mil")
 rf_query = modules.get("rf")
 
-print(f"\n✓ Successfully imported {len(modules)} modules")
-for name in modules.keys():
-    print(f"  - {name}")
-
 sys.stdout = sys.__stdout__
 sys.stderr = sys.__stderr__
 
-##########################################################################################
-
-##########################################################################################
-def process_apt_data(csv_file_path, apt_name):
-    """
-    Process CSV file and extract all 7 features for a specific APT
-    """
-    # Read CSV data from file
-    df = pd.read_csv(csv_file_path)
+# ===== YOUR ORIGINAL FUNCTIONS =====
+def process_apt_data(apt_name, apt_data_cache=None):
+    """Modified to use pre-computed cache"""
+    if apt_data_cache is not None:
+        return apt_data_cache[apt_name]
     
-    # Filter data for the specified APT
+    # Fallback to original method
+    df = pd.read_csv(csv_file_path)
     apt_data = df[df['APTname'] == apt_name]
     
-    # Extract unique techniques (excluding empty values and -1)
-    techniques = sorted(apt_data['techniques_str'].dropna().unique().tolist())
-    
-    # Extract unique software (excluding empty values and -1)
-    software = sorted(apt_data['software_str'].dropna().unique().tolist())
-    
-    # Extract unique CAPEC_ID (excluding empty values and -1)
-    capec = sorted([x for x in apt_data['CAPEC_ID'].dropna().unique().tolist() if x != -1])
-    
-    # Extract unique CWE_ID (excluding empty values and -1)
-    cwe = sorted([x for x in apt_data['CWE_ID'].dropna().unique().tolist() if x != -1])
-    
-    # Extract unique CVEs (excluding empty values and -1)
-    cves = sorted([x for x in apt_data['CVE_ID'].dropna().unique().tolist() if x != -1])
-    
-    # Extract unique Pulse_ID (excluding empty values and -1)
-    pulse = sorted([x for x in apt_data['Pulse_ID'].dropna().unique().tolist() if x != -1])
-    
     return {
-        'techniques': techniques,
-        'software': software,
-        'capec': capec,
-        'cwe': cwe,
-        'cve': cves,
-        'pulse': pulse
+        'techniques': sorted(apt_data['techniques_str'].dropna().unique().tolist()),
+        'software': sorted(apt_data['software_str'].dropna().unique().tolist()),
+        'capec': sorted([x for x in apt_data['CAPEC_ID'].dropna().unique().tolist() if x != -1]),
+        'cwe': sorted([x for x in apt_data['CWE_ID'].dropna().unique().tolist() if x != -1]),
+        'cves': sorted([x for x in apt_data['CVE_ID'].dropna().unique().tolist() if x != -1]),
+        'pulse': sorted([x for x in apt_data['Pulse_ID'].dropna().unique().tolist() if x != -1])
     }
 
-
 def hybrid_rank_aggregate(lists):
-    """
-    Advanced rank aggregation with explicit tie-breaking
-    """
     n_lists = len(lists)
-    
-    # Create rank matrix
     rank_matrix = {}
+    
     for list_idx, ranking in enumerate(lists):
         for item in ranking:
             name = item['apt_name']
@@ -160,7 +115,6 @@ def hybrid_rank_aggregate(lists):
                 rank_matrix[name] = [None] * n_lists
             rank_matrix[name][list_idx] = rank
     
-    # Calculate statistics
     results = []
     for name, ranks in rank_matrix.items():
         ranks = [r for r in ranks if r is not None]
@@ -178,208 +132,79 @@ def hybrid_rank_aggregate(lists):
             'range': rank_range
         })
     
-    # Sort with multiple tie-breakers
-    results.sort(key=lambda x: (
-        x['avg'],           # Primary: average rank
-        x['median'],        # Secondary: median
-        x['min'],          # Tertiary: best rank
-        x['range'],        # Quaternary: consistency
-        x['name']          # Final: alphabetical
-    ))
-    
+    results.sort(key=lambda x: (x['avg'], x['median'], x['min'], x['range'], x['name']))
     return [(item['name'], i+1) for i, item in enumerate(results)]
 
+def shuffler_and_divider(evidence_dict):
+    shuffled = {}
+    for key, items in evidence_dict.items():
+        if key in ['techniques', 'software', 'capec', 'cwe', 'cves', 'pulse']:
+            shuffled_items = items.copy()
+            random.shuffle(shuffled_items)
+            half_length = len(shuffled_items) // 2
+            shuffled[key] = shuffled_items[:half_length]
+        else:
+            shuffled[key] = items
+    return shuffled
 
+def shuffle_remove_and_combine(apt1, apt2, apt1_ratio=0.3, apt2_ratio=0.7):
+    combined = {}
+    for category in apt1.keys():
+        apt1_items = apt1[category]
+        apt1_count = int(len(apt1_items) * apt1_ratio)
+        apt1_sample = apt1_items[:apt1_count]
+        
+        apt2_items = apt2[category]
+        apt2_count = int(len(apt2_items) * apt2_ratio)
+        apt2_sample = apt2_items[-apt2_count:] if apt2_count > 0 else []
+        
+        combined_category = []
+        seen = set()
+        for item in apt1_sample + apt2_sample:
+            if item not in seen:
+                seen.add(item)
+                combined_category.append(item)
+        
+        combined[category] = combined_category
+    return combined
 
-def automated_query_for_eval(evidence_first_batch):
+def automated_query_for_eval(evidence):
     try:
-        # # Save original outputs
         original_stdout = sys.stdout
         original_stderr = sys.stderr
-
-        # Redirect to null
         sys.stdout = open(os.devnull, 'w')
         sys.stderr = open(os.devnull, 'w')
 
-        XGboost_results = xgboost_query.hybrid_query(evidence_first_batch)
+        XGboost_results = xgboost_query.hybrid_query(evidence)
+        GNN_results = gnn_query.hybrid_query(evidence)
+        Siamese_results = siamese_query.hybrid_query(evidence)
+        MIL_results = mil_query.hybrid_query(evidence)
+        RF_results = rf_query.hybrid_query(evidence)
+        Jaccards_result = jaccard_module.hybrid_query(evidence)
+        TVD_result = TVD_module.hybrid_query(evidence)
+        featureMatching_result = featureMatching_module.hybrid_query(evidence)
 
-        GNN_results = gnn_query.hybrid_query(evidence_first_batch)
-
-        Siamese_results = siamese_query.hybrid_query(evidence_first_batch)
-
-        MIL_results = mil_query.hybrid_query(evidence_first_batch)
-
-        RF_results = rf_query.hybrid_query(evidence_first_batch)
-
-        Jaccards_result = jaccard_module.hybrid_query(evidence_first_batch)
-
-        TVD_result = TVD_module.hybrid_query(evidence_first_batch)
-
-        featureMatching_result = featureMatching_module.hybrid_query(evidence_first_batch)
-
-        all_lists = [XGboost_results, GNN_results, Siamese_results, MIL_results, RF_results, Jaccards_result, TVD_result, featureMatching_result]
+        all_lists = [XGboost_results, GNN_results, Siamese_results, MIL_results, 
+                     RF_results, Jaccards_result, TVD_result, featureMatching_result]
 
         result = hybrid_rank_aggregate(all_lists)
 
-        # # Restore outputs
         sys.stdout.close()
         sys.stderr.close()
         sys.stdout = original_stdout
         sys.stderr = original_stderr
 
-        # print(result)
         return result
-
     except Exception as e:
         print(f"Error: {e}")
 
-
-
-def process_apt_data(csv_file_path, apt_name):
-    """
-    Process CSV file and extract all 7 features for a specific APT
-    """
-    # Read CSV data from file
-    df = pd.read_csv(csv_file_path)
-    
-    # Filter data for the specified APT
-    apt_data = df[df['APTname'] == apt_name]
-    
-    # Extract unique techniques (excluding empty values and -1)
-    techniques = sorted(apt_data['techniques_str'].dropna().unique().tolist())
-    
-    # Extract unique software (excluding empty values and -1)
-    software = sorted(apt_data['software_str'].dropna().unique().tolist())
-    
-    # Extract unique CAPEC_ID (excluding empty values and -1)
-    capec = sorted([x for x in apt_data['CAPEC_ID'].dropna().unique().tolist() if x != -1])
-    
-    # Extract unique CWE_ID (excluding empty values and -1)
-    cwe = sorted([x for x in apt_data['CWE_ID'].dropna().unique().tolist() if x != -1])
-    
-    # Extract unique CVEs (excluding empty values and -1)
-    cves = sorted([x for x in apt_data['CVE_ID'].dropna().unique().tolist() if x != -1])
-    
-    # Extract unique Pulse_ID (excluding empty values and -1)
-    pulse = sorted([x for x in apt_data['Pulse_ID'].dropna().unique().tolist() if x != -1])
-    
-    return {
-        'techniques': techniques,
-        'software': software,
-        'capec': capec,
-        'cwe': cwe,
-        'cve': cves,
-        'pulse': pulse
-    }
-
-
-def create_apt_ranking_heatmap(apt_dict):
-    """
-    Create a single heatmap from APT ranking dictionary.
-    Color scale: Red = Rank 181 (lowest), Green = Rank 1 (highest)
-    """
-    
-    # Convert dictionary to DataFrame
-    df_list = []
-    
-    for query_apt, rankings in apt_dict.items():
-        row = {'Query_APT': query_apt}
-        for ranked_apt, rank in rankings:
-            # Invert rank: 1 becomes max value (green), 181 becomes min value (red)
-            inverted_score = 181 - rank + 1  # 1->181, 181->1
-            row[ranked_apt] = inverted_score
-        df_list.append(row)
-    
-    # Create DataFrame
-    df = pd.DataFrame(df_list).set_index('Query_APT')
-    df = df.fillna(0)
-    
-    # Create heatmap
-    plt.figure(figsize=(24, 20))
-    
-    # Red (min) -> Yellow -> Green (max)
-    colors = ["red", "yellow", "green"]
-    cmap = LinearSegmentedColormap.from_list("red_green", colors, N=100)
-    
-    # Create heatmap
-    sns.heatmap(df,
-                cmap=cmap,
-                vmin=1,        # Red = Rank 181
-                vmax=181,      # Green = Rank 1
-                square=True,
-                xticklabels=True,
-                yticklabels=True,
-                cbar_kws={
-                    'shrink': 0.8,
-                    'label': 'APT Ranking (Green=Best/Rank 1, Red=Worst/Rank 181)',
-                    'ticks': [1, 90, 181]
-                })
-    
-    # Customize
-    plt.title("APT Ranking Similarity Matrix\n(Green = Rank 1, Yellow = Rank ~90, Red = Rank 181)", 
-              fontsize=18, 
-              fontweight='bold')
-    plt.xticks(rotation=90, fontsize=8)
-    plt.yticks(rotation=0, fontsize=10)
-    
-    # Update colorbar labels
-    cbar = plt.gcf().axes[-1]
-    cbar.set_yticklabels(['Rank 181 (Red)', 'Rank ~90 (Yellow)', 'Rank 1 (Green)'])
-    
-    plt.tight_layout()
-    plt.savefig('apt_ranking_heatmap.png', dpi=300, bbox_inches='tight')
-    print("✓ Heatmap saved as 'apt_ranking_heatmap.png'")
-    plt.show()
-
-    # Save the figure
-    plt.savefig('fulldataheatmap.png', dpi=300, bbox_inches='tight')
-    print("✓ Heatmap saved as 'fulldataheatmap.png'")
-
-
-import random
-
-def shuffler_and_divider(evidence_dict):
-    """
-    Shuffle the evidence items for each category and keep only half.
-    
-    Parameters:
-    -----------
-    evidence_dict : dict
-        Dictionary with keys 'techniques', 'software', 'capec', 'cwe', 'cves', 'pulse'
-        each containing a list of items
-    
-    Returns:
-    --------
-    dict : New dictionary with shuffled and halved evidence
-    """
-    
-    shuffled_and_divided = {}
-    
-    for key, items in evidence_dict.items():
-        if key in ['techniques', 'software', 'capec', 'cwe', 'cves', 'pulse']:
-            # Make a copy and shuffle
-            shuffled_items = items.copy()
-            random.shuffle(shuffled_items)
-            
-            # Keep only half
-            half_length = len(shuffled_items) // 2
-            shuffled_and_divided[key] = shuffled_items[:half_length]
-        else:
-            # Keep other keys as-is (if any)
-            shuffled_and_divided[key] = items
-    
-    return shuffled_and_divided
-
+def worker_function(apt1, apt2, shuffle_n_divide):
+    combined = shuffle_remove_and_combine(apt1, apt2)
+    if shuffle_n_divide:
+        combined = shuffler_and_divider(combined)
+    return automated_query_for_eval(combined)
 
 def eval_precision(unique_apt_names_list, givenEvidence):
-    """
-    Evaluate false-flag attack precision metrics.
-    
-    Args:
-        unique_apt_names_list: list of all APT names
-        givenEvidence: dict {attacker_name: {mimicked_name: [(apt, rank), ...], ...}}
-    """
-    # Initialize counters using dictionary for cleaner code
     metrics = {
         'real': {'top1': 0, 'top5': 0, 'top10': 0, 'top20': 0},
         'mimicked': {'top1': 0, 'top5': 0, 'top10': 0, 'top20': 0},
@@ -387,64 +212,52 @@ def eval_precision(unique_apt_names_list, givenEvidence):
         'neither': {'top1': 0, 'top5': 0, 'top10': 0, 'top20': 0}
     }
 
-    # Calculate total number of valid comparisons (excluding self-comparisons)
     total_comparisons = 0
     for attacker_name, mimicked_dict in givenEvidence.items():
         for mimicked_name in mimicked_dict.keys():
             if attacker_name != mimicked_name:
                 total_comparisons += 1
 
-    # Pre-define rank thresholds
     thresholds = [1, 5, 10, 20]
 
     for attacker_name, mimicked_dict in givenEvidence.items():
-        # Get self-rank: find where attacker_name ranks against itself
-        self_rank = None
-        if attacker_name in mimicked_dict:
-            ranking_list = mimicked_dict[attacker_name]  # This is a list of (apt, rank) tuples
-            for apt_name, rank in ranking_list:
-                if apt_name == attacker_name:
-                    self_rank = int(rank)
-                    break
-        
-        # If self not found, use worst rank as default
-        if self_rank is None:
-            self_rank = len(unique_apt_names_list)  # Worst possible rank
-        
         for mimicked_name, ranking_list in mimicked_dict.items():
             if attacker_name == mimicked_name:
-                continue  # Skip self-comparisons
+                continue
             
-            # Find the rank of the mimicked APT in this ranking
+            # Find where the REAL ATTACKER appears in THIS ranking list
+            self_rank = None
+            for apt_name, rank in ranking_list:
+                if apt_name == attacker_name:  # Look for the attacker in the results
+                    self_rank = int(rank)
+                    break
+            
+            if self_rank is None:
+                self_rank = len(unique_apt_names_list)
+            
+            # Find where the MIMICKED APT appears in THIS ranking list
             mimicked_rank = None
             for apt_name, rank in ranking_list:
                 if apt_name == mimicked_name:
                     mimicked_rank = int(rank)
                     break
             
-            # If mimicked APT not found in ranking, use worst rank
             if mimicked_rank is None:
                 mimicked_rank = len(unique_apt_names_list)
             
-            # Check each threshold
             for threshold in thresholds:
-                # Check if within threshold
                 self_in_threshold = 1 <= self_rank <= threshold
                 other_in_threshold = 1 <= mimicked_rank <= threshold
                 
-                # Update individual counters
                 if self_in_threshold:
                     metrics['real'][f'top{threshold}'] += 1
                 if other_in_threshold:
                     metrics['mimicked'][f'top{threshold}'] += 1
-                
-                # Update both/neither counters
                 if self_in_threshold and other_in_threshold:
                     metrics['both'][f'top{threshold}'] += 1
                 if not self_in_threshold and not other_in_threshold:
                     metrics['neither'][f'top{threshold}'] += 1
 
-    # PRINT IN EXACT FORMAT REQUESTED
     print("\n" + "="*60)
     print(" FALSE-FLAG ATTACK ANALYSIS - RANKING RESULTS")
     print("="*60)
@@ -455,117 +268,54 @@ def eval_precision(unique_apt_names_list, givenEvidence):
         both = metrics['both'][f'top{threshold}']
         neither = metrics['neither'][f'top{threshold}']
         
-        # Calculate percentages
         attacker_pct = (attacker / total_comparisons * 100) if total_comparisons > 0 else 0
         mimicked_pct = (mimicked / total_comparisons * 100) if total_comparisons > 0 else 0
         both_pct = (both / total_comparisons * 100) if total_comparisons > 0 else 0
         neither_pct = (neither / total_comparisons * 100) if total_comparisons > 0 else 0
-        
-        # Deception = Mimicked in top-X, Detection = Attacker in top-X
-        deception_pct = mimicked_pct
-        detection_pct = attacker_pct
         
         print(f"\n Top-{threshold}:")
         print(f"  Attacker (Detection): {attacker}/{total_comparisons} ({attacker_pct:.1f}%)")
         print(f"  Mimicked (Deception): {mimicked}/{total_comparisons} ({mimicked_pct:.1f}%)")
         print(f"  Both: {both}/{total_comparisons} ({both_pct:.1f}%)")
         print(f"  Neither: {neither}/{total_comparisons} ({neither_pct:.1f}%)")
-        print(f"   Deception: {deception_pct:.1f}% |  Detection: {detection_pct:.1f}%")
+        print(f"   Deception: {mimicked_pct:.1f}% |  Detection: {attacker_pct:.1f}%")
 
     print(f"\nTotal comparisons analyzed: {total_comparisons:,}")
-
     return metrics
 
-
-
-
-
-
-
-
-def shuffle_remove_and_combine(apt1, apt2, apt1_ratio=0.3, apt2_ratio=0.7):
-    combined = {}
-    
-    # Process each category
-    for category in apt1.keys():
-        combined[category] = []
-        
-        # Sample from APT1 (high → low - take from beginning)
-        apt1_items = apt1[category]
-        apt1_count = int(len(apt1_items) * apt1_ratio)
-        # Take from start for high → low
-        apt1_sample = apt1_items[:apt1_count]
-        
-        # Sample from APT2 (low → high - take from end)
-        apt2_items = apt2[category]
-        apt2_count = int(len(apt2_items) * apt2_ratio)
-        # Take from end for low → high
-        apt2_sample = apt2_items[-apt2_count:] if apt2_count > 0 else []
-        
-        # Combine and deduplicate while preserving order
-        combined_category = []
-        seen = set()
-        
-        for item in apt1_sample + apt2_sample:
-            if item not in seen:
-                seen.add(item)
-                combined_category.append(item)
-        
-        combined[category] = combined_category
-    
-    return combined
-
 def plot_false_flag_deception_heatmap(Full_FalseFlag_evidencetable, apt_names):
-    """
-    Create deception heatmap from FalseFlag evidence table.
-    
-    Args:
-        Full_FalseFlag_evidencetable: dict {attacker_name: {mimicked_name: [(apt, rank), ...], ...}}
-        apt_names: list of APT display names in the order you want them displayed
-    """
     print("\n🔥 CREATING FALSE-FLAG DECEPTION HEATMAP...")
     
     n = len(apt_names)
-    
-    # Create mapping from APT name to index
     name_to_idx = {name: i for i, name in enumerate(apt_names)}
     
-    # Initialize deception matrix
     deception_matrix = np.zeros((n, n), dtype=float)
     count_matrix = np.zeros((n, n), dtype=int)
     
-    # Process each attacker and their mimicked results
     total_pairs = 0
     for attacker_name, mimicked_dict in Full_FalseFlag_evidencetable.items():
         if attacker_name not in name_to_idx:
-            print(f"⚠ Attacker {attacker_name} not found in apt_names")
             continue
             
         attacker_idx = name_to_idx[attacker_name]
         
-        # Get self-rank (attacker vs itself - should be rank 1)
-        self_rank = None
-        if attacker_name in mimicked_dict:
-            ranking_list = mimicked_dict[attacker_name]
+        for mimicked_name, ranking_list in mimicked_dict.items():
+            if mimicked_name not in name_to_idx or attacker_name == mimicked_name:
+                continue
+                
+            mimicked_idx = name_to_idx[mimicked_name]
+            
+            # Find attacker's rank in this ranking list
+            self_rank = None
             for apt_name, rank in ranking_list:
                 if apt_name == attacker_name:
                     self_rank = rank
                     break
-        
-        if self_rank is None:
-            self_rank = n  # Default to worst rank if not found
             
-        # Process each mimicked APT
-        for mimicked_name, ranking_list in mimicked_dict.items():
-            if mimicked_name not in name_to_idx:
-                continue
-                
-            if attacker_name == mimicked_name:
-                continue  # Skip self-comparisons (diagonal)
-                
-            mimicked_idx = name_to_idx[mimicked_name]
+            if self_rank is None:
+                self_rank = n
             
-            # Find the rank of the mimicked APT in this ranking
+            # Find mimicked APT's rank in this ranking list
             mimicked_rank = None
             for apt_name, rank in ranking_list:
                 if apt_name == mimicked_name:
@@ -573,42 +323,35 @@ def plot_false_flag_deception_heatmap(Full_FalseFlag_evidencetable, apt_names):
                     break
                     
             if mimicked_rank is None:
-                mimicked_rank = n  # Default to worst rank if not found
+                mimicked_rank = n
             
-            # Deception score: Attacker Rank - Mimicked Rank
-            # >0 = Deception success (mimicked ranked higher than attacker)
-            # <0 = Detection success (attacker ranked higher than mimicked)
-            deception_score = self_rank - mimicked_rank
+            # Calculate normalized deception score
+            # Positive = deception success (mimicked ranks higher than attacker)
+            # Negative = detection success (attacker ranks higher than mimicked)
+            raw_score = self_rank - mimicked_rank
+            max_possible = n - 1  # Maximum possible difference
             
-            deception_matrix[attacker_idx, mimicked_idx] += deception_score
+            # Normalize to [-1, 1]
+            normalized_score = raw_score / max_possible
+            
+            deception_matrix[attacker_idx, mimicked_idx] += normalized_score
             count_matrix[attacker_idx, mimicked_idx] += 1
             total_pairs += 1
     
     # Average the scores
     mask = count_matrix > 0
     deception_matrix[mask] = deception_matrix[mask] / count_matrix[mask]
-    
-    # Set diagonal to 0 (self-comparisons)
     np.fill_diagonal(deception_matrix, 0)
     
-    # Find non-zero values for color scaling
-    non_zero = deception_matrix[np.abs(deception_matrix) > 0.01]
-    if non_zero.size == 0:
-        print("⚠ No deception signal detected")
-        return deception_matrix
+    # Set symmetric color scale
+    vmax = 1.0  # Max possible normalized score
+    vmin = -1.0
     
-    # Symmetric color scaling
-    vmax = np.max(np.abs(non_zero))
-    vmin = -vmax
-    
-    print(f"📊 Deception score range: [{vmin:.2f}, {vmax:.2f}]")
+    print(f"📊 Normalized deception score range: [{deception_matrix.min():.2f}, {deception_matrix.max():.2f}]")
     print(f"📊 Total attacker-mimicked pairs analyzed: {total_pairs}")
     
-    # Create heatmap
     plt.figure(figsize=(20, 18))
-    
-    # Use the same colormap as your example
-    cmap = 'RdBu_r'  # Red-Blue reversed (Red=positive/Deception, Blue=negative/Detection)
+    cmap = 'RdBu_r'  # Red for deception, Blue for detection
     
     ax = sns.heatmap(deception_matrix, 
                      xticklabels=apt_names, 
@@ -620,129 +363,102 @@ def plot_false_flag_deception_heatmap(Full_FalseFlag_evidencetable, apt_names):
                      square=True,
                      annot=False,
                      cbar_kws={
-                         'label': 'Deception Score (Attacker Rank - Mimicked Rank)\n🔴 Deception Success | 🔵 Detection Success',
+                         'label': 'Deception Score (Normalized)\n🔴 Deception Success | 🔵 Detection Success',
                          'shrink': 0.8,
                          'aspect': 30
                      })
     
-    # Customize colorbar
     cbar = ax.collections[0].colorbar
-    cbar.set_ticks([vmin, 0, vmax])
-    cbar.set_ticklabels([f'{vmin:.1f}\nDetection', '0\nEqual', f'{vmax:.1f}\nDeception'])
+    cbar.set_ticks([-1, -0.5, 0, 0.5, 1])
+    cbar.set_ticklabels(['-1.0\nDetection', '-0.5', '0\nEqual', '0.5', '1.0\nDeception'])
     
-    # Rotate labels for better readability
     plt.xticks(rotation=90, fontsize=6)
     plt.yticks(rotation=0, fontsize=6)
-    
-    # Title and labels
-    plt.title(f'False-Flag Deception Heatmap (30/70 Mix)\nRows=Actual Attacker (30%) | Columns=Mimicked APT (70%)', 
-              fontsize=14, fontweight='bold', pad=20)
-    plt.xlabel('Mimicked APT (Target of Impersonation)', fontsize=12, labelpad=10)
-    plt.ylabel('Actual Attacker (Source of False-Flag)', fontsize=12, labelpad=10)
-    
+    plt.title('False-Flag Deception Heatmap (30/70 Mix) - Normalized Scores', fontsize=14, fontweight='bold', pad=20)
+    plt.xlabel('Mimicked APT', fontsize=12, labelpad=10)
+    plt.ylabel('Actual Attacker', fontsize=12, labelpad=10)
     plt.tight_layout()
     
-    # Save figure with timestamp
-    from datetime import datetime
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_path = f'false_flag_deception_heatmap_{timestamp}.png'
+    output_path = f'false_flag_deception_heatmap_normalized_{timestamp}.png'
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     print(f"💾 Saved: {output_path}")
-    
     plt.show()
     
-    # Print statistics
-    deception_success = np.sum(deception_matrix > 0.01)
-    detection_success = np.sum(deception_matrix < -0.01)
-    neutral = np.sum(np.abs(deception_matrix) <= 0.01)
-    total_cells = n * n - n  # Exclude diagonal
+    # Calculate statistics
+    deception_success = np.sum(deception_matrix > 0.1)  # Threshold for meaningful deception
+    detection_success = np.sum(deception_matrix < -0.1)  # Threshold for meaningful detection
+    neutral = np.sum(np.abs(deception_matrix) <= 0.1)
+    total_cells = n * n - n
     
     print("\n📈 Deception Heatmap Statistics:")
-    print(f"   🔴 Deception success cells: {deception_success} ({deception_success/total_cells*100:.1f}%)")
-    print(f"   🔵 Detection success cells: {detection_success} ({detection_success/total_cells*100:.1f}%)")
-    print(f"   ⚪ Neutral cells: {neutral} ({neutral/total_cells*100:.1f}%)")
+    print(f"   🔴 Deception success (>0.1): {deception_success} ({deception_success/total_cells*100:.1f}%)")
+    print(f"   🔵 Detection success (<-0.1): {detection_success} ({detection_success/total_cells*100:.1f}%)")
+    print(f"   ⚪ Neutral (|≤0.1|): {neutral} ({neutral/total_cells*100:.1f}%)")
     print(f"   📊 Average deception score: {np.mean(deception_matrix[mask]):.3f}")
     
     return deception_matrix
 
-
-def worker_function(evidence1, evidence2, shuffle_n_divide):
-
-    custom_falsflag_mimick_test = shuffle_remove_and_combine(evidence1, evidence2)
-
-    if(shuffle_n_divide == True):
-        shuffled_and_divided_evidence = shuffler_and_divider(custom_falsflag_mimick_test)
-        result = automated_query_for_eval(shuffled_and_divided_evidence)
-    else:
-        result = automated_query_for_eval(custom_falsflag_mimick_test)
-
-    return result
-
-
-from multiprocessing import Pool
-from itertools import product
-from functools import partial
-from tqdm import tqdm
-import time
-from multiprocessing import Manager
-
-def process_pair(name1, name2, csv_file_path, progress_queue=None):
-    start_time = time.time()
-    if(name1 == name2):
-        pass
-    else:
-        # print("\n"+"1st_batch:  "+name1+" __ "+name2)
-        try:
-            # Process the data
-            # Get APT name from user
-            evidence1 = process_apt_data(csv_file_path, name1)
-            evidence2 = process_apt_data(csv_file_path, name2)
-            evidence_first_batch_n2 = process_apt_data(csv_file_path, name2)
-            result_full = worker_function(evidence1, evidence_first_batch_n2, False)
-            result_divided_n_shuffled = worker_function(evidence2, evidence_first_batch_n2, True)
-            
-            # Calculate elapsed time
-            elapsed = time.time() - start_time
-            
-            # Send progress update
-            if progress_queue:
-                progress_queue.put(1)
-
-            return (name1, name2, result_full, result_divided_n_shuffled, elapsed)
-
-        except Exception as e:
-            print(f"Error processing {name1}-{name2}: {e}")
+# ===== OPTIMIZED PROCESS PAIR =====
+def process_pair(args):
+    """Process a single pair - uses pre-computed data"""
+    name1, name2, apt_cache = args
+    if name1 == name2:
+        return None
+    
+    try:
+        start = time.time()
+        apt1 = apt_cache[name1]
+        apt2 = apt_cache[name2]
         
+        # Process both conditions
+        full_result = worker_function(apt1, apt2, False)
+        shuffled_result = worker_function(apt1, apt2, True)
+        
+        elapsed = time.time() - start
+        return (name1, name2, full_result, shuffled_result, elapsed)
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+
+def precompute_apt_data(csv_file_path):
+    """Pre-compute all APT data once"""
+    print("📊 Pre-computing APT data...")
+    df = pd.read_csv(csv_file_path)
+    apt_names = df['APTname'].unique().tolist()
+    
+    apt_cache = {}
+    for apt_name in tqdm(apt_names, desc="Caching APTs"):
+        apt_data = df[df['APTname'] == apt_name]
+        apt_cache[apt_name] = {
+            'techniques': sorted(apt_data['techniques_str'].dropna().unique().tolist()),
+            'software': sorted(apt_data['software_str'].dropna().unique().tolist()),
+            'capec': sorted([x for x in apt_data['CAPEC_ID'].dropna().unique().tolist() if x != -1]),
+            'cwe': sorted([x for x in apt_data['CWE_ID'].dropna().unique().tolist() if x != -1]),
+            'cves': sorted([x for x in apt_data['CVE_ID'].dropna().unique().tolist() if x != -1]),
+            'pulse': sorted([x for x in apt_data['Pulse_ID'].dropna().unique().tolist() if x != -1])
+        }
+    
+    return apt_cache, apt_names
 
 def main():
     csv_file_path = "../BaseData/TestFinal_df.csv"
+    checkpoint_file = 'false_flag_checkpoint.pkl'
     
-    df = pd.read_csv(csv_file_path)
-    unique_apt_names = df['APTname'].unique()
-
-    # Convert to list if you need a list
-    unique_apt_names_list = unique_apt_names.tolist()
-    #below for testing comment out for full data
-    # unique_apt_names_list = unique_apt_names_list[:4]
-
-
+    # Pre-compute APT data once
+    apt_cache, unique_apt_names_list = precompute_apt_data(csv_file_path)
+    
     # Generate all pairs
     pairs = [(name1, name2) for name1 in unique_apt_names_list 
              for name2 in unique_apt_names_list if name1 != name2]
     
     total_pairs = len(pairs)
     print(f"Total pairs to process: {total_pairs}")
-
-    # ===== CHECKPOINTING: Load existing results =====
-    import pickle
-    import os
     
-    checkpoint_file = 'false_flag_checkpoint.pkl'
-    processed_pairs = set()
-    
-    # Initialize dictionaries
+    # Initialize data structures
     Full_FalseFlag_evidencetable = {name: {} for name in unique_apt_names_list}
     shuffled_divided_FalseFlag_evidence_table = {name: {} for name in unique_apt_names_list}
+    processed_pairs = set()
     
     # Load checkpoint if exists
     if os.path.exists(checkpoint_file):
@@ -751,178 +467,148 @@ def main():
             checkpoint_data = pickle.load(f)
             Full_FalseFlag_evidencetable = checkpoint_data['full']
             shuffled_divided_FalseFlag_evidence_table = checkpoint_data['shuffled']
-            processed_pairs = checkpoint_data['processed_pairs']
+            processed_pairs = set(checkpoint_data['processed_pairs'])
         print(f"✅ Loaded {len(processed_pairs)} already processed pairs")
         
-        # Filter out already processed pairs
         pairs_to_process = [p for p in pairs if p not in processed_pairs]
         print(f"🔄 Remaining pairs to process: {len(pairs_to_process)}/{total_pairs}")
+        
+        # If all pairs are processed, skip processing and go directly to evaluation
+        if not pairs_to_process:
+            print("✨ All pairs already processed! Loading data for evaluation...")
+            
+            # Run evaluation
+            print("\n" + "="*60)
+            print("RESULT FOR FULL DATA ")
+            eval_precision(unique_apt_names_list, Full_FalseFlag_evidencetable)
+            
+            print("\n" + "="*60)
+            print("RESULT FOR DATA SHUFFLED AND DIVIDED by 2")
+            eval_precision(unique_apt_names_list, shuffled_divided_FalseFlag_evidence_table)
+            
+            plot_false_flag_deception_heatmap(Full_FalseFlag_evidencetable, unique_apt_names_list)
+
+            print("\n💾 Saving complete ranking data to CSV files...")
+
+            # Save Full_FalseFlag_evidencetable with complete rankings
+            full_rows = []
+            for attacker, mimicked_dict in Full_FalseFlag_evidencetable.items():
+                for mimicked, rank_list in mimicked_dict.items():
+                    for position, (apt_name, rank) in enumerate(rank_list, 1):
+                        full_rows.append({
+                            'attacker': attacker,
+                            'mimicked': mimicked,
+                            'rank_position': position,
+                            'apt_name': apt_name,
+                            'rank_value': rank
+                        })
+
+            pd.DataFrame(full_rows).to_csv('full_false_flag_complete.csv', index=False)
+
+            # Save shuffled_divided_FalseFlag_evidence_table with complete rankings
+            shuffled_rows = []
+            for attacker, mimicked_dict in shuffled_divided_FalseFlag_evidence_table.items():
+                for mimicked, rank_list in mimicked_dict.items():
+                    for position, (apt_name, rank) in enumerate(rank_list, 1):
+                        shuffled_rows.append({
+                            'attacker': attacker,
+                            'mimicked': mimicked,
+                            'rank_position': position,
+                            'apt_name': apt_name,
+                            'rank_value': rank
+                        })
+
+            pd.DataFrame(shuffled_rows).to_csv('shuffled_false_flag_complete.csv', index=False)
+
+            print("✅ CSV files saved")
+            
+            return  # Exit early since no processing needed
     else:
         print(f"🆕 No checkpoint found. Starting fresh...")
         pairs_to_process = pairs
-    # =================================================
-
-    # Create progress queue
-    manager = Manager()
-    progress_queue = manager.Queue()
     
-    # Track start time for entire process
-    global_start = time.time()
-    
-    if pairs_to_process:
+        # Prepare arguments with cached data
+        args_list = [(name1, name2, apt_cache) for name1, name2 in pairs_to_process]
+        
+        # Process in parallel
+        global_start = time.time()
+        
         with Pool(processes=10) as pool:
-            async_results = []
-            for name1, name2 in pairs_to_process:  # Use pairs_to_process instead of pairs
-                async_results.append(
-                    pool.apply_async(process_pair, 
-                                   args=(name1, name2, csv_file_path, progress_queue))
-                )
-            
-            # Monitor progress
-            completed = 0
-            total_elapsed = 0
-            
-            with tqdm(total=len(pairs_to_process), desc="Processing pairs", 
-                     bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]') as pbar:
-                
+            with tqdm(total=len(pairs_to_process), desc="Processing pairs") as pbar:
                 results = []
-                for async_result in async_results:
-                    result = async_result.get()
+                for result in pool.imap_unordered(process_pair, args_list):
                     if result:
                         results.append(result)
-                        name1, name2, ranking_full, ranking_shuffled, elapsed = result
+                        name1, name2, full, shuffled, elapsed = result
                         
-                        # Add to dictionaries
-                        Full_FalseFlag_evidencetable[name1][name2] = ranking_full
-                        shuffled_divided_FalseFlag_evidence_table[name1][name2] = ranking_shuffled
-                        
-                        # ===== CHECKPOINTING: Save after each result =====
+                        Full_FalseFlag_evidencetable[name1][name2] = full
+                        shuffled_divided_FalseFlag_evidence_table[name1][name2] = shuffled
                         processed_pairs.add((name1, name2))
                         
-                        # Save every 10 pairs or at 25%, 50%, 75% progress
-                        if len(processed_pairs) % 100 == 0 or len(processed_pairs) in [len(pairs)//4, len(pairs)//2, 3*len(pairs)//4]:
-                            checkpoint_data = {
+                        pbar.update(1)
+                        
+                        # Calculate and display ETA
+                        elapsed_total = time.time() - global_start
+                        rate = len(processed_pairs) / elapsed_total
+                        remaining = len(pairs_to_process) - pbar.n
+                        eta = remaining / rate if rate > 0 else 0
+                        
+                        pbar.set_postfix({
+                            'Rate': f'{rate:.2f}/s',
+                            'ETA': f'{eta/60:.1f}min',
+                            'Avg': f'{elapsed:.1f}s'
+                        })
+                        
+                        # Save checkpoint every 50 pairs with visible message
+                        if len(processed_pairs) % 50 == 0:
+                            checkpoint = {
                                 'full': Full_FalseFlag_evidencetable,
                                 'shuffled': shuffled_divided_FalseFlag_evidence_table,
-                                'processed_pairs': processed_pairs
+                                'processed_pairs': list(processed_pairs)
                             }
                             with open(checkpoint_file, 'wb') as f:
-                                pickle.dump(checkpoint_data, f)
-                            print(f"\n💾 Checkpoint saved at {len(processed_pairs)}/{total_pairs} pairs")
-                        # =================================================
-                        
-                        total_elapsed += elapsed
-                    
-                    completed += 1
-                    pbar.update(1)
-                    
-                    # Calculate and display ETA
-                    avg_time = total_elapsed / completed if completed > 0 else 0
-                    remaining = avg_time * (len(pairs_to_process) - completed)
-                    
-                    pbar.set_postfix({
-                        'Avg': f'{avg_time:.2f}s',
-                        'ETA': f'{remaining/60:.1f}min'
-                    })
+                                pickle.dump(checkpoint, f)
+                            print(f"\n💾 Checkpoint saved at {len(processed_pairs)} pairs")
         
-        # ===== CHECKPOINTING: Final save after all processing =====
-        checkpoint_data = {
+        # Final checkpoint
+        checkpoint = {
             'full': Full_FalseFlag_evidencetable,
             'shuffled': shuffled_divided_FalseFlag_evidence_table,
-            'processed_pairs': processed_pairs
+            'processed_pairs': list(processed_pairs)
         }
         with open(checkpoint_file, 'wb') as f:
-            pickle.dump(checkpoint_data, f)
-        print(f"\n💾 Final checkpoint saved with all {len(processed_pairs)} pairs")
-        # =========================================================
-    else:
-        print("✨ All pairs already processed! Loading from checkpoint.")
-    
-    global_end = time.time()
-    
-    # Print summary statistics
-    print("\n" + "="*50)
-    print("PROCESSING COMPLETED")
-    print("="*50)
-    print(f"Total pairs processed: {len(results)}/{total_pairs}")
-    print(f"Total time: {global_end - global_start:.2f} seconds ({ (global_end - global_start)/60:.2f} minutes)")
-    print(f"Average time per pair: {(global_end - global_start)/len(results):.2f} seconds")
-    print(f"Processing rate: {len(results)/(global_end - global_start):.2f} pairs/second")
-    
-    # Reconstruct dictionaries
-    Full_FalseFlag_evidencetable = {name: {} for name in unique_apt_names_list}
-    shuffled_divided_FalseFlag_evidence_table = {name: {} for name in unique_apt_names_list}
-    
-    for result in results:
-        if result:
-            name1, name2, ranking_full, ranking_shuffled, elapsed = result
-            Full_FalseFlag_evidencetable[name1][name2] = ranking_full
-            shuffled_divided_FalseFlag_evidence_table[name1][name2] = ranking_shuffled
-
-    #OLD SIMPLE FLOW CODE _ DEFAULT TOO SLOW
-    # Full_FalseFlag_evidencetable = {}
-    # shuffled_divided_FalseFlag_evidence_table = {}
-    # total_len = len(unique_apt_names_list) * len(unique_apt_names_list) - len(unique_apt_names_list)
-    # start_count = 0
-    # for name1 in unique_apt_names_list:
-    #     evidence_first_batch_n1 = process_apt_data(csv_file_path, name1)
-    #     TempFalseFlag1 = {}
-    #     TempFalseFlag2 = {}
-    #     for name2 in unique_apt_names_list:
-    #         if(name1 == name2):
-    #             pass
-    #         else:
-    #             start_count = start_count + 1
-    #             print(str(start_count)+"/"+str(total_len))
-    #             # print("\n"+"1st_batch:  "+name1+" __ "+name2)
-    #             try:
-    #                 # Process the data
-    #                 # Get APT name from user
-    #                 evidence_first_batch_n2 = process_apt_data(csv_file_path, name2)
-    #                 result_full = worker_function(evidence_first_batch_n1, evidence_first_batch_n2, False)
-    #                 result_divided_n_shuffled = worker_function(evidence_first_batch_n1, evidence_first_batch_n2, True)
-    #                 # print(result)
-    #                 TempFalseFlag1[str(name2)] = result_full
-    #                 TempFalseFlag2[str(name2)] = result_divided_n_shuffled
-
-    #                 # print(TempFalseFlag)
-    #                 # print(Fullevidencetable)
-    #             except FileNotFoundError:
-    #                 print(f"Error: File '{csv_file_path}' not found.")
-    #             except Exception as e:
-    #                 print(f"Error: {e}")
-
-    #     Full_FalseFlag_evidencetable[str(name1)] = TempFalseFlag1
-    #     shuffled_divided_FalseFlag_evidence_table[str(name1)] = TempFalseFlag2
-        # print(Full_FalseFlag_evidencetable)
+            pickle.dump(checkpoint, f)
+        print(f"\n💾 Final checkpoint saved at {len(processed_pairs)} pairs")
         
-
-    print("RESULT FOR FULL DATA ")
-
-    eval_precision(unique_apt_names_list, Full_FalseFlag_evidencetable)
-
-    print("RESULT FOR DATA SHUFFLED AND DIVIDED by 2")
-
-    eval_precision(unique_apt_names_list, shuffled_divided_FalseFlag_evidence_table)
-
-    plot_false_flag_deception_heatmap(Full_FalseFlag_evidencetable, unique_apt_names_list)
-
-    # Create the heatmap for full data check
-    # create_apt_ranking_heatmap(Full_FalseFlag_evidencetable)
-
+        global_end = time.time()
+        
+        # Print summary
+        print("\n" + "="*50)
+        print("PROCESSING COMPLETED")
+        print("="*50)
+        print(f"Total pairs processed: {len(results)}/{total_pairs}")
+        print(f"Total time: {global_end - global_start:.2f} seconds ({ (global_end - global_start)/60:.2f} minutes)")
+        print(f"Average time per pair: {(global_end - global_start)/len(results):.2f} seconds")
+        print(f"Processing rate: {len(results)/(global_end - global_start):.2f} pairs/second")
+        
+        # Run evaluation
+        print("\n" + "="*60)
+        print("RESULT FOR FULL DATA ")
+        eval_precision(unique_apt_names_list, Full_FalseFlag_evidencetable)
+        
+        print("\n" + "="*60)
+        print("RESULT FOR DATA SHUFFLED AND DIVIDED by 2")
+        eval_precision(unique_apt_names_list, shuffled_divided_FalseFlag_evidence_table)
+        
+        plot_false_flag_deception_heatmap(Full_FalseFlag_evidencetable, unique_apt_names_list)
 
 
 
 if __name__ == "__main__":
+    from datetime import datetime
+    import multiprocessing as mp
+    try:
+        mp.set_start_method('spawn', force=True)
+    except RuntimeError:
+        pass
     main()
-
-
-
-
-##################################
-
-
-
-
-
-
