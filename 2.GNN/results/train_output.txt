@@ -34,44 +34,44 @@ Nodes: 11000
 Edges: 328136
 GNN TRAINING FOR 50 EPOCHS...
 Epoch 000, Loss: 0.4380, Self-sim: 1.0000
-Epoch 030, Loss: 0.2194, Self-sim: 1.0000
+Epoch 030, Loss: 0.2281, Self-sim: 1.0000
 
 GNN TRAINING COMPLETE!
 
 GNN MODEL DEBUG INFO
 ==================================================
 APT embeddings shape: torch.Size([181, 128])
-Embedding stats - Mean: -0.0124, Std: 0.0875
-Min: -0.2989, Max: 0.3118
+Embedding stats - Mean: -0.0037, Std: 0.0883
+Min: -0.2064, Max: 0.1966
 
 Cosine Similarity matrix stats:
 Self-similarity mean: 1.0000
-Cross-similarity mean: 0.6691
-Similarity range: -0.6865 to 1.0000
+Cross-similarity mean: 0.6946
+Similarity range: -0.7788 to 1.0000
 
 ANALYZING RANKING ANOMALIES
 ==================================================
 Top 10 APTs by Embedding Norm:
 APT Name                       Embed Norm Techniques Software CAPEC    CWE      CVE      Pulse    Total 
 --------------------------------------------------------------------------------
-ALLANITE                       1.0000     4          0        0        0        0        0        4     
-APT37                          1.0000     29         13       21       27       830      1125     2045  
-GOLD SOUTHFIELD                1.0000     9          2        10       5        29       44       99    
+APT18                          1.0000     12         5        8        14       333      468      840   
+Confucius                      1.0000     19         3        7        12       309      465      815   
+Ember Bear                     1.0000     48         10       54       28       789      998      1927  
 "No Problems" - OTX 2096       1.0000     50         0        0        0        6533     20       6603  
 2MISP                          1.0000     76         0        0        0        39       11       126   
 aavega                         1.0000     31         0        0        0        1        1        33    
 admin@338                      1.0000     12         7        10       10       287      453      779   
 Agrius                         1.0000     22         9        24       24       760      972      1811  
-Ajax Security Team             1.0000     6          2        2        1        5        27       43    
 Akira                          1.0000     11         6        4        6        196      261      484   
+ALLANITE                       1.0000     4          0        0        0        0        0        4     
 
-GNN model saved as 'trained_apt_gnn_model.pkl'
+GNN model saved as '6feat_trained_apt_gnn_model.pkl'
 
 ==================================================
-RESOURCE USAGE REPORT
+RESOURCE USAGE REPORT../2.GNN/train.py
 ==================================================
-Execution Time: 34.74 seconds
-Memory Usage: 1949.28 MB
-Current Memory: 1991.55 MB
-CPU Usage: 0.0%
-System CPU: 47.6%
+Execution Time: 32.12 seconds
+Memory Usage: 0.00 MB
+Current Memory: 41.00 MB
+CPU Usage: 0.1%
+System CPU: 23.4%

@@ -1,6 +1,9 @@
 import time
 import psutil
 import GPUtil
+import subprocess
+import sys
+import os
 
 class ResourceMonitor:
     def __init__(self):
@@ -12,12 +15,12 @@ class ResourceMonitor:
         self.start_time = time.time()
         self.start_memory = self.process.memory_info().rss / 1024 / 1024  # MB
         
-    def stop(self):
+    def stop(self, path):
         end_time = time.time()
         end_memory = self.process.memory_info().rss / 1024 / 1024
         
         print("\n" + "="*50)
-        print("RESOURCE USAGE REPORT")
+        print("RESOURCE USAGE REPORT" + str(path))
         print("="*50)
         
         # Time
@@ -45,11 +48,42 @@ class ResourceMonitor:
         except:
             print("\nGPU: Not available or not detected")
 
-# Usage
+# scriptpath = "../1.XGboost/False_flag.py"
+
+# scriptpath = "../2.GNN/False_flag.py"
+
+# scriptpath = "../3.SiameseNetwork/False_flag.py"
+
+# scriptpath = "../4.Attention-Based_MIL/False_flag.py"
+
+scriptpath = "../5.RF_FeatureEngineering/False_flag.py"
+
+# scriptpath = "../6.hybrid/hybrid_eval.py"
+
+# scriptpath = "../featureMatching/featureMatching.py"
+# scriptpath = "../Jaccards_Correlation/Jaccards_correlation.py"
+# scriptpath = "../TVD_Total_Variation_Distance/TVD_featureIng.py"
+
+
+# Usage with subprocess
 monitor = ResourceMonitor()
 monitor.start()
 
-#the code
+# Run the script and let its output print directly to stdout
+try:
+    # Use stdout=None (default) to let subprocess output directly to console
+    # This way the script's output appears immediately and in order
+    result = subprocess.run([sys.executable, scriptpath])
+    
+    # If you need to capture and ensure ordering, you can use this approach:
+    # result = subprocess.run([sys.executable, scriptpath], 
+    #                        capture_output=True, 
+    #                        text=True)
+    # print(result.stdout, end='')  # Print script output first
+    # if result.stderr:
+    #     print(result.stderr, end='')
+        
+except Exception as e:
+    print(f"Error running script: {e}")
 
-
-monitor.stop()
+monitor.stop(scriptpath)

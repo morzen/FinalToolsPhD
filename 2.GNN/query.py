@@ -549,13 +549,13 @@ if __name__ == "__main__":
     print(" RUNNING ENHANCED GNN APT SIMILARITY QUERY")
     print("=" * 70)
     
-    results, confidence, profiles, apt_name_mapping, feature_scores = query_apt_similarity_enhanced(evidence)
+    results, confidence, profiles, apt_name_mapping, feature_scores = query_apt_similarity_enhanced(evidence, "nothybrid")
     
     print_enhanced_results_table(results, evidence, confidence)
     print_top5_by_category(feature_scores, evidence)
     print_feature_summary_and_false_flags(feature_scores)
     
-    print("\n SIAMESE NETWORK QUERY COMPLETE!")
+    print("\n GNN QUERY COMPLETE!")
     if results:
         best = results[0]
         worst = results[-1]

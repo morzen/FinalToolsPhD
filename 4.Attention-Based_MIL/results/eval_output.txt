@@ -9,23 +9,23 @@ Computing cross-similarity matrix for all APT pairs...
 Cross-similarity matrix computation completed!
 Similarity DataFrame sample (first 5x5):
              Axiom    Moafee   Cleaver  Ke3chang     APT12
-Axiom     0.996966  0.947716  0.501318  0.500585  0.501175
-Moafee    0.947716  0.942393  0.500536  0.501276  0.500567
-Cleaver   0.501318  0.500536  0.997088  0.815615  0.501031
-Ke3chang  0.500585  0.501276  0.815615  0.997083  0.501300
-APT12     0.501175  0.500567  0.501031  0.501300  0.996917
+Axiom     0.986912  0.895951  0.500512  0.501646  0.500634
+Moafee    0.895951  0.986564  0.500379  0.505622  0.500463
+Cleaver   0.500512  0.500379  0.987113  0.892188  0.500593
+Ke3chang  0.501646  0.505622  0.892188  0.986950  0.500646
+APT12     0.500634  0.500463  0.500593  0.500646  0.987017
 
 Matrix shape: (181, 181)
 
 Plotting similarity heatmap...
 Data statistics:
-Min: 0.500445
-Max: 0.997118
-Range: 0.496673
-Mean: 0.519121
-Std: 0.077577
+Min: 0.500205
+Max: 0.987113
+Range: 0.486908
+Mean: 0.520885
+Std: 0.079440
 Using full color scale
-Color scale limits: 0.500445 to 0.997118
+Color scale limits: 0.500205 to 0.987113
 
 ================================================================================
 EVALUATING SIMILARITY MATRIX
@@ -33,8 +33,8 @@ EVALUATING SIMILARITY MATRIX
 
 Evaluating similarity matrix for top X matches:
 ==================================================
-Top 1: 175/181 (96.69%)
-Top 5: 180/181 (99.45%)
+Top 1: 181/181 (100.00%)
+Top 5: 181/181 (100.00%)
 Top 10: 181/181 (100.00%)
 Top 20: 181/181 (100.00%)
 
@@ -65,10 +65,10 @@ Attention MIL Model for this set had a success/failure rate of:
 Success rate: 11.049723756906078%
 
 ==================================================
-RESOURCE USAGE REPORT
+RESOURCE USAGE REPORT../4.Attention-Based_MIL/eval.py
 ==================================================
-Execution Time: 178.89 seconds
-Memory Usage: 936.23 MB
-Current Memory: 978.66 MB
-CPU Usage: 0.0%
-System CPU: 30.7%
+Execution Time: 176.57 seconds
+Memory Usage: 0.00 MB
+Current Memory: 41.14 MB
+CPU Usage: 0.1%
+System CPU: 23.6%

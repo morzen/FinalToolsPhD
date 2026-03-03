@@ -18,11 +18,11 @@ Testing with evidence:
   Pulse: ['faketest', '5c88e255d5fbbe1cb7c54534', '5cb741fb29d3ac01c1ac01ea']
 
 Top 5 most similar APTs:
-  1. Andariel: 0.9899
-  2. Higaisa: 0.9899
-  3. Akira: 0.9885
-  4. BlackTech: 0.9873
-  5. HCINT: 0.9862
+  1. BlackTech: 0.9996
+  2. Higaisa: 0.9995
+  3. HCINT: 0.9992
+  4. Andariel: 0.9989
+  5. Mustard Tempest: 0.9987
 
 ================================================================================
 CREATING SIMILARITY MATRIX
@@ -30,11 +30,11 @@ CREATING SIMILARITY MATRIX
 Creating similarity matrix using trained GNN model...
 Similarity DataFrame sample (first 5x5):
                           "No Problems" - OTX 2096  ...    Agrius
-"No Problems" - OTX 2096                  1.000000  ...  0.911070
-2MISP                                     0.979072  ...  0.970888
-aavega                                    0.532883  ...  0.796235
-admin@338                                 0.673729  ...  0.917927
-Agrius                                    0.911070  ...  1.000000
+"No Problems" - OTX 2096                  1.000000  ...  0.913025
+2MISP                                     0.980972  ...  0.974736
+aavega                                    0.604964  ...  0.876252
+admin@338                                 0.678079  ...  0.918885
+Agrius                                    0.913025  ...  1.000000
 
 [5 rows x 5 columns]
 
@@ -47,8 +47,8 @@ EVALUATING SIMILARITY MATRIX (FULL DATA)
 ================================================================================
 
 Settings: Top 1 (Full Data)
-Success/Failure: 181/0 Total: 181
-Success rate: 100.00%
+Success/Failure: 180/1 Total: 181
+Success rate: 99.45%
 
 Settings: Top 5 (Full Data)
 Success/Failure: 181/0 Total: 181
@@ -69,26 +69,26 @@ EVALUATING PROFILE DIVISION PERFORMANCE
 Evaluating with divider: 2 (using 50.0% of profile data)
 
 Settings: Top 1, Divider: 2
-Success/Failure: 4/177 Total: 181
-Success rate: 2.21%
+Success/Failure: 2/179 Total: 181
+Success rate: 1.10%
 
 Settings: Top 5, Divider: 2
-Success/Failure: 10/171 Total: 181
-Success rate: 5.52%
+Success/Failure: 13/168 Total: 181
+Success rate: 7.18%
 
 Settings: Top 10, Divider: 2
 Success/Failure: 21/160 Total: 181
 Success rate: 11.60%
 
 Settings: Top 20, Divider: 2
-Success/Failure: 34/147 Total: 181
-Success rate: 18.78%
+Success/Failure: 38/143 Total: 181
+Success rate: 20.99%
 
 ==================================================
-RESOURCE USAGE REPORT
+RESOURCE USAGE REPORT../2.GNN/eval.py
 ==================================================
-Execution Time: 76.93 seconds
-Memory Usage: 1307.88 MB
-Current Memory: 1350.22 MB
-CPU Usage: 0.0%
-System CPU: 58.8%
+Execution Time: 75.06 seconds
+Memory Usage: 0.00 MB
+Current Memory: 40.78 MB
+CPU Usage: 0.1%
+System CPU: 27.9%

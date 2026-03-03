@@ -41,10 +41,10 @@ Top-20: 181/181 (100.0%)
   140/181...
   160/181...
   180/181...
-Top-1: 15/181 (8.3%)
-Top-5: 25/181 (13.8%)
+Top-1: 8/181 (4.4%)
+Top-5: 20/181 (11.0%)
 Top-10: 31/181 (17.1%)
-Top-20: 39/181 (21.5%)
+Top-20: 53/181 (29.3%)
 
  SIAMESE EVALUATION COMPLETE!
  Uses Siamese MODEL forward pass
@@ -52,10 +52,10 @@ Top-20: 39/181 (21.5%)
  Exact XGBoost evaluation logic
 
 ==================================================
-RESOURCE USAGE REPORT
+RESOURCE USAGE REPORT../3.SiameseNetwork/eval.py
 ==================================================
-Execution Time: 49.63 seconds
-Memory Usage: 959.88 MB
-Current Memory: 1001.86 MB
-CPU Usage: 0.0%
-System CPU: 0.0%
+Execution Time: 50.96 seconds
+Memory Usage: 0.00 MB
+Current Memory: 40.75 MB
+CPU Usage: 0.1%
+System CPU: 22.0%

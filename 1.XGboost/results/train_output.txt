@@ -1,47 +1,78 @@
-XGBOOST TRAINING PIPELINE
+XGBOOST TRAINING PIPELINE (MULTI-HOT ENCODING)
 ============================================================
 Loading encoded data...
 Data: 753970 records, 7 columns
 
-PREPARING TRAINING DATA
+CREATING MULTI-HOT ENCODING WITH DIMENSIONALITY REDUCTION
 ==================================================
-APT distribution:
-  APTs with 1 record: 2
-  APTs with 2-10 records: 23
-  APTs with 10+ records: 156
-Features shape: (753970, 6)
-Unique APTs: 181
+Original feature vector length: 10825
+Number of APTs: 181
 
-Data split - Train: 603176, Val: 150794
+Applying PCA dimensionality reduction...
+Reduced feature vector length: 100
+Explained variance ratio: 0.993
 
-TRAINING XGBOOST MODEL
+Total features breakdown:
+  Techniques: 548
+  Software: 541
+  CAPEC: 147
+  CWE: 80
+  CVE: 7938
+  Pulse: 1571
+
+TRAINING ON ALL APTs
+Total APTs: 181
+Feature vector length: 100
+
+TRAINING XGBOOST MODEL WITH MULTI-HOT ENCODING
 ==================================================
-Training classifier...
+Training classifier on 181 samples...
+Number of features: 100
+Number of classes: 181
 Training completed!
+
+MODEL QUALITY CHECK:
+------------------------------
+Training accuracy: 0.0110
+Average prediction std: 0.0003
 
 TESTING MODEL PREDICTIONS
 ==================================================
-Sample features: [  69   10   38   17 4507  682]
+Sample APT: 33
 Most similar APTs:
-  APT 118: 0.4954
-  APT 79: 0.4943
+  1: 1.0000
+  145: 0.7347
+  22: 0.6901
 
-Similarity between two samples: 0.0008
+Similarity between 33 and 111: 0.1952
 
-Model saved to 'efficient_apt_similarity.pkl'
+Model saved to '6feat_efficient_apt_similarity.pkl'
+  • Feature vector length: 100
+  • Number of APTs: 181
 
 TRAINING SUMMARY
 ==================================================
-• Approach: efficient_xgboost_classifier_all_apts
-• Training records: 603176
-• Unique APTs: 180
-• Model parameters: {'objective': 'multi:softprob', 'n_estimators': 100, 'max_depth': 6, 'learning_rate': 0.1, 'random_state': 42}
+• Approach: efficient_xgboost_multi_hot_encoding
+• Number of APTs: 181
+• Feature vector length: 100
+• Unique APTs: 181
+• Feature counts:
+  - Techniques: 548
+  - Software: 541
+  - CAPEC: 147
+  - CWE: 80
+  - CVE: 7938
+  - Pulse: 1571
+• Model parameters: {'objective': 'multi:softprob', 'n_estimators': 200, 'max_depth': 10, 'learning_rate': 0.05, 'subsample': 0.8, 'colsample_bytree': 0.8, 'random_state': 42}
+Error: File not found at ./1.XGboost/train.py
+Current directory: /Users/morzen/Desktop/FinalToolsPhD/1.XGboost
+Found file at: train.py
 
 ==================================================
-RESOURCE USAGE REPORT
+RESOURCE USAGE REPORTtrain.py
 ==================================================
-Execution Time: 115.65 seconds
-Memory Usage: 1371.92 MB
-Current Memory: 1413.70 MB
+Execution Time: 14.18 seconds
+Memory Usage: 0.00 MB
+Current Memory: 41.09 MB
 CPU Usage: 0.1%
-System CPU: 5.7%
+System CPU: 19.6%

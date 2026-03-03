@@ -76,7 +76,7 @@ Training Random Forest model...
 
 5. MODEL SAVING
 
-Saving model to 'apt_similarity_model.joblib'...
+Saving model to '6feat_apt_similarity_model.joblib'...
 Model saved successfully!
   APT profiles: 181
   Feature matrix shape: (181, 10819)
@@ -89,13 +89,13 @@ TRAINING SUMMARY
 • Number of APTs: 181
 • Feature vector length: 10819
 • Training accuracy: 1.0000
-• Saved to: apt_similarity_model.joblib
+• Saved to: 6feat_apt_similarity_model.joblib
 
 ==================================================
-RESOURCE USAGE REPORT
+RESOURCE USAGE REPORT../5.RF_FeatureEngineering/train.py
 ==================================================
-Execution Time: 16.44 seconds
-Memory Usage: 706.14 MB
-Current Memory: 748.02 MB
-CPU Usage: 0.0%
-System CPU: 56.9%
+Execution Time: 18.00 seconds
+Memory Usage: 0.00 MB
+Current Memory: 40.94 MB
+CPU Usage: 0.1%
+System CPU: 52.6%

@@ -1,62 +1,3 @@
-import time
-import psutil
-import GPUtil
-
-class ResourceMonitor:
-    def __init__(self):
-        self.process = psutil.Process()
-        self.start_time = None
-        self.start_memory = None
-        
-    def start(self):
-        self.start_time = time.time()
-        self.start_memory = self.process.memory_info().rss / 1024 / 1024  # MB
-        
-    def stop(self):
-        end_time = time.time()
-        end_memory = self.process.memory_info().rss / 1024 / 1024
-        
-        print("\n" + "="*50)
-        print("RESOURCE USAGE REPORT")
-        print("="*50)
-        
-        # Time
-        print(f"Execution Time: {end_time - self.start_time:.2f} seconds")
-        
-        # Memory
-        print(f"Memory Usage: {end_memory - self.start_memory:.2f} MB")
-        print(f"Current Memory: {end_memory:.2f} MB")
-        
-        # CPU
-        cpu_percent = self.process.cpu_percent(interval=0.1)
-        print(f"CPU Usage: {cpu_percent}%")
-        
-        # System-wide CPU
-        sys_cpu = psutil.cpu_percent(interval=0.1)
-        print(f"System CPU: {sys_cpu}%")
-        
-        # GPU (if available)
-        try:
-            gpus = GPUtil.getGPUs()
-            for gpu in gpus:
-                print(f"\nGPU {gpu.id} ({gpu.name}):")
-                print(f"  Utilization: {gpu.load*100:.1f}%")
-                print(f"  Memory: {gpu.memoryUsed}/{gpu.memoryTotal} MB")
-        except:
-            print("\nGPU: Not available or not detected")
-
-# Usage
-monitor = ResourceMonitor()
-monitor.start()
-
-
-
-
-
-
-
-
-
 import pandas as pd
 import numpy as np
 from collections import defaultdict
@@ -65,7 +6,7 @@ import seaborn as sns
 from itertools import islice
 import random
 import math
-
+import json
 
 # Create APT profiles with actual names as keys
 def create_apt_profiles_with_names(df_encoded, name_mapping):
@@ -522,59 +463,81 @@ def main():
         'pulse': 0.7
     }
 
-    # Evidence data (same as PSL code)
-    evidence = {
-        'techniques_str': [
-            'T0865', 'T1001.003', 'T1005', 'T1008', 'T1010', 'T1012', 'T1016', 
-            'T1021.001', 'T1021.002', 'T1021.004', 'T1027.002', 'T1027.007', 
-            'T1027.013', 'T1033', 'T1036.003', 'T1036.004', 'T1036.005', 
-            'T1036.008', 'T1041', 'T1046', 'T1047', 'T1048.003', 'T1049', 
-            'T1053.005', 'T1055.001', 'T1056.001', 'T1057', 'T1059.001', 
-            'T1059.003', 'T1059.005', 'T1070', 'T1070.003', 'T1070.004', 
-            'T1070.006', 'T1071.001', 'T1074.001', 'T1078', 'T1082', 'T1083', 
-            'T1087.002', 'T1090.001', 'T1090.002', 'T1098', 'T1102.002', 
-            'T1104', 'T1105', 'T1106', 'T1110.003', 'T1124', 'T1132.001', 
-            'T1134.002', 'T1140', 'T1189', 'T1202', 'T1203', 'T1204.001', 
-            'T1204.002', 'T1218', 'T1218.005', 'T1218.010', 'T1218.011', 
-            'T1220', 'T1221', 'T1485', 'T1489', 'T1491.001', 'T1497.001', 
-            'T1497.003', 'T1505.004', 'T1529', 'T1534', 'T1542.003', 
-            'T1543.003', 'T1547.001', 'T1547.009', 'T1553.002', 'T1557.001', 
-            'T1560', 'T1560.001', 'T1560.002', 'T1560.003', 'T1561.001', 
-            'T1561.002', 'T1562.001', 'T1562.004', 'T1564.001', 'T1566.001', 
-            'T1566.002', 'T1566.003', 'T1567.002', 'T1571', 'T1573.001', 
-            'T1574.002', 'T1574.013', 'T1583.001', 'T1583.004', 'T1583.006', 
-            'T1584.001', 'T1584.004', 'T1585.001', 'T1585.002', 'T1587.001', 
-            'T1587.002', 'T1588.002', 'T1588.003', 'T1588.004', 'T1589.002', 
-            'T1591', 'T1591.004', 'T1593.001', 'T1608.001', 'T1608.002', 
-            'T1614.001', 'T1620', 'T1622', 'T1656'
-        ],
-        'software_str': [
-            'S0181', 'S0239', 'S0245', 'S0246', 'S0586', 'S0238', 'S0498', 
-            'S0520', 'S0567', 'S0665', 'S0694', 'S0376', 'S0431', 'S0180', 
-            'S0241', 'S0103', 'S0271', 'S0366', 'S0678', 'S0263', 'S0347', 
-            'S0497', 'S0584', 'S0593', 'S0364', 'S0174', 'S0108'
-        ],
-        'CAPEC_ID': [
-            'CAPEC-204', 'CAPEC-37', 'CAPEC-545', 'CAPEC-647', 'CAPEC-309', 
-            'CAPEC-561', 'CAPEC-577', 'CAPEC-165', 'CAPEC-504', 'CAPEC-543', 
-            'CAPEC-616', 'CAPEC-300', 'CAPEC-568', 'CAPEC-573', 'CAPEC-268', 
-            'CAPEC-560', 'CAPEC-70', 'CAPEC-312', 'CAPEC-313', 'CAPEC-580', 
-            'CAPEC-127', 'CAPEC-497', 'CAPEC-465', 'CAPEC-565', 'CAPEC-295', 
-            'CAPEC-196', 'CAPEC-698', 'CAPEC-163', 'CAPEC-552', 'CAPEC-478', 
-            'CAPEC-132', 'CAPEC-206', 'CAPEC-473', 'CAPEC-68', 'CAPEC-578', 
-            'CAPEC-641', 'CAPEC-640', 'CAPEC-542'
-        ],
-        'CWE_ID': [
-            'CWE-524', 'CWE-311', 'CWE-1258', 'CWE-226', 'CWE-312', 'CWE-318', 
-            'CWE-1278', 'CWE-285', 'CWE-200', 'CWE-522', 'CWE-294', 'CWE-521', 
-            'CWE-1021', 'CWE-117', 'CWE-307', 'CWE-798', 'CWE-204', 'CWE-208', 
-            'CWE-425', 'CWE-288', 'CWE-732', 'CWE-276', 'CWE-693', 'CWE-441', 
-            'CWE-384', 'CWE-664', 'CWE-829', 'CWE-451', 'CWE-284', 'CWE-59', 
-            'CWE-20', 'CWE-327', 'CWE-290', 'CWE-325', 'CWE-706', 'CWE-114'
-        ],
-        'CVE_ID': [],  # No CVE data provided in the original
-        'Pulse_ID': []  # No Pulse data provided in the original
-    }
+    # Load evidence from query_input.json
+    try:
+        with open('../query_input.json', 'r') as f:
+            evidence_data = json.load(f)
+        
+        # Transform the evidence to match expected format
+        evidence = {
+            'techniques_str': evidence_data.get('techniques', []),
+            'software_str': evidence_data.get('software', []),
+            'CAPEC_ID': evidence_data.get('capec', []),
+            'CWE_ID': evidence_data.get('cwe', []),
+            'CVE_ID': evidence_data.get('cve', []),
+            'Pulse_ID': evidence_data.get('pulse', [])
+        }
+        print("Successfully loaded evidence from query_input.json")
+        print(f"Found: {len(evidence['techniques_str'])} techniques, {len(evidence['software_str'])} software, "
+              f"{len(evidence['CAPEC_ID'])} capec, {len(evidence['CWE_ID'])} cwe, "
+              f"{len(evidence['CVE_ID'])} cve, {len(evidence['Pulse_ID'])} pulse")
+    except FileNotFoundError:
+        print("Warning: query_input.json not found, using default evidence")
+        evidence = {
+            'techniques_str': [
+                'T0865', 'T1001.003', 'T1005', 'T1008', 'T1010', 'T1012', 'T1016', 
+                'T1021.001', 'T1021.002', 'T1021.004', 'T1027.002', 'T1027.007', 
+                'T1027.013', 'T1033', 'T1036.003', 'T1036.004', 'T1036.005', 
+                'T1036.008', 'T1041', 'T1046', 'T1047', 'T1048.003', 'T1049', 
+                'T1053.005', 'T1055.001', 'T1056.001', 'T1057', 'T1059.001', 
+                'T1059.003', 'T1059.005', 'T1070', 'T1070.003', 'T1070.004', 
+                'T1070.006', 'T1071.001', 'T1074.001', 'T1078', 'T1082', 'T1083', 
+                'T1087.002', 'T1090.001', 'T1090.002', 'T1098', 'T1102.002', 
+                'T1104', 'T1105', 'T1106', 'T1110.003', 'T1124', 'T1132.001', 
+                'T1134.002', 'T1140', 'T1189', 'T1202', 'T1203', 'T1204.001', 
+                'T1204.002', 'T1218', 'T1218.005', 'T1218.010', 'T1218.011', 
+                'T1220', 'T1221', 'T1485', 'T1489', 'T1491.001', 'T1497.001', 
+                'T1497.003', 'T1505.004', 'T1529', 'T1534', 'T1542.003', 
+                'T1543.003', 'T1547.001', 'T1547.009', 'T1553.002', 'T1557.001', 
+                'T1560', 'T1560.001', 'T1560.002', 'T1560.003', 'T1561.001', 
+                'T1561.002', 'T1562.001', 'T1562.004', 'T1564.001', 'T1566.001', 
+                'T1566.002', 'T1566.003', 'T1567.002', 'T1571', 'T1573.001', 
+                'T1574.002', 'T1574.013', 'T1583.001', 'T1583.004', 'T1583.006', 
+                'T1584.001', 'T1584.004', 'T1585.001', 'T1585.002', 'T1587.001', 
+                'T1587.002', 'T1588.002', 'T1588.003', 'T1588.004', 'T1589.002', 
+                'T1591', 'T1591.004', 'T1593.001', 'T1608.001', 'T1608.002', 
+                'T1614.001', 'T1620', 'T1622', 'T1656'
+            ],
+            'software_str': [
+                'S0181', 'S0239', 'S0245', 'S0246', 'S0586', 'S0238', 'S0498', 
+                'S0520', 'S0567', 'S0665', 'S0694', 'S0376', 'S0431', 'S0180', 
+                'S0241', 'S0103', 'S0271', 'S0366', 'S0678', 'S0263', 'S0347', 
+                'S0497', 'S0584', 'S0593', 'S0364', 'S0174', 'S0108'
+            ],
+            'CAPEC_ID': [
+                'CAPEC-204', 'CAPEC-37', 'CAPEC-545', 'CAPEC-647', 'CAPEC-309', 
+                'CAPEC-561', 'CAPEC-577', 'CAPEC-165', 'CAPEC-504', 'CAPEC-543', 
+                'CAPEC-616', 'CAPEC-300', 'CAPEC-568', 'CAPEC-573', 'CAPEC-268', 
+                'CAPEC-560', 'CAPEC-70', 'CAPEC-312', 'CAPEC-313', 'CAPEC-580', 
+                'CAPEC-127', 'CAPEC-497', 'CAPEC-465', 'CAPEC-565', 'CAPEC-295', 
+                'CAPEC-196', 'CAPEC-698', 'CAPEC-163', 'CAPEC-552', 'CAPEC-478', 
+                'CAPEC-132', 'CAPEC-206', 'CAPEC-473', 'CAPEC-68', 'CAPEC-578', 
+                'CAPEC-641', 'CAPEC-640', 'CAPEC-542'
+            ],
+            'CWE_ID': [
+                'CWE-524', 'CWE-311', 'CWE-1258', 'CWE-226', 'CWE-312', 'CWE-318', 
+                'CWE-1278', 'CWE-285', 'CWE-200', 'CWE-522', 'CWE-294', 'CWE-521', 
+                'CWE-1021', 'CWE-117', 'CWE-307', 'CWE-798', 'CWE-204', 'CWE-208', 
+                'CWE-425', 'CWE-288', 'CWE-732', 'CWE-276', 'CWE-693', 'CWE-441', 
+                'CWE-384', 'CWE-664', 'CWE-829', 'CWE-451', 'CWE-284', 'CWE-59', 
+                'CWE-20', 'CWE-327', 'CWE-290', 'CWE-325', 'CWE-706', 'CWE-114'
+            ],
+            'CVE_ID': [],  # No CVE data provided in the original
+            'Pulse_ID': []  # No Pulse data provided in the original
+        }
+    except json.JSONDecodeError:
+        print("Error: query_input.json contains invalid JSON")
+        return  
 
     # Process evidence
     clean_evidence = sanitize_evidence(evidence, df_mapping)
@@ -691,5 +654,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-monitor.stop()

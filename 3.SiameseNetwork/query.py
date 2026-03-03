@@ -435,7 +435,7 @@ def print_results_table(results, encoded_evidence):
     
     # Determine how many results to show
     show_all = total_items == 0  # Show all when no evidence
-    results_to_show = results if show_all else results[:50]  # Show top 50 normally
+    results_to_show = results
     
     header = f"{'Rank':<4} {'APT Name':<28} {'Similarity':<10} {'Tech':<8} {'Soft':<8} {'CAPEC':<8} {'CWE':<8} {'CVE':<8} {'Pulse':<8} {'Matches':<8} {'Profile'}"
     print(header)
@@ -456,8 +456,7 @@ def print_results_table(results, encoded_evidence):
                f"{cve_str:<8} {pulse_str:<8} {result['total_matches']:<10} {result['profile_size']}")
         print(row)
     
-    if not show_all and len(results) > 50:
-        print(f"\n... and {len(results) - 50} more APTs (showing top 50 only)")
+    
     
     print("-" * 160)
 

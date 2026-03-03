@@ -44,8 +44,8 @@ Evaluating with divider: 2 (using 50.0% of profile data)
 
 settings: Topx: 1 Divider: 2
 Random Forest for this set had a success failure rate of 
-46/135 Total: 181
-in percentage success rate: 25.41436464088398
+48/133 Total: 181
+in percentage success rate: 26.519337016574585
 
 settings: Topx: 5 Divider: 2
 Random Forest for this set had a success failure rate of 
@@ -54,19 +54,19 @@ in percentage success rate: 34.25414364640884
 
 settings: Topx: 10 Divider: 2
 Random Forest for this set had a success failure rate of 
-70/111 Total: 181
-in percentage success rate: 38.67403314917127
+76/105 Total: 181
+in percentage success rate: 41.988950276243095
 
 settings: Topx: 20 Divider: 2
 Random Forest for this set had a success failure rate of 
-90/91 Total: 181
-in percentage success rate: 49.72375690607735
+96/85 Total: 181
+in percentage success rate: 53.03867403314917
 
 ==================================================
-RESOURCE USAGE REPORT
+RESOURCE USAGE REPORT../5.RF_FeatureEngineering/eval.py
 ==================================================
-Execution Time: 258.80 seconds
-Memory Usage: 802.70 MB
-Current Memory: 844.58 MB
-CPU Usage: 0.0%
-System CPU: 47.5%
+Execution Time: 210.84 seconds
+Memory Usage: 0.00 MB
+Current Memory: 41.12 MB
+CPU Usage: 0.1%
+System CPU: 22.3%

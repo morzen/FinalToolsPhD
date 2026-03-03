@@ -1,0 +1,21 @@
+ FALSE-FLAG EVALUATION: XGBOOST PCA 30/70 MIX (PCA VECTORS)
+======================================================================
+Each test creates PCA vectors from mixed evidence
+30% attacker + 70% mimicked features per category
+Similarity = cosine similarity between PCA vectors
+======================================================================
+ LOADING EFFICIENT XGBOOST MODEL...
+ Loaded efficient_apt_similarity.pkl
+XGBoost PCA model loaded: 181 APTs
+PCA components: 100
+ EVALUATING FALSE-FLAG ATTACKS (XGBOOST PCA - 30/70 MIX FULL)
+================================================================================
+ FALSE-FLAG: 30% Attacker + 70% Mimicked features per category
+ Using PCA-transformed vectors with cosine similarity
+================================================================================
+ LOADING APT PROFILES FROM DATA...
+ Loaded profiles for 181 APTs
+ Creating PCA vectors for all APTs...
+Testing 32580 false-flag combinations (30/70 FULL PCA)...
+Vector dimension: 100
+Using 10 CPU cores

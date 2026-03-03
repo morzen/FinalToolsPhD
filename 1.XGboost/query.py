@@ -409,7 +409,7 @@ def query_apt_similarity_efficient(evidence, status):
     print(f" Comparing query against {len(all_apt_vectors)} APT vectors")
     
     # PREDICT SIMILARITIES
-    print("🧠 PREDICTING SIMILARITIES WITH EFFICIENT XGBOOST...")
+    print("PREDICTING SIMILARITIES WITH EFFICIENT XGBOOST...")
     
     similarities = []
     valid_apt_ids = []
@@ -418,7 +418,7 @@ def query_apt_similarity_efficient(evidence, status):
         # Calculate similarity between query vector and APT vector
         # Make sure both vectors have the same dimensions
         if len(query_vector_pca) != len(apt_vector):
-            print(f"⚠  Dimension mismatch: query {len(query_vector_pca)} vs APT {len(apt_vector)}")
+            print(f"Dimension mismatch: query {len(query_vector_pca)} vs APT {len(apt_vector)}")
             # If mismatch, try to use PCA-transformed query
             if 'pca' in feature_metadata:
                 # Already transformed above
