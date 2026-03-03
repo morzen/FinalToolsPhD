@@ -1,0 +1,74 @@
+✓ Model loaded successfully with pickle
+Model loaded successfully!
+Number of APTs: 181
+
+================================================================================
+GENERATING CROSS-SIMILARITY MATRIX
+================================================================================
+Computing cross-similarity matrix for all APT pairs...
+Cross-similarity matrix computation completed!
+Similarity DataFrame sample (first 5x5):
+             Axiom    Moafee   Cleaver  Ke3chang     APT12
+Axiom     0.996966  0.947716  0.501318  0.500585  0.501175
+Moafee    0.947716  0.942393  0.500536  0.501276  0.500567
+Cleaver   0.501318  0.500536  0.997088  0.815615  0.501031
+Ke3chang  0.500585  0.501276  0.815615  0.997083  0.501300
+APT12     0.501175  0.500567  0.501031  0.501300  0.996917
+
+Matrix shape: (181, 181)
+
+Plotting similarity heatmap...
+Data statistics:
+Min: 0.500445
+Max: 0.997118
+Range: 0.496673
+Mean: 0.519121
+Std: 0.077577
+Using full color scale
+Color scale limits: 0.500445 to 0.997118
+
+================================================================================
+EVALUATING SIMILARITY MATRIX
+================================================================================
+
+Evaluating similarity matrix for top X matches:
+==================================================
+Top 1: 175/181 (96.69%)
+Top 5: 180/181 (99.45%)
+Top 10: 181/181 (100.00%)
+Top 20: 181/181 (100.00%)
+
+================================================================================
+PROFILE DATA DIVISION EVALUATION
+================================================================================
+
+Evaluating with divider: 2 (using 50.0% of profile data)
+
+Settings: TopX: 1 Divider: 2
+Attention MIL Model for this set had a success/failure rate of:
+1/180 Total: 181
+Success rate: 0.5524861878453038%
+
+Settings: TopX: 5 Divider: 2
+Attention MIL Model for this set had a success/failure rate of:
+5/176 Total: 181
+Success rate: 2.7624309392265194%
+
+Settings: TopX: 10 Divider: 2
+Attention MIL Model for this set had a success/failure rate of:
+10/171 Total: 181
+Success rate: 5.524861878453039%
+
+Settings: TopX: 20 Divider: 2
+Attention MIL Model for this set had a success/failure rate of:
+20/161 Total: 181
+Success rate: 11.049723756906078%
+
+==================================================
+RESOURCE USAGE REPORT
+==================================================
+Execution Time: 178.89 seconds
+Memory Usage: 936.23 MB
+Current Memory: 978.66 MB
+CPU Usage: 0.0%
+System CPU: 30.7%

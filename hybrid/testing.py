@@ -82,10 +82,3 @@ def combine_apts(apt1, apt2, apt1_ratio=0.3, apt2_ratio=0.7):
 # Combine the APTs
 combined_apt = combine_apts(Apt1, Apt2)
 
-# Display results
-print("COMBINED APT (30% APT1 high→low, 70% APT2 low→high):\n")
-for category, items in combined_apt.items():
-    print(f"{category}:")
-    print(f"  Count: {len(items)}")
-    print(f"  Items: {items[:5]}{'...' if len(items) > 5 else ''}")
-    print()
