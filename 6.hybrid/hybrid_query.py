@@ -222,6 +222,53 @@ def automated_query_for_eval(evidence_first_batch):
     except Exception as e:
         print(f"Error: {e}")
 
+
+
+def remotequery(evidence_first_batch):
+
+    XGboost_results = xgboost_query.hybrid_query(evidence_first_batch)
+
+    GNN_results = gnn_query.hybrid_query(evidence_first_batch)
+
+    Siamese_results = siamese_query.hybrid_query(evidence_first_batch)
+
+    MIL_results = mil_query.hybrid_query(evidence_first_batch)
+
+    RF_results = rf_query.hybrid_query(evidence_first_batch)
+
+    Jaccards_result = jaccard_module.hybrid_query(evidence_first_batch)
+
+    TVD_result = TVD_module.hybrid_query(evidence_first_batch)
+
+    featureMatching_result = featureMatching_module.hybrid_query(evidence_first_batch)
+
+    # print("RESULTS ::::::::")
+    # i = 0
+    # print(str("XGboost")+" :: "+str(XGboost_results[i]))
+    # print(str("GNN")+" :: "+str(GNN_results[i]))
+    # print(str("Siamese")+" :: "+str(Siamese_results[i]))
+    # print(str("MIL")+" :: "+str(MIL_results[i]))
+    # print(str("RF")+" :: "+str(RF_results[i]))
+
+    # print(str("Jaccard")+" :: "+str(Jaccards_result[i]))
+    # print(str("TVD")+" :: "+str(TVD_result[i]))
+    # print(str("featureMatching_result")+" :: "+str(featureMatching_result[i]))
+
+
+
+    all_lists = [XGboost_results, GNN_results, Siamese_results, MIL_results, RF_results, Jaccards_result, TVD_result, featureMatching_result]
+
+    result = hybrid_rank_aggregate(all_lists)
+
+
+    # Transform to match first list format (only rank and apt_name)
+    final_result = [
+        {'rank': rank, 'apt_name': name}
+        for name, rank in result
+    ]
+
+    return final_result
+
 def main():
     # Get CSV file path from user
     csv_file_path = "../BaseData/TestFinal_df.csv"
