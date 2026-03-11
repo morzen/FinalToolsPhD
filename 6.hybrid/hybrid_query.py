@@ -131,11 +131,22 @@ def process_apt_data(csv_file_path, apt_name):
     }
 
 
-def hybrid_rank_aggregate(lists):
+def hybrid_rank_aggregate(lists, weight_xgboost, weight_gnn, 
+                          weight_siamese, weight_mil, weight_rf, 
+                          weight_featureMatching, weight_jaccard, weight_tvd):
+    
     """
-    Advanced rank aggregation with explicit tie-breaking
+    Advanced rank aggregation with explicit tie-breaking and per-model weights
     """
     n_lists = len(lists)
+    
+    #The weights are normalized to sum to 1, so they become relative proportions
+    # Create weights list in the same order as the lists
+    weights = [weight_xgboost, weight_gnn, weight_siamese, weight_mil, 
+               weight_rf, weight_jaccard, weight_tvd, weight_featureMatching]
+    
+    # Normalize weights
+    weights = np.array(weights) / np.sum(weights)
     
     # Create rank matrix
     rank_matrix = {}
@@ -147,19 +158,28 @@ def hybrid_rank_aggregate(lists):
                 rank_matrix[name] = [None] * n_lists
             rank_matrix[name][list_idx] = rank
     
-    # Calculate statistics
+    # Calculate statistics with weights
     results = []
     for name, ranks in rank_matrix.items():
-        ranks = [r for r in ranks if r is not None]
-        avg_rank = np.mean(ranks)
-        median_rank = np.median(ranks)
-        min_rank = min(ranks)
-        max_rank = max(ranks)
-        rank_range = max_rank - min_rank
+        # Get valid ranks and their corresponding weights
+        valid_ranks = []
+        valid_weights = []
+        for i, rank in enumerate(ranks):
+            if rank is not None:
+                valid_ranks.append(rank)
+                valid_weights.append(weights[i])
+        
+        # Calculate weighted average
+        weighted_avg = np.average(valid_ranks, weights=valid_weights)
+        
+        # Regular statistics for tie-breaking
+        median_rank = np.median(valid_ranks)
+        min_rank = min(valid_ranks)
+        rank_range = max(valid_ranks) - min_rank
         
         results.append({
             'name': name,
-            'avg': avg_rank,
+            'weighted_avg': weighted_avg,
             'median': median_rank,
             'min': min_rank,
             'range': rank_range
@@ -167,7 +187,7 @@ def hybrid_rank_aggregate(lists):
     
     # Sort with multiple tie-breakers
     results.sort(key=lambda x: (
-        x['avg'],           # Primary: average rank
+        x['weighted_avg'],  # Primary: weighted average
         x['median'],        # Secondary: median
         x['min'],          # Tertiary: best rank
         x['range'],        # Quaternary: consistency
@@ -180,7 +200,7 @@ def hybrid_rank_aggregate(lists):
 
 def automated_query_for_eval(evidence_first_batch):
     
-    print("IN")
+    # print("IN")
     try:
         # Save original outputs
         original_stdout = sys.stdout
@@ -258,7 +278,32 @@ def remotequery(evidence_first_batch):
 
     all_lists = [XGboost_results, GNN_results, Siamese_results, MIL_results, RF_results, Jaccards_result, TVD_result, featureMatching_result]
 
-    result = hybrid_rank_aggregate(all_lists)
+
+    #weight determined on precision evaluation through dataset
+    # result = hybrid_rank_aggregate(
+    #         all_lists,
+    #         weight_xgboost=1,
+    #         weight_gnn=1.5,
+    #         weight_siamese=2,
+    #         weight_mil=0.5,
+    #         weight_rf=3,
+    #         weight_featureMatching=5,
+    #         weight_jaccard=5,
+    #         weight_tvd=4
+    #     )
+
+    #weight decide on results of CTI evaluation
+    result = hybrid_rank_aggregate(
+            all_lists,
+            weight_featureMatching=5,
+            weight_jaccard=4,
+            weight_xgboost=3,
+            weight_mil=2.5,
+            weight_gnn=2,
+            weight_tvd=1.8,
+            weight_siamese=1.5,
+            weight_rf=1
+        )
 
 
     # Transform to match first list format (only rank and apt_name)
@@ -318,6 +363,8 @@ def main():
     # print(str("Jaccard")+" :: "+str(Jaccards_result[i]))
     # print(str("TVD")+" :: "+str(TVD_result[i]))
     # print(str("featureMatching_result")+" :: "+str(featureMatching_result[i]))
+
+
 
 
 

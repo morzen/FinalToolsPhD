@@ -53,7 +53,7 @@ class XGBoostDataLoader:
         return df
     
     @staticmethod
-    def prepare_multi_hot_encoding(df, n_components=100):
+    def prepare_multi_hot_encoding(df, n_components=256):
         """Create multi-hot encoding with PCA for dimensionality reduction"""
         print("\nCREATING MULTI-HOT ENCODING WITH DIMENSIONALITY REDUCTION")
         print("=" * 50)

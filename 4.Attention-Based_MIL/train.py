@@ -256,14 +256,11 @@ class OptimizedAttentionMILSimilarity(nn.Module):  # KEEP THE ORIGINAL NAME
         combined = torch.cat([emb1, emb2, match_ratios.unsqueeze(0)], dim=-1)
         feature_similarities = self.similarity_net(combined)
         
-        # Apply perfect match boost directly to scores
-        boosted_similarities = feature_similarities * (1 + perfect_matches * (self.perfect_match_boost - 1))
-        
         # Use softmax weights
         weights = F.softmax(self.feature_weights, dim=0)
-        
-        # Final score
-        similarity = (boosted_similarities * weights).sum(dim=-1, keepdim=True)
+
+        # Final score - NO PERFECT MATCH BOOST
+        similarity = (feature_similarities * weights).sum(dim=-1, keepdim=True)
         return torch.sigmoid(similarity * 10)
 
     def _forward_single(self, x_dict, match_ratios):

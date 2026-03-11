@@ -191,8 +191,7 @@ Processing First Batch (Full Data)
   ✓ PLATINUM completed
 
 [63/181] Processing MuddyWater (Full Data)
-  ⚠️ Only 2 modules succeeded, skipping
-  ⚠️ MuddyWater returned no results
+  ✓ MuddyWater completed
 
 [64/181] Processing Dark Caracal (Full Data)
   ✓ Dark Caracal completed
@@ -351,8 +350,7 @@ Processing First Batch (Full Data)
   ✓ Nomadic Octopus completed
 
 [116/181] Processing Transparent Tribe (Full Data)
-  ⚠️ Only 2 modules succeeded, skipping
-  ⚠️ Transparent Tribe returned no results
+  ✓ Transparent Tribe completed
 
 [117/181] Processing BackdoorDiplomacy (Full Data)
   ✓ BackdoorDiplomacy completed
@@ -821,7 +819,8 @@ Processing Second Batch (Shuffled & Divided Data)
   ✓ BlackTech completed
 
 [90/181] Processing APT-C-36 (Shuffled)
-  ✓ APT-C-36 completed
+  ⚠️ Only 2 modules succeeded, skipping
+  ⚠️ APT-C-36 returned no results
 
 [91/181] Processing Inception (Shuffled)
   ✓ Inception completed
@@ -1099,18 +1098,20 @@ Processing Second Batch (Shuffled & Divided Data)
 ==================================================
 Results for Full Data
 ==================================================
-Top-1: 83/181 (45.86%)
-Top-5: 122/181 (67.40%)
-Top-10: 143/181 (79.01%)
-Top-20: 165/181 (91.16%)
+Top-1: 152/181 (83.98%)
+Top-5: 179/181 (98.90%)
+Top-10: 181/181 (100.00%)
+Top-20: 181/181 (100.00%)
 
 ==================================================
 Results for Shuffled & Divided Data
 ==================================================
-Top-1: 75/181 (41.44%)
-Top-5: 114/181 (62.98%)
-Top-10: 130/181 (71.82%)
-Top-20: 156/181 (86.19%)
+Top-1: 149/181 (82.32%)
+Top-5: 168/181 (92.82%)
+Top-10: 172/181 (95.03%)
+Top-20: 174/181 (96.13%)
+/Users/morzen/Desktop/FinalToolsPhD/6.hybrid/hybrid_eval.py:462: FutureWarning: Downcasting object dtype arrays on .fillna, .ffill, .bfill is deprecated and will change in a future version. Call result.infer_objects(copy=False) instead. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  df = df.fillna(0)
 
 ✓ Heatmap saved as 'apt_ranking_heatmap.png'
 
