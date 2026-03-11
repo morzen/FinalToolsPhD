@@ -279,7 +279,7 @@ def remotequery(evidence_first_batch):
     all_lists = [XGboost_results, GNN_results, Siamese_results, MIL_results, RF_results, Jaccards_result, TVD_result, featureMatching_result]
 
 
-    #weight determined on precision evaluation through dataset
+    # #weight determined on precision evaluation through dataset
     # result = hybrid_rank_aggregate(
     #         all_lists,
     #         weight_xgboost=1,

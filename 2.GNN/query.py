@@ -368,7 +368,7 @@ def query_apt_similarity_enhanced(evidence, status):
     cve = evidence.get("cve", [])
     pulse = evidence.get("pulse", [])
     
-    # Create query embedding by averaging feature node embeddings
+    # Get indices of matched features
     technique_to_idx = graph_info.get("technique_to_idx", {})
     software_to_idx = graph_info.get("software_to_idx", {})
     capec_to_idx = graph_info.get("capec_to_idx", {})
@@ -376,15 +376,7 @@ def query_apt_similarity_enhanced(evidence, status):
     cve_to_idx = graph_info.get("cve_to_idx", {})
     pulse_to_idx = graph_info.get("pulse_to_idx", {})
     
-    # Get indices of matched features
-    tech_indices = [technique_to_idx.get(t) for t in techniques if t in technique_to_idx]
-    soft_indices = [software_to_idx.get(s) for s in software if s in software_to_idx]
-    capec_indices = [capec_to_idx.get(c) for c in capec if c in capec_to_idx]
-    cwe_indices = [cwe_to_idx.get(c) for c in cwe if c in cwe_to_idx]
-    cve_indices = [cve_to_idx.get(c) for c in cve if c in cve_to_idx]
-    pulse_indices = [pulse_to_idx.get(c) for c in pulse if c in pulse_to_idx]
-    
-    # Load GNN model to get feature node embeddings
+    # Load GNN model
     model_config = saved_data.get("model_config", {})
     in_channels = model_config.get("in_channels", 1)
     hidden_dim = model_config.get("hidden_dim", 256)
@@ -398,7 +390,7 @@ def query_apt_similarity_enhanced(evidence, status):
     
     device = next(gnn_model.parameters()).device
     
-    # Reconstruct full graph to get all node embeddings
+    # Reconstruct full graph with query as new node
     num_apts = graph_info["num_apts"]
     num_techniques = graph_info["num_techniques"]
     num_software = graph_info["num_software"]
@@ -407,52 +399,95 @@ def query_apt_similarity_enhanced(evidence, status):
     num_cve = graph_info["num_cve"]
     num_pulse = graph_info["num_pulse"]
     
-    x = torch.ones(num_apts + num_techniques + num_software + num_capec + num_cwe + num_cve + num_pulse, 1, device=device)
+    # Add one new node for the query
+    total_nodes = num_apts + num_techniques + num_software + num_capec + num_cwe + num_cve + num_pulse + 1
     
-    # We need edge_index and edge_weight - they should be saved in graph_info
-    # For now, we'll use a simpler approach:
+    # Get offsets
+    technique_offset = num_apts
+    software_offset = technique_offset + num_techniques
+    capec_offset = software_offset + num_software
+    cwe_offset = capec_offset + num_capec
+    cve_offset = cwe_offset + num_cwe
+    pulse_offset = cve_offset + num_cve
+    query_node_idx = pulse_offset + num_pulse  # Query node added at the end
     
-    # Calculate query embedding as weighted average of matching APT embeddings
-    # This leverages the fact that APTs with similar features should have similar embeddings
+    # Create new node features (all ones)
+    x = torch.ones(total_nodes, 1, device=device)
+    
+    # Reconstruct edge_index and edge_weight from graph_info
+    # This part needs to be saved during training - you'd need to save edge_index and edge_weight
+    # For now, assuming they're in graph_info
+    edge_index = graph_info.get("edge_index", torch.empty((2, 0), dtype=torch.long))
+    edge_weight = graph_info.get("edge_weight", torch.empty((0,), dtype=torch.float))
+    
+    # Move to device
+    edge_index = edge_index.to(device)
+    edge_weight = edge_weight.to(device)
+    
+    # Add edges from query node to matched features
+    new_edges = []
+    new_weights = []
+    
+    for t in techniques:
+        if t in technique_to_idx:
+            feat_idx = technique_to_idx[t] + technique_offset
+            new_edges.append([query_node_idx, feat_idx])
+            new_edges.append([feat_idx, query_node_idx])
+            new_weights.extend([feature_weights["techniques"], feature_weights["techniques"]])
+    
+    for s in software:
+        if s in software_to_idx:
+            feat_idx = software_to_idx[s] + software_offset
+            new_edges.append([query_node_idx, feat_idx])
+            new_edges.append([feat_idx, query_node_idx])
+            new_weights.extend([feature_weights["software"], feature_weights["software"]])
+    
+    for c in capec:
+        if c in capec_to_idx:
+            feat_idx = capec_to_idx[c] + capec_offset
+            new_edges.append([query_node_idx, feat_idx])
+            new_edges.append([feat_idx, query_node_idx])
+            new_weights.extend([feature_weights["capec"], feature_weights["capec"]])
+    
+    for w in cwe:
+        if w in cwe_to_idx:
+            feat_idx = cwe_to_idx[w] + cwe_offset
+            new_edges.append([query_node_idx, feat_idx])
+            new_edges.append([feat_idx, query_node_idx])
+            new_weights.extend([feature_weights["cwe"], feature_weights["cwe"]])
+    
+    for v in cve:
+        if v in cve_to_idx:
+            feat_idx = cve_to_idx[v] + cve_offset
+            new_edges.append([query_node_idx, feat_idx])
+            new_edges.append([feat_idx, query_node_idx])
+            new_weights.extend([feature_weights["cve"], feature_weights["cve"]])
+    
+    for p in pulse:
+        if p in pulse_to_idx:
+            feat_idx = pulse_to_idx[p] + pulse_offset
+            new_edges.append([query_node_idx, feat_idx])
+            new_edges.append([feat_idx, query_node_idx])
+            new_weights.extend([feature_weights["pulse"], feature_weights["pulse"]])
+    
+    if new_edges:
+        new_edges_tensor = torch.tensor(new_edges, dtype=torch.long).t().contiguous().to(device)
+        new_weights_tensor = torch.tensor(new_weights, dtype=torch.float).to(device)
+        
+        # Append new edges to existing edges
+        edge_index = torch.cat([edge_index, new_edges_tensor], dim=1)
+        edge_weight = torch.cat([edge_weight, new_weights_tensor])
+    
+    # Run GNN forward pass
     with torch.no_grad():
-        # Get similarity scores based on feature overlap
-        similarity_scores = torch.zeros(len(apt_ids), device=device)
-        
-        for i, apt_id in enumerate(apt_ids):
-            profile = profiles[apt_id]
-            
-            tech_matches = len(set(techniques) & set(profile.get("techniques", [])))
-            soft_matches = len(set(software) & set(profile.get("software", [])))
-            capec_matches = len(set(capec) & set(profile.get("capec", [])))
-            cwe_matches = len(set(cwe) & set(profile.get("cwe", [])))
-            cve_matches = len(set(cve) & set(profile.get("cve", [])))
-            pulse_matches = len(set(pulse) & set(profile.get("pulse", [])))
-            
-            weighted_match = (tech_matches * feature_weights["techniques"] +
-                             soft_matches * feature_weights["software"] +
-                             capec_matches * feature_weights["capec"] +
-                             cwe_matches * feature_weights["cwe"] +
-                             cve_matches * feature_weights["cve"] +
-                             pulse_matches * feature_weights["pulse"])
-            
-            max_possible = (len(techniques) * feature_weights["techniques"] +
-                           len(software) * feature_weights["software"] +
-                           len(capec) * feature_weights["capec"] +
-                           len(cwe) * feature_weights["cwe"] +
-                           len(cve) * feature_weights["cve"] +
-                           len(pulse) * feature_weights["pulse"])
-            
-            if max_possible > 0:
-                similarity_scores[i] = weighted_match / max_possible
-        
-        # Query embedding is weighted average of APT embeddings
-        # Weight by similarity score (APTs more similar to query contribute more)
-        weights = F.softmax(similarity_scores * 10, dim=0)  # Scale for sharper distribution
-        query_embedding = torch.matmul(weights.unsqueeze(0), apt_embeddings.to(device))
+        all_embeddings = gnn_model(x, edge_index, edge_weight)
+        query_embedding = all_embeddings[query_node_idx].unsqueeze(0)
+        apt_embeddings_full = all_embeddings[:num_apts]
         
         # Calculate cosine similarity
-        similarities = F.cosine_similarity(query_embedding, apt_embeddings.to(device))
+        similarities = F.cosine_similarity(query_embedding, apt_embeddings_full)
     
+    # Rest of your code remains the same...
     confidence = confidence_scoring(similarities.cpu(), top_k=5)
     sorted_similarities, sorted_indices = torch.sort(similarities.cpu(), descending=True)
     
