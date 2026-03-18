@@ -139,8 +139,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
                 
         return torch.cat(features, dim=-1)
 
-# Load the complete model and data from a single file
-# Load the complete model and data from a single file
+
 def load_complete_model():
     import pickle
     
@@ -174,6 +173,7 @@ def load_complete_model():
     
     return model, apt_profiles, apt_name_dict, df_mapping, apt_ids
 
+
 def calculate_similarities(model, apt_profiles, evidence_features, apt_ids):
     """Calculate similarity scores for all APTs using the Attention MIL model"""
     similarities = {}
@@ -192,6 +192,7 @@ def calculate_similarities(model, apt_profiles, evidence_features, apt_ids):
             similarities[apt_name] = similarity.item()
     
     return similarities
+
 
 def generate_cross_similarity_matrix(model, apt_profiles, apt_ids):
     """Generate cross-similarity matrix between all APT pairs"""
@@ -230,6 +231,7 @@ def generate_cross_similarity_matrix(model, apt_profiles, apt_ids):
     print("Cross-similarity matrix computation completed!")
     return similarity_matrix
 
+
 def create_similarity_matrix(similarity_matrix, apt_name_dict, apt_profiles, apt_ids):
     """Create similarity matrix DataFrame with APT names"""
     # Get APT names in order
@@ -243,6 +245,7 @@ def create_similarity_matrix(similarity_matrix, apt_name_dict, apt_profiles, apt
     )
     
     return similarity_df
+
 
 def plot_similarity_heatmap(similarity_df):
     """Plot heatmap of similarity matrix with adaptive color scaling"""
@@ -303,6 +306,7 @@ def plot_similarity_heatmap(similarity_df):
     plt.savefig('apt_MIL_similarity_matrix.png', dpi=300, bbox_inches='tight')
     plt.show()
 
+
 def evaluate_similarity_matrix(similarity_df, top_x_values):
     """Evaluate the similarity matrix for top X matches"""
     apt_names = similarity_df.index.tolist()
@@ -336,7 +340,62 @@ def evaluate_similarity_matrix(similarity_df, top_x_values):
         
         print(f"Top {topX}: {success}/{success+failure} ({success/(success+failure)*100:.2f}%)")
 
-def evaluate_profile_division(model, apt_profiles, apt_name_dict, df_mapping, apt_ids, divider=2, top_x_values=[1, 5, 10, 20]):
+
+def evaluate_full_data_query(model, apt_profiles, apt_name_dict, df_mapping, apt_ids, top_x_values=[1,5,10,20]):
+    """Evaluate model performance by querying with FULL profile data"""
+    print("\n" + "="*80)
+    print("EVALUATION: FULL DATA QUERY (complete profile)")
+    print("="*80)
+    
+    apt_names = [apt_name_dict[apt_profiles[apt]['encoded_id']] for apt in apt_ids]
+    
+    results_by_top = {topX: 0 for topX in top_x_values}
+    rank_sum = 0
+    rank_count = 0
+    
+    for i, target_apt_id in enumerate(apt_ids):
+        if i % 20 == 0:
+            print(f"  Processing {i}/{len(apt_ids)}...")
+        
+        target_name = apt_names[i]
+        profile = apt_profiles[target_apt_id]
+        
+        # Build evidence from full profile
+        evidence_features = {
+            'technique': profile.get('technique', []),
+            'software': profile.get('software', []),
+            'capec': profile.get('capec', []),
+            'cwe': profile.get('cwe', []),
+            'cve': profile.get('cve', []),
+            'pulse': profile.get('pulse', [])
+        }
+        
+        # Calculate similarities with all APTs
+        similarities = calculate_similarities(model, apt_profiles, evidence_features, apt_ids)
+        
+        # Sort APTs by similarity
+        sorted_apts = sorted(apt_ids, key=lambda aid: similarities[aid], reverse=True)
+        sorted_names = [apt_name_dict[apt_profiles[aid]['encoded_id']] for aid in sorted_apts]
+        
+        # Find rank of target
+        for rank, name in enumerate(sorted_names, 1):
+            if name == target_name:
+                rank_sum += rank
+                rank_count += 1
+                for topX in top_x_values:
+                    if rank <= topX:
+                        results_by_top[topX] += 1
+                break
+    
+    total = len(apt_ids)
+    avg_rank = rank_sum / rank_count if rank_count else 0
+    print("\nResults Summary:")
+    for topX in top_x_values:
+        print(f"  Top {topX}: {results_by_top[topX]}/{total} ({results_by_top[topX]/total*100:.2f}%)")
+    print(f"  Average self‑rank: {avg_rank:.2f}")
+
+
+def evaluate_profile_division(model, apt_profiles, apt_name_dict, df_mapping, apt_ids, divider=2, top_x_values=[1,5,10,20]):
     """Evaluate model performance with divided profile data"""
     resultdict = {}
     apt_names = [apt_name_dict[apt_profiles[apt]['encoded_id']] for apt in apt_ids]
@@ -436,6 +495,7 @@ def evaluate_profile_division(model, apt_profiles, apt_name_dict, df_mapping, ap
         print(str(success) + "/" + str(failure) + " Total: " + str(lengthResultDict))
         print("Success rate: " + str((success/lengthResultDict)*100) + "%")
 
+
 def main():
     # Load everything
     model, apt_profiles, apt_name_dict, df_mapping, apt_ids = load_complete_model()
@@ -455,25 +515,31 @@ def main():
     print(similarity_df.iloc[:5, :5])
     print(f"\nMatrix shape: {similarity_df.shape}")
     
-    # 2. Plot heatmap
-    print("\nPlotting similarity heatmap...")
-    plot_similarity_heatmap(similarity_df)
+    
     
     # 3. Evaluate similarity matrix for top X matches
     print("\n" + "="*80)
-    print("EVALUATING SIMILARITY MATRIX")
+    print("EVALUATION 1: STORED CROSS-SIMILARITY MATRIX")
     print("="*80)
     
     top_x_values = [1, 5, 10, 20]
     evaluate_similarity_matrix(similarity_df, top_x_values)
 
-    # 4. Evaluate with profile data division
+    # 4. Evaluate with full data query (realistic)
+    evaluate_full_data_query(model, apt_profiles, apt_name_dict, df_mapping, apt_ids, top_x_values)
+
+    # 5. Evaluate with profile data division
     print("\n" + "="*80)
-    print("PROFILE DATA DIVISION EVALUATION")
+    print("EVALUATION 2: DIVIDED PROFILE DATA")
     print("="*80)
     
     evaluate_profile_division(model, apt_profiles, apt_name_dict, df_mapping, apt_ids, 
                              divider=2, top_x_values=[1, 5, 10, 20])
+    
+    # 2. Plot heatmap
+    print("\nPlotting similarity heatmap...")
+    plot_similarity_heatmap(similarity_df)
+
 
 if __name__ == "__main__":
     main()

@@ -69,7 +69,7 @@ def plot_similarity_heatmap(similarity_df):
 def evaluate_with_similarity_matrix(similarity_df, top_x_values=[1, 5, 10, 20]):
     """Evaluate model performance using the precomputed similarity matrix"""
     print("\n" + "="*80)
-    print("SIMILARITY MATRIX EVALUATION (NO DATA DIVISION)")
+    print("EVALUATION 1: STORED SIMILARITY MATRIX (NO DATA DIVISION)")
     print("="*80)
     
     apt_names = similarity_df.index.tolist()
@@ -103,10 +103,96 @@ def evaluate_with_similarity_matrix(similarity_df, top_x_values=[1, 5, 10, 20]):
             else:
                 failure = failure + 1
         
-        print("\nsettings: Topx: " + str(topX))
-        print("Random Forest for this set had a success failure rate of ")
-        print(str(success) + "/" + str(failure) + " Total: " + str(lengthResultDict))
-        print("in percentage success rate: " + str((success/lengthResultDict)*100))
+        print(f"\nTop {topX}: {success}/{success+failure} ({success/(success+failure)*100:.2f}%)")
+
+def evaluate_full_data_query(model_data, top_x_values=[1,5,10,20]):
+    """Evaluate model performance by querying with FULL profile data"""
+    print("\n" + "="*80)
+    print("EVALUATION 2: FULL DATA QUERY (complete profile)")
+    print("="*80)
+    
+    # Extract components
+    apt_profiles = model_data['apt_profiles']
+    apt_name_dict = model_data['apt_name_dict']
+    apt_ids = model_data['apt_names']
+    df_mapping = model_data['df_mapping']
+    binarizers = model_data['binarizers']
+    all_features = model_data['all_features']
+    feature_types = model_data['feature_types']
+    rf = model_data['rf_model']
+    X = model_data['X']
+    
+    apt_display_names = [apt_name_dict[apt_profiles[apt]['encoded_id']] for apt in apt_ids]
+    
+    results_by_top = {topX: 0 for topX in top_x_values}
+    rank_sum = 0
+    rank_count = 0
+    
+    for i, target_apt_id in enumerate(apt_ids):
+        if i % 20 == 0:
+            print(f"  Processing {i}/{len(apt_ids)}...")
+        
+        target_name = apt_display_names[i]
+        profile = apt_profiles[target_apt_id]
+        
+        # Build evidence from full profile
+        evidence = {}
+        for feature_type, evidence_key in [('techniques', 'techniques_str'),
+                                          ('software', 'software_str'),
+                                          ('capec', 'CAPEC_ID'),
+                                          ('cwe', 'CWE_ID'),
+                                          ('cve', 'CVE_ID'),
+                                          ('pulse', 'Pulse_ID')]:
+            if feature_type in profile:
+                # Convert encoded IDs back to originals for sanitization
+                if feature_type == 'techniques':
+                    mapping = dict(zip(df_mapping['techniques_Encoded'], df_mapping['techniques_Origin']))
+                    evidence[evidence_key] = [mapping.get(f, f) for f in profile[feature_type] if f in mapping]
+                elif feature_type == 'software':
+                    mapping = dict(zip(df_mapping['software_Encoded'], df_mapping['software_Origin']))
+                    evidence[evidence_key] = [mapping.get(f, f) for f in profile[feature_type] if f in mapping]
+                elif feature_type == 'capec':
+                    mapping = dict(zip(df_mapping['CAPEC_ID_Encoded'], df_mapping['CAPEC_ID_Origin']))
+                    evidence[evidence_key] = [mapping.get(f, f) for f in profile[feature_type] if f in mapping]
+                elif feature_type == 'cwe':
+                    mapping = dict(zip(df_mapping['CWE_ID_Encoded'], df_mapping['CWE_ID_Origin']))
+                    evidence[evidence_key] = [mapping.get(f, f) for f in profile[feature_type] if f in mapping]
+                elif feature_type == 'cve':
+                    mapping = dict(zip(df_mapping['CVE_ID_Encoded'], df_mapping['CVE_ID_Origin']))
+                    evidence[evidence_key] = [mapping.get(f, f) for f in profile[feature_type] if f in mapping]
+                elif feature_type == 'pulse':
+                    mapping = dict(zip(df_mapping['Pulse_ID_Encoded'], df_mapping['Pulse_ID_Origin']))
+                    evidence[evidence_key] = [mapping.get(f, f) for f in profile[feature_type] if f in mapping]
+        
+        # Process evidence
+        clean_evidence = sanitize_evidence(evidence, df_mapping)
+        encoded_evidence = translate_to_encoded(clean_evidence, df_mapping)
+        
+        # Create vector and compute similarities
+        query_vector = create_evidence_vector(encoded_evidence, binarizers, all_features, feature_types)
+        similarities = calculate_rf_similarity(query_vector, rf, X, apt_ids)
+        
+        # Rank
+        sorted_indices = np.argsort(similarities)[::-1]
+        sorted_apts = [apt_ids[idx] for idx in sorted_indices]
+        sorted_names = [apt_name_dict[apt_profiles[aid]['encoded_id']] for aid in sorted_apts]
+        
+        # Find rank of target
+        for rank, name in enumerate(sorted_names, 1):
+            if name == target_name:
+                rank_sum += rank
+                rank_count += 1
+                for topX in top_x_values:
+                    if rank <= topX:
+                        results_by_top[topX] += 1
+                break
+    
+    total = len(apt_ids)
+    avg_rank = rank_sum / rank_count if rank_count else 0
+    print("\nResults Summary:")
+    for topX in top_x_values:
+        print(f"  Top {topX}: {results_by_top[topX]}/{total} ({results_by_top[topX]/total*100:.2f}%)")
+    print(f"  Average self‑rank: {avg_rank:.2f}")
 
 def evaluate_profile_division(model_data, divider=2, top_x_values=[1, 5, 10, 20]):
     """Evaluate model performance with divided profile data"""
@@ -191,7 +277,6 @@ def evaluate_profile_division(model_data, divider=2, top_x_values=[1, 5, 10, 20]
         lengthResultDict = len(resultdict)
         success = 0
         failure = 0
-        SucessFailDict = {}
         
         # Iterate through each APT's results
         for target_apt, similarities in resultdict.items():
@@ -204,15 +289,10 @@ def evaluate_profile_division(model_data, divider=2, top_x_values=[1, 5, 10, 20]
             # Check if target APT is in its own top X most similar
             if target_apt in top_x_similar:
                 success = success + 1
-                SucessFailDict[target_apt] = "Pass"
             else:
                 failure = failure + 1
-                SucessFailDict[target_apt] = "Fail"
         
-        print("\nsettings: Topx: " + str(topX) + " Divider: " + str(divider))
-        print("Random Forest for this set had a success failure rate of ")
-        print(str(success) + "/" + str(failure) + " Total: " + str(lengthResultDict))
-        print("in percentage success rate: " + str((success/lengthResultDict)*100))
+        print(f"\nTop {topX}, Divider {divider}: {success}/{success+failure} ({success/(success+failure)*100:.2f}%)")
 
 def sanitize_evidence(evidence, df_mapping):
     """Keep only evidence features that exist in our database"""
@@ -268,7 +348,7 @@ def translate_to_encoded(evidence, df_mapping):
         'CAPEC_ID': ('CAPEC_ID_Encoded', 'capec'),
         'CWE_ID': ('CWE_ID_Encoded', 'cwe'),
         'CVE_ID': ('CVE_ID_Encoded', 'cve'),
-        'Pulse_ID': ('Pulse_ID_Encoded', 'Pulse'),
+        'Pulse_ID': ('Pulse_ID_Encoded', 'pulse'),
     }
     
     for evidence_key, (encoded_col, output_key) in column_mapping.items():
@@ -343,9 +423,12 @@ def main():
     # 3. Evaluate using the similarity matrix (no data division)
     evaluate_with_similarity_matrix(similarity_df)
     
-    # 4. Evaluate with profile division (divider = 2)
+    # 4. Evaluate with full data query (realistic)
+    evaluate_full_data_query(model_data)
+    
+    # 5. Evaluate with profile division (divider = 2)
     print("\n" + "="*80)
-    print("PROFILE DIVISION EVALUATION")
+    print("EVALUATION 3: PROFILE DIVISION (DIVIDER=2)")
     print("="*80)
     evaluate_profile_division(model_data, divider=2)
 

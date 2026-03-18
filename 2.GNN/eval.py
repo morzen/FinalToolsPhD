@@ -376,6 +376,47 @@ def test_sample_queries(saved_data):
         similarity = similarities[idx].item()
         print(f"  {i + 1}. {apt_name}: {similarity:.4f}")
 
+def evaluate_full_profile_queries(saved_data, top_x_values=[1, 5, 10, 20]):
+    """
+    For each APT, use its full profile as a query and check if the target APT appears
+    in the top X most similar APTs.
+    """
+    print("\n" + "=" * 80)
+    print("EVALUATING FULL PROFILE QUERIES (each APT queried with its own complete profile)")
+    print("=" * 80)
+
+    profiles = saved_data['profiles']
+    apt_ids = saved_data['apt_ids']
+
+    # Map encoded APT IDs to readable names
+    df_mapping = pd.read_csv("../BaseData/comparison_Encoded_df.csv")
+    apt_name_mapping = {row['APTnameEncoded']: row['APTnameOrigin'] for _, row in df_mapping.iterrows()}
+    apt_names = [apt_name_mapping.get(apt_id, f"APT{apt_id}") for apt_id in apt_ids]
+
+    # Store results for each top X
+    for topX in top_x_values:
+        success = 0
+        failure = 0
+        for i, apt_id in enumerate(apt_ids):
+            target_name = apt_names[i]
+            full_profile = profiles[apt_id]   # dict with keys: techniques, software, capec, cwe, cve, pulse
+
+            # Query with the full profile (original string IDs)
+            similarities, result_apt_ids = query_apt_similarity(full_profile, saved_data)
+
+            # Get indices of top X similarities
+            top_indices = torch.topk(similarities, topX).indices.tolist()
+            top_apt_names = [apt_name_mapping.get(apt_ids[idx], f"APT{apt_ids[idx]}") for idx in top_indices]
+
+            if target_name in top_apt_names:
+                success += 1
+            else:
+                failure += 1
+
+        total = len(apt_ids)
+        print(f"\nSettings: Top {topX}")
+        print(f"Success/Failure: {success}/{failure} Total: {total}")
+        print(f"Success rate: {(success/total)*100:.2f}%")
 
 def main():
     print(" GNN APT SIMILARITY MODEL EVALUATION")
@@ -400,10 +441,12 @@ def main():
     print(similarity_df.iloc[:5, :5])
     print(f"\nMatrix shape: {similarity_df.shape}")
 
-    print("\nPlotting similarity heatmap...")
-    plot_similarity_heatmap(similarity_df)
 
     evaluate_similarity_matrix(similarity_df, apt_names)
+
+    print("\nEVALUATING full PROFILE data ")
+    # NEW: Full profile query evaluation
+    evaluate_full_profile_queries(saved_data, top_x_values=[1, 5, 10, 20])
 
     print("\n" + "=" * 80)
     print("EVALUATING PROFILE DIVISION PERFORMANCE")
@@ -411,6 +454,10 @@ def main():
 
     evaluate_profile_division(saved_data, divider=2, top_x_values=[1, 5, 10, 20])
 
+    print("\nPlotting similarity heatmap...")
+    plot_similarity_heatmap(similarity_df)
+
+    
 
 if __name__ == "__main__":
     main()

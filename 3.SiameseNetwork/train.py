@@ -1,5 +1,5 @@
 # ============================
-# 1. IMPORTS
+# 1. IMPORTS (same as before)
 # ============================
 import os
 import pickle
@@ -14,54 +14,37 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # ============================
-# 2. CONFIGURATION
+# 2. CONFIGURATION (add SAMPLES_PER_APT)
 # ============================
 class SiameseConfig:
-    """Configuration for Siamese Network"""
-#variable shared by all models:
     DATA_PATH = "../BaseData/EncodedData.csv"
     MODEL_PATH = "6feat_apt_siamese_feature_model.pkl"
-
-
-#variables share by some models:
     HIDDEN_DIM = 256
     LEARNING_RATE = 0.001
     RANDOM_STATE = 42
-    EPOCHS = 50
-
-
-#variables unique to this model:
-    NUM_FEATURES = 6  # techniques, software, capec, cwe, cve, pulse
-    
-    EMBEDDING_DIM = 128
+    EPOCHS = 200
+    NUM_FEATURES = 6
+    EMBEDDING_DIM = 256
     TEMP_MODEL_PATH = "best_siamese.tmp"
-    BATCH_SIZE = 256
+    BATCH_SIZE = 256          # not used in APT-level training, kept for compatibility
     DROPOUT_RATE = 0.3
-    MARGIN = 0.3  # Triplet loss margin
+    MARGIN = 0.7
     GRADIENT_CLIP = 1.0
     TEST_SIZE = 0.2
-
-    GRADIENT_CLIP = 1.0
-    # Device
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-
+    SAMPLES_PER_APT = 30       # number of rows to sample per subset during training
 
 # ============================
-# 3. DATA LOADING & PREPROCESSING
+# 3. DATA LOADING (unchanged)
 # ============================
 class SiameseDataLoader:
-    """Handles data loading and preparation for Siamese Network"""
-    
     @staticmethod
     def load_raw_data(data_path=SiameseConfig.DATA_PATH):
-        """Load and prepare raw data"""
-        print("Loading encoded data...")
         df = pd.read_csv(data_path)
         return df
     
     @staticmethod
     def prepare_features(df):
-        """Extract features and target from dataframe"""
         feature_columns = ['techniques_str', 'software_str', 'CAPEC_ID', 
                           'CWE_ID', 'CVE_ID', 'Pulse_ID']
         X = df[feature_columns].values
@@ -70,311 +53,266 @@ class SiameseDataLoader:
     
     @staticmethod
     def get_vocabulary_sizes(X):
-        """Calculate vocabulary sizes for each feature type"""
         vocab_sizes = {}
         feature_names = ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']
-        
         for i, name in enumerate(feature_names):
             vocab_sizes[name] = int(X[:, i].max()) + 1
-        
         return vocab_sizes
     
     @staticmethod
     def create_apt_mapping(y):
-        """Create mapping from APT IDs to indices"""
         unique_apts = sorted(np.unique(y))
         apt_to_idx = {apt: i for i, apt in enumerate(unique_apts)}
         return apt_to_idx, unique_apts
     
     @staticmethod
     def load_and_prepare():
-        """Complete data loading and preparation pipeline"""
         df = SiameseDataLoader.load_raw_data()
         X, y = SiameseDataLoader.prepare_features(df)
         vocab_sizes = SiameseDataLoader.get_vocabulary_sizes(X)
         apt_to_idx, unique_apts = SiameseDataLoader.create_apt_mapping(y)
-        
         print(f"Data Statistics:")
         print(f"  Records: {len(df)}")
         print(f"  Unique APTs: {len(unique_apts)}")
         print(f"  Vocabulary sizes: {vocab_sizes}")
-        
         return X, y, apt_to_idx, vocab_sizes, unique_apts
 
 # ============================
-# 4. DATASET DEFINITION
+# 4. NEW DATASET – returns all rows for a given APT
 # ============================
-class APTFeatureDataset(Dataset):
-    """Dataset for APT features"""
-    
+class APTAggregateDataset(Dataset):
+    """Returns all rows for a single APT when indexed by APT index."""
     def __init__(self, X, y, apt_to_idx):
-        self.X = torch.FloatTensor(X)
-        self.y = torch.LongTensor([apt_to_idx[apt] for apt in y])
-        
+        """
+        apt_to_idx: mapping from APT id to index (0..N-1) for the APTs in this split.
+        """
+        self.apt_to_idx = apt_to_idx
+        self.apt_ids = sorted(apt_to_idx.keys())
+        # Group rows by APT id
+        self.apt_rows = {}
+        for apt_id in self.apt_ids:
+            mask = (y == apt_id)
+            self.apt_rows[apt_id] = X[mask]
+    
     def __len__(self):
-        return len(self.X)
+        return len(self.apt_ids)
     
     def __getitem__(self, idx):
-        return self.X[idx], self.y[idx]
+        apt_id = self.apt_ids[idx]
+        rows = self.apt_rows[apt_id]
+        return torch.FloatTensor(rows), apt_id
 
 # ============================
-# 5. MODEL DEFINITION
+# 5. MODEL DEFINITION (unchanged)
 # ============================
 class SiameseFeatureEncoder(nn.Module):
-    """Siamese network feature encoder"""
-    
     def __init__(self, vocab_sizes, embed_dim=SiameseConfig.EMBEDDING_DIM):
         super().__init__()
-        
-        # Calculate embedding dimensions per feature
         embed_per_feature = embed_dim // SiameseConfig.NUM_FEATURES
-        
-        # Embedding layers for each feature type
         self.tech_embed = nn.Embedding(vocab_sizes['techniques'] + 1, embed_per_feature)
         self.soft_embed = nn.Embedding(vocab_sizes['software'] + 1, embed_per_feature)
         self.capec_embed = nn.Embedding(vocab_sizes['capec'] + 1, embed_per_feature)
         self.cwe_embed = nn.Embedding(vocab_sizes['cwe'] + 1, embed_per_feature)
         self.cve_embed = nn.Embedding(vocab_sizes['cve'] + 1, embed_per_feature)
         self.pulse_embed = nn.Embedding(vocab_sizes['pulse'] + 1, embed_per_feature)
-        
-        # Calculate total embedding size
         total_embed_size = embed_per_feature * SiameseConfig.NUM_FEATURES
-        
-        print(f"\nModel Architecture:")
-        print(f"  Embedding per feature: {embed_per_feature}")
-        print(f"  Total embedding size: {total_embed_size}")
-        print(f"  Hidden dimension: {SiameseConfig.HIDDEN_DIM}")
-        print(f"  Output dimension: {embed_dim}")
-        
-        # Fully connected layers
         self.fc1 = nn.Linear(total_embed_size, SiameseConfig.HIDDEN_DIM)
         self.fc2 = nn.Linear(SiameseConfig.HIDDEN_DIM, embed_dim)
         self.dropout = nn.Dropout(SiameseConfig.DROPOUT_RATE)
         self.layer_norm = nn.LayerNorm(embed_dim)
         
     def forward(self, features):
-        """Forward pass through the encoder"""
-        # Extract features
         tech = features[:, 0].long() + 1
         soft = features[:, 1].long() + 1
         capec = features[:, 2].long() + 1
         cwe = features[:, 3].long() + 1
         cve = features[:, 4].long() + 1
         pulse = features[:, 5].long() + 1
-        
-        # Get embeddings
         t_emb = self.tech_embed(tech)
         s_emb = self.soft_embed(soft)
         ca_emb = self.capec_embed(capec)
         cw_emb = self.cwe_embed(cwe)
         cv_emb = self.cve_embed(cve)
         p_emb = self.pulse_embed(pulse)
-        
-        # Concatenate embeddings
         x = torch.cat([t_emb, s_emb, ca_emb, cw_emb, cv_emb, p_emb], dim=-1)
-        
-        # Pass through fully connected layers
         x = F.relu(self.fc1(x))
         x = self.dropout(x)
         x = self.fc2(x)
         x = self.layer_norm(x)
-        
-        # Normalize for cosine similarity
         return F.normalize(x, p=2, dim=-1)
 
 # ============================
-# 6. LOSS FUNCTIONS
+# 6. LOSS FUNCTIONS (unchanged)
 # ============================
 class SiameseLoss:
-    """Loss functions for Siamese network"""
-    
     @staticmethod
     def triplet_loss(anchor, positive, negative, margin=SiameseConfig.MARGIN):
-        """Calculate triplet loss"""
         pos_dist = 1 - F.cosine_similarity(anchor, positive)
         neg_dist = 1 - F.cosine_similarity(anchor, negative)
         loss = F.relu(pos_dist - neg_dist + margin).mean()
         return loss
-    
-    @staticmethod
-    def contrastive_loss(emb1, emb2, labels, margin=0.5):
-        """Calculate contrastive loss"""
-        sim = F.cosine_similarity(emb1, emb2)
-        same_apt = (labels[:, 0] == labels[:, 1]).float()
-        pos_loss = same_apt * (1 - sim)**2
-        neg_loss = (1 - same_apt) * F.relu(margin - sim)**2
-        return (pos_loss + neg_loss).mean()
 
 # ============================
-# 7. TRAINING FUNCTION
+# 7. NEW TRAINER with APT‑level averaging
 # ============================
 class SiameseTrainer:
-    """Handles Siamese network training"""
-    
     def __init__(self, model, device=SiameseConfig.DEVICE):
         self.model = model
         self.device = device
         self.optimizer = torch.optim.Adam(model.parameters(), lr=SiameseConfig.LEARNING_RATE)
         self.best_val_loss = float('inf')
     
-    def create_triplet_batch(self, features, apt_labels):
-        """Create triplet batches for training"""
-        batch_size = len(features)
-        
-        # Positive pairs: same APT, different samples
-        pos_indices = torch.randperm(batch_size)
-        positive_features = features[pos_indices]
-        positive_labels = apt_labels[pos_indices]
-        
-        # Negative pairs: different APTs
-        neg_mask = (positive_labels != apt_labels)
-        if neg_mask.sum() > 1:
-            neg_indices = torch.randperm(batch_size)
-            negative_features = features[neg_indices]
+    def sample_subset(self, rows, n_samples=SiameseConfig.SAMPLES_PER_APT):
+        """Randomly sample n_samples rows from the given rows (with replacement if needed)."""
+        n_rows = len(rows)
+        if n_rows >= n_samples:
+            indices = np.random.choice(n_rows, n_samples, replace=False)
         else:
-            negative_features = features
-        
-        return positive_features, positive_labels, negative_features
+            indices = np.random.choice(n_rows, n_samples, replace=True)
+        return rows[indices]
     
-    def train_epoch(self, train_loader, epoch):
-        """Train for one epoch"""
+    def compute_apt_embedding(self, rows):
+        """Compute embedding for a subset of rows by averaging their embeddings."""
+        tensor = torch.FloatTensor(rows).to(self.device)
+        embeddings = self.model(tensor)          # (n_samples, embed_dim)
+        return embeddings.mean(dim=0)             # averaged embedding
+    
+    def train_epoch(self, train_dataset, epoch):
         self.model.train()
-        train_loss = 0
+        total_loss = 0
+        apt_ids = train_dataset.apt_ids
+        num_apts = len(apt_ids)
         
-        for batch_idx, (features, apt_labels) in enumerate(train_loader):
-            # Create triplet batch
-            pos_features, pos_labels, neg_features = self.create_triplet_batch(features, apt_labels)
+        for anchor_idx, anchor_apt in enumerate(apt_ids):
+            anchor_rows = train_dataset.apt_rows[anchor_apt]
             
-            # Move to device
-            anchor = features.to(self.device)
-            positive = pos_features.to(self.device)
-            negative = neg_features.to(self.device)
+            # Sample two different subsets for anchor and positive
+            anchor_subset = self.sample_subset(anchor_rows)
+            pos_subset = self.sample_subset(anchor_rows)
             
-            # Forward pass
+            # Choose a negative APT
+            neg_idx = anchor_idx
+            while neg_idx == anchor_idx:
+                neg_idx = np.random.randint(num_apts)
+            neg_apt = apt_ids[neg_idx]
+            neg_rows = train_dataset.apt_rows[neg_apt]
+            neg_subset = self.sample_subset(neg_rows)
+            
+            # Compute averaged embeddings
+            anchor_emb = self.compute_apt_embedding(anchor_subset)
+            pos_emb = self.compute_apt_embedding(pos_subset)
+            neg_emb = self.compute_apt_embedding(neg_subset)
+            
+            # Triplet loss
+            loss = SiameseLoss.triplet_loss(
+                anchor_emb.unsqueeze(0),
+                pos_emb.unsqueeze(0),
+                neg_emb.unsqueeze(0)
+            )
+            
             self.optimizer.zero_grad()
-            anchor_emb = self.model(anchor)
-            positive_emb = self.model(positive)
-            negative_emb = self.model(negative)
-            
-            # Calculate loss
-            loss = SiameseLoss.triplet_loss(anchor_emb, positive_emb, negative_emb)
-            
-            # Backward pass
             loss.backward()
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), SiameseConfig.GRADIENT_CLIP)
             self.optimizer.step()
             
-            train_loss += loss.item()
+            total_loss += loss.item()
             
-            # Log progress
-            if batch_idx % 100 == 0:
-                print(f"  Epoch {epoch+1}, Batch {batch_idx}, Loss: {loss.item():.4f}")
+            if anchor_idx % 20 == 0:
+                print(f"  Epoch {epoch+1}, APT {anchor_idx}/{num_apts}, Loss: {loss.item():.4f}")
         
-        return train_loss / len(train_loader)
+        return total_loss / num_apts
     
-    def validate(self, val_loader):
-        """Validate the model"""
+    def validate(self, val_dataset):
         self.model.eval()
-        val_loss = 0
+        total_loss = 0
+        apt_ids = val_dataset.apt_ids
+        num_apts = len(apt_ids)
         
         with torch.no_grad():
-            for features, apt_labels in val_loader:
-                # Create simple validation pairs
-                pos_indices = torch.randperm(len(features))
-                positive_features = features[pos_indices]
-                positive_labels = apt_labels[pos_indices]
+            for anchor_idx, anchor_apt in enumerate(apt_ids):
+                anchor_rows = val_dataset.apt_rows[anchor_apt]
+                anchor_subset = self.sample_subset(anchor_rows)
+                pos_subset = self.sample_subset(anchor_rows)
                 
-                # Move to device
-                anchor = features.to(self.device)
-                positive = positive_features.to(self.device)
+                neg_idx = anchor_idx
+                while neg_idx == anchor_idx:
+                    neg_idx = np.random.randint(num_apts)
+                neg_apt = apt_ids[neg_idx]
+                neg_rows = val_dataset.apt_rows[neg_apt]
+                neg_subset = self.sample_subset(neg_rows)
                 
-                # Forward pass
-                anchor_emb = self.model(anchor)
-                positive_emb = self.model(positive)
-                negative_emb = self.model(positive.flip(0))  # Simple negative
+                anchor_emb = self.compute_apt_embedding(anchor_subset)
+                pos_emb = self.compute_apt_embedding(pos_subset)
+                neg_emb = self.compute_apt_embedding(neg_subset)
                 
-                # Calculate loss
-                loss = SiameseLoss.triplet_loss(anchor_emb, positive_emb, negative_emb)
-                val_loss += loss.item()
+                loss = SiameseLoss.triplet_loss(
+                    anchor_emb.unsqueeze(0),
+                    pos_emb.unsqueeze(0),
+                    neg_emb.unsqueeze(0)
+                )
+                total_loss += loss.item()
         
-        return val_loss / len(val_loader)
+        return total_loss / num_apts
     
-    def train(self, train_loader, val_loader, epochs=SiameseConfig.EPOCHS):
-        """Complete training pipeline"""
-        print(f"\nTraining Siamese Network on {self.device}")
-        print(f"Training samples: {len(train_loader.dataset)}")
-        print(f"Validation samples: {len(val_loader.dataset)}")
+    def train(self, train_dataset, val_dataset, epochs=SiameseConfig.EPOCHS):
+        print(f"\nTraining Siamese Network with APT‑level averaging on {self.device}")
+        print(f"Training APTs: {len(train_dataset)}")
+        print(f"Validation APTs: {len(val_dataset)}")
         print("=" * 60)
         
         for epoch in range(epochs):
-            # Training
-            avg_train_loss = self.train_epoch(train_loader, epoch)
+            train_loss = self.train_epoch(train_dataset, epoch)
+            val_loss = self.validate(val_dataset)
             
-            # Validation
-            avg_val_loss = self.validate(val_loader)
+            print(f"Epoch {epoch+1:03d}: Train Loss = {train_loss:.4f}, Val Loss = {val_loss:.4f}")
             
-            # Log epoch results
-            print(f"Epoch {epoch+1:03d}: Train Loss = {avg_train_loss:.4f}, Val Loss = {avg_val_loss:.4f}")
-            
-            # Save best model
-            if avg_val_loss < self.best_val_loss:
-                self.best_val_loss = avg_val_loss
+            if val_loss < self.best_val_loss:
+                self.best_val_loss = val_loss
                 torch.save(self.model.state_dict(), SiameseConfig.TEMP_MODEL_PATH)
-                print(f"  ✓ Saved best model (Val Loss: {avg_val_loss:.4f})")
+                print(f"  ✓ Saved best model (Val Loss: {val_loss:.4f})")
         
-        # Load best model
         self.model.load_state_dict(torch.load(SiameseConfig.TEMP_MODEL_PATH))
         os.remove(SiameseConfig.TEMP_MODEL_PATH)
-        
         print(f"\nTraining completed. Best validation loss: {self.best_val_loss:.4f}")
         return self.model
 
 # ============================
-# 8. EMBEDDING EXTRACTION
+# 8. NEW EMBEDDING EXTRACTOR – averages all rows per APT
 # ============================
 class EmbeddingExtractor:
-    """Extracts APT embeddings from trained model"""
-    
     def __init__(self, model, device=SiameseConfig.DEVICE):
         self.model = model
         self.device = device
         self.model.eval()
     
-    def extract_apt_embeddings(self, X, y, apt_to_idx):
-        """Extract embeddings for each APT"""
+    def extract_apt_embeddings_avg(self, X, y, apt_to_idx):
+        """Extract embeddings for each APT by averaging over all rows."""
         unique_apts = list(apt_to_idx.keys())
-        apt_embeddings = {}
+        apt_embeddings = []
         
         with torch.no_grad():
             for apt in unique_apts:
-                apt_mask = (np.array(y) == apt)
-                if apt_mask.sum() == 0:
-                    continue
-                
-                # Use first sample of each APT
-                sample_features = X[apt_mask][0]
-                features_tensor = torch.FloatTensor([sample_features]).to(self.device)
-                embedding = self.model(features_tensor).cpu()
-                apt_embeddings[apt] = embedding.squeeze(0)
+                mask = (y == apt)
+                apt_rows = X[mask]
+                if len(apt_rows) == 0:
+                    # fallback (should not happen)
+                    apt_rows = X[mask][:1]
+                rows_tensor = torch.FloatTensor(apt_rows).to(self.device)
+                embs = self.model(rows_tensor)          # (num_rows, embed_dim)
+                avg_emb = embs.mean(dim=0).cpu()        # averaged embedding
+                apt_embeddings.append(avg_emb)
         
-        # Create embedding matrix
-        apt_emb_matrix = torch.stack([apt_embeddings[apt] for apt in unique_apts])
+        apt_emb_matrix = torch.stack(apt_embeddings)
         return apt_emb_matrix, unique_apts
 
 # ============================
-# 9. MODEL SAVING
+# 9. MODEL SAVING (unchanged)
 # ============================
 class ModelSaver:
-    """Handles model saving and loading"""
-    
     @staticmethod
     def save_model(model, apt_embeddings, apt_ids, X, apt_to_idx, 
                    filename=SiameseConfig.MODEL_PATH):
-        """Save complete model with embeddings"""
-        
-        # Get vocabulary sizes
         vocab_sizes = SiameseDataLoader.get_vocabulary_sizes(X)
-        
         save_data = {
             'model_state_dict': model.state_dict(),
             'model_config': {
@@ -395,13 +333,12 @@ class ModelSaver:
                 'batch_size': SiameseConfig.BATCH_SIZE,
                 'epochs': SiameseConfig.EPOCHS,
                 'learning_rate': SiameseConfig.LEARNING_RATE,
-                'margin': SiameseConfig.MARGIN
+                'margin': SiameseConfig.MARGIN,
+                'samples_per_apt': SiameseConfig.SAMPLES_PER_APT
             }
         }
-        
         with open(filename, 'wb') as f:
             pickle.dump(save_data, f)
-        
         print(f"\nModel saved to '{filename}'")
         print(f"  APT embeddings: {apt_embeddings.shape}")
         print(f"  Number of APTs: {len(apt_ids)}")
@@ -411,61 +348,51 @@ class ModelSaver:
 # 10. MAIN EXECUTION
 # ============================
 def main():
-    """Execute the Siamese Network training pipeline"""
-    print("SIAMESE NETWORK FOR APT SIMILARITY")
+    print("SIAMESE NETWORK FOR APT SIMILARITY (APT‑LEVEL AVERAGING)")
     print("=" * 60)
     
-    # 1. Load and prepare data
-    print("\n1. DATA LOADING")
+    # 1. Load data
     X, y, apt_to_idx, vocab_sizes, unique_apts = SiameseDataLoader.load_and_prepare()
     
-    # 2. Create datasets
-    print("\n2. DATASET CREATION")
-    X_train, X_val, y_train, y_val = train_test_split(
-        X, y, test_size=SiameseConfig.TEST_SIZE, 
-        random_state=SiameseConfig.RANDOM_STATE
+    # 2. Split APTs into train and validation
+    apt_ids_list = list(apt_to_idx.keys())
+    train_apts, val_apts = train_test_split(
+        apt_ids_list, test_size=SiameseConfig.TEST_SIZE, random_state=SiameseConfig.RANDOM_STATE
     )
     
-    train_dataset = APTFeatureDataset(X_train, y_train, apt_to_idx)
-    val_dataset = APTFeatureDataset(X_val, y_val, apt_to_idx)
+    # Create mappings for the split
+    train_apt_to_idx = {apt: i for i, apt in enumerate(train_apts)}
+    val_apt_to_idx = {apt: i for i, apt in enumerate(val_apts)}
     
-    train_loader = DataLoader(train_dataset, batch_size=SiameseConfig.BATCH_SIZE, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=SiameseConfig.BATCH_SIZE)
+    # 3. Create datasets (each returns all rows for an APT)
+    train_dataset = APTAggregateDataset(X, y, train_apt_to_idx)
+    val_dataset = APTAggregateDataset(X, y, val_apt_to_idx)
     
-    print(f"  Training set: {len(train_dataset)} samples")
-    print(f"  Validation set: {len(val_dataset)} samples")
+    print(f"\nTrain APTs: {len(train_dataset)}")
+    print(f"Val APTs: {len(val_dataset)}")
     
-    # 3. Initialize model
-    print("\n3. MODEL INITIALIZATION")
+    # 4. Initialize model
     model = SiameseFeatureEncoder(vocab_sizes).to(SiameseConfig.DEVICE)
     
-    # 4. Train model
-    print("\n4. MODEL TRAINING")
+    # 5. Train
     trainer = SiameseTrainer(model)
-    trained_model = trainer.train(train_loader, val_loader)
+    trained_model = trainer.train(train_dataset, val_dataset, epochs=SiameseConfig.EPOCHS)
     
-    # 5. Extract embeddings
-    print("\n5. EMBEDDING EXTRACTION")
+    # 6. Extract averaged embeddings for all APTs (using all rows)
     extractor = EmbeddingExtractor(trained_model)
-    apt_embeddings, apt_ids = extractor.extract_apt_embeddings(X, y, apt_to_idx)
+    apt_embeddings, apt_ids = extractor.extract_apt_embeddings_avg(X, y, apt_to_idx)
     
-    print(f"  Extracted embeddings for {len(apt_ids)} APTs")
-    print(f"  Embedding shape: {apt_embeddings.shape}")
-    
-    # 6. Save model
-    print("\n6. MODEL SAVING")
-    save_data = ModelSaver.save_model(trained_model, apt_embeddings, apt_ids, X, apt_to_idx)
+    # 7. Save model with averaged embeddings
+    ModelSaver.save_model(trained_model, apt_embeddings, apt_ids, X, apt_to_idx)
     
     print("\nTRAINING SUMMARY")
     print("=" * 60)
-    print(f"• Model: Siamese Feature Encoder")
+    print(f"• Model: Siamese Feature Encoder with APT‑level averaging")
     print(f"• Embedding dimension: {SiameseConfig.EMBEDDING_DIM}")
     print(f"• Training epochs: {SiameseConfig.EPOCHS}")
-    print(f"• Batch size: {SiameseConfig.BATCH_SIZE}")
+    print(f"• Samples per subset: {SiameseConfig.SAMPLES_PER_APT}")
     print(f"• Unique APTs: {len(unique_apts)}")
     print(f"• Saved to: {SiameseConfig.MODEL_PATH}")
-    
-    return save_data
 
 if __name__ == "__main__":
-    saved_data = main()
+    main()

@@ -11,7 +11,7 @@ import random
 from itertools import islice
 from matplotlib.colors import LinearSegmentedColormap
 
-# ---------- FeatureEncoder ----------
+# ---------- FeatureEncoder (unchanged) ----------
 class FeatureEncoder(nn.Module):
     def __init__(self, num_techniques, num_software, num_capec, num_cwe, num_cve, num_pulse, embed_dim=128):
         super().__init__()
@@ -66,7 +66,7 @@ def load_apt_profiles_from_data():
     return profiles
 
 def load_model_and_mapping():
-    """Load Siamese model + name mapping"""
+    """Load Siamese model + name mapping + saved APT embeddings"""
     print(" LOADING SIAMESE MODEL...")
     with open('6feat_apt_siamese_feature_model.pkl', 'rb') as f:
         data = pickle.load(f)
@@ -90,8 +90,12 @@ def load_model_and_mapping():
     for _, row in df_mapping.iterrows():
         apt_name_mapping[int(row['APTnameEncoded'])] = row['APTnameOrigin']
     
-    print(" Siamese model + name mapping loaded")
-    return model, apt_name_mapping
+    # Load saved APT embeddings and IDs (used in queries)
+    apt_embeddings = data['apt_embeddings'].float()   # shape [num_apts, embed_dim]
+    apt_ids = data['apt_ids']                          # list of encoded APT IDs
+    
+    print(" Siamese model + name mapping + saved embeddings loaded")
+    return model, apt_name_mapping, apt_embeddings, apt_ids
 
 # ---------- Siamese Similarity (MODEL FORWARD PASS) ----------
 class SiameseSimilarityPredictor:
@@ -124,6 +128,29 @@ class SiameseSimilarityPredictor:
         vectors = torch.tensor(vectors, dtype=torch.float32)
         embeddings = self.model(vectors)
         return embeddings
+    
+    def get_profile_embedding(self, profile, n_samples=32):
+        """Generate embedding for a full APT profile by sampling multiple feature combinations."""
+        techs = list(profile['techniques']) if profile['techniques'] else [-1]
+        softs = list(profile['software']) if profile['software'] else [-1]
+        capecs = list(profile['capec']) if profile['capec'] else [-1]
+        cwes = list(profile['cwe']) if profile['cwe'] else [-1]
+        cves = list(profile['cve']) if profile['cve'] else [-1]
+        pulses = list(profile['pulse']) if profile['pulse'] else [-1]
+        
+        vectors = []
+        for _ in range(n_samples):
+            tech = random.choice(techs)
+            soft = random.choice(softs)
+            capec = random.choice(capecs)
+            cwe = random.choice(cwes)
+            cve = random.choice(cves)
+            pulse = random.choice(pulses)
+            vectors.append([float(tech), float(soft), float(capec), float(cwe), float(cve), float(pulse)])
+        
+        vectors = torch.tensor(vectors, dtype=torch.float32)
+        embeddings = self.model(vectors)
+        return embeddings.mean(dim=0)  # average embedding
 
 # ---------- EXACT SAME as XGBoost ----------
 def create_similarity_matrix_siamese(model, profiles, apt_name_mapping):
@@ -166,9 +193,8 @@ def plot_similarity_heatmap_siamese(similarity_df):
     """FULL 181x181 heatmap - PROPER red=low, green=high scaling"""
     plt.figure(figsize=(20, 18))
     
-    #  FIXED: Proper min/max scaling - RED=lowest, GREEN=highest
-    vmin = similarity_df.min().min()  # Lowest value = RED
-    vmax = similarity_df.max().max()  # Highest value = GREEN
+    vmin = similarity_df.min().min()
+    vmax = similarity_df.max().max()
     
     colors = ["red", "yellow", "green"]
     cmap = LinearSegmentedColormap.from_list("red_green", colors, N=100)
@@ -176,9 +202,9 @@ def plot_similarity_heatmap_siamese(similarity_df):
     sns.heatmap(similarity_df, 
                 mask=None, 
                 cmap=cmap, 
-                center=None,  #  REMOVED center=0.5
-                vmin=vmin,    #  RED at actual minimum
-                vmax=vmax,    #  GREEN at actual maximum
+                center=None,
+                vmin=vmin,
+                vmax=vmax,
                 square=True,
                 xticklabels=True, 
                 yticklabels=True,
@@ -191,7 +217,6 @@ def plot_similarity_heatmap_siamese(similarity_df):
     plt.savefig('siamese_similarity_matrix.png', dpi=300, bbox_inches='tight')
     print(" PERFECT heatmap saved (Red=Min, Green=Max)!")
     plt.show()
-
 
 def evaluate_similarity_matrix_siamese(similarity_df, apt_names):
     """EXACT SAME evaluation as XGBoost"""
@@ -211,7 +236,7 @@ def evaluate_similarity_matrix_siamese(similarity_df, apt_names):
         total = len(apt_names)
         print(f"Top-{top_x}: {success}/{total} ({success/total*100:.1f}%)")
 
-# ---------- EXACT SAME profile division as XGBoost ----------
+# ---------- EXACT SAME profile division as XGBoost (fixed with all six features) ----------
 def evaluate_profile_division_siamese(model, divider=2):
     """EXACT SAME logic as XGBoost profile division"""
     profiles = load_apt_profiles_from_data()
@@ -244,8 +269,8 @@ def evaluate_profile_division_siamese(model, divider=2):
         target_apt_id = next(apt_id for apt_id in apt_ids if apt_name_mapping.get(apt_id, f"APT{apt_id}") == target_apt_name)
         target_profile = profiles[target_apt_id]
         
-        # EXACT SAME division logic as XGBoost
-        divided_evidence = {'techniques': [], 'software': [], 'cve': []}
+        # EXACT SAME division logic as XGBoost (now includes all six features)
+        divided_evidence = {'techniques': [], 'software': [], 'capec': [], 'cwe': [], 'cve': [], 'pulse': []}
         for feature_type, key in [('techniques', 'techniques'), ('software', 'software'), ('capec', 'capec'), ('cwe', 'cwe'), ('cve', 'cve'), ('pulse', 'pulse')]:
             features = list(target_profile[feature_type])
             if features:
@@ -276,12 +301,98 @@ def evaluate_profile_division_siamese(model, divider=2):
                      if target_apt in dict(islice(similarities.items(), top_x)))
         print(f"Top-{top_x}: {success}/{len(resultdict)} ({success/len(resultdict)*100:.1f}%)")
 
+def load_encoded_data():
+    """Load the original encoded features and labels from EncodedData.csv."""
+    print(" LOADING ENCODED DATA FOR FULL PROFILE EVALUATION...")
+    df = pd.read_csv("../BaseData/EncodedData.csv")
+    feature_columns = ['techniques_str', 'software_str', 'CAPEC_ID', 'CWE_ID', 'CVE_ID', 'Pulse_ID']
+    X = df[feature_columns].values.astype(np.float32)
+    y = df['APTname'].values.astype(int)
+    print(f" Loaded {len(X)} rows, {len(np.unique(y))} APTs")
+    return X, y
+
+# ---------- CORRECTED FULL PROFILE EVALUATION (uses ALL rows) ----------
+def evaluate_full_profile_queries_sampling(model, X, y, profiles, apt_name_mapping, saved_apt_embeddings, saved_apt_ids, top_x_values=[1, 5, 10, 20], n_samples=500):
+    """
+    For each APT, generate a query embedding by averaging `n_samples` random
+    feature combinations drawn from the sets of actual values (ignoring -1).
+    Compare with saved APT embeddings (which include -1 rows). This matches the query logic.
+    """
+    print("\n" + "=" * 80)
+    print(f"EVALUATING FULL PROFILE QUERIES (sampling, ignoring -1, {n_samples} samples per APT)")
+    print("=" * 80)
+
+    # Align saved embeddings with profile order
+    apt_id_to_index = {apt_id: idx for idx, apt_id in enumerate(saved_apt_ids)}
+    apt_ids_sorted = sorted(profiles.keys())
+    apt_names = [apt_name_mapping.get(apt_id, f"APT{apt_id}") for apt_id in apt_ids_sorted]
+    embedding_order = [apt_id_to_index[apt_id] for apt_id in apt_ids_sorted]
+    apt_embeddings = saved_apt_embeddings[embedding_order]  # [num_apts, embed_dim]
+
+    # Convert y to numpy for masking
+    y_np = np.array(y)
+    device = next(model.parameters()).device
+
+    resultdict = {}
+    for i, target_name in enumerate(apt_names):
+        if i % 20 == 0:
+            print(f"  {i}/{len(apt_names)}...")
+
+        target_id = apt_ids_sorted[i]
+        # Get all rows of this APT
+        mask = (y_np == target_id)
+        apt_rows = X[mask]  # shape [num_rows, 6]
+
+        # Collect sets of non‑-1 values for each feature type
+        tech_set = set(apt_rows[:, 0][apt_rows[:, 0] != -1])
+        soft_set = set(apt_rows[:, 1][apt_rows[:, 1] != -1])
+        capec_set = set(apt_rows[:, 2][apt_rows[:, 2] != -1])
+        cwe_set   = set(apt_rows[:, 3][apt_rows[:, 3] != -1])
+        cve_set   = set(apt_rows[:, 4][apt_rows[:, 4] != -1])
+        pulse_set = set(apt_rows[:, 5][apt_rows[:, 5] != -1])
+
+        # If any set is empty, use [-1] (but this shouldn't happen for a full profile)
+        techs = list(tech_set) if tech_set else [-1]
+        softs = list(soft_set) if soft_set else [-1]
+        capecs = list(capec_set) if capec_set else [-1]
+        cwes   = list(cwe_set)   if cwe_set   else [-1]
+        cves   = list(cve_set)   if cve_set   else [-1]
+        pulses = list(pulse_set) if pulse_set else [-1]
+
+        # Generate n_samples random combinations and average their embeddings
+        vectors = []
+        for _ in range(n_samples):
+            tech = random.choice(techs)
+            soft = random.choice(softs)
+            capec = random.choice(capecs)
+            cwe = random.choice(cwes)
+            cve = random.choice(cves)
+            pulse = random.choice(pulses)
+            vectors.append([tech, soft, capec, cwe, cve, pulse])
+        vec_tensor = torch.FloatTensor(vectors).to(device)
+        with torch.no_grad():
+            embs = model(vec_tensor)  # [n_samples, embed_dim]
+        query_emb = embs.mean(dim=0)   # average over samples
+
+        # Cosine similarities with all APT embeddings
+        sims = F.cosine_similarity(query_emb.unsqueeze(0), apt_embeddings).cpu().numpy()
+        ranked_indices = np.argsort(sims)[::-1]
+        ranked_results = {apt_names[idx]: sims[idx] for idx in ranked_indices}
+        resultdict[target_name] = ranked_results
+
+    for top_x in top_x_values:
+        success = sum(1 for target_name, ranked in resultdict.items() if target_name in list(ranked.keys())[:top_x])
+        total = len(resultdict)
+        print(f"Top-{top_x}: {success}/{total} ({success/total*100:.1f}%)")
+
 # ---------- MAIN ----------
 def main():
     print(" SIAMESE FEATURE ENCODER EVALUATION")
     print("=" * 60)
+    # Load the full encoded data (X, y) for the ALL‑rows evaluation
+    X, y = load_encoded_data()   
     
-    model, apt_name_mapping = load_model_and_mapping()
+    model, apt_name_mapping, saved_apt_embeddings, saved_apt_ids = load_model_and_mapping()
     profiles = load_apt_profiles_from_data()
     
     # 1. FULL similarity matrix
@@ -293,13 +404,17 @@ def main():
     
     # 3. Matrix evaluation
     evaluate_similarity_matrix_siamese(similarity_df, apt_names)
-    
-    # 4. Profile division (EXACT XGBoost logic)
+
+    # 4. Full profile queries (using saved embeddings, averaging multiple samples)
+    evaluate_full_profile_queries_sampling(model, X, y, profiles, apt_name_mapping, saved_apt_embeddings, saved_apt_ids)
+
+    # 5. Profile division (EXACT XGBoost logic)
     evaluate_profile_division_siamese(model, divider=2)
     
     print("\n SIAMESE EVALUATION COMPLETE!")
     print(" Uses Siamese MODEL forward pass")
     print(" FULL 181x181 heatmap")
+    print(" Corrected full‑profile evaluation (embedding averaging)")
     print(" Exact XGBoost evaluation logic")
 
 if __name__ == "__main__":

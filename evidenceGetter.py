@@ -44,21 +44,26 @@ def main():
     csv_file_path = "./BaseData/TestFinal_df.csv"
     
     # Get APT name from user
-    apt_name = "PROMETHIUM"
+    apt_name = "APT29"
     
     try:
         # Process the data
         result = process_apt_data(csv_file_path, apt_name)
         
-        # Print the result in the exact format
-        print("{")
-        print(f"        'techniques': {result['techniques']},")
-        print(f"        'software': {result['software']},")
-        print(f"        'capec': {result['capec']},")
-        print(f"        'cwe': {result['cwe']},")
-        print(f"        'cves': {result['cves']},")
-        print(f"        'pulse': {result['pulse']}")
-        print("}")
+        import json
+
+        # Build a dictionary with all the data
+        output = {
+            "techniques": result["techniques"],
+            "software": result["software"],
+            "capec": result["capec"],
+            "cwe": result["cwe"],
+            "cve": result["cves"],
+            "pulse": result["pulse"]
+        }
+
+        with open("query_input.json", "w") as f:
+            json.dump(output, f, indent=4)
             
     except FileNotFoundError:
         print(f"Error: File '{csv_file_path}' not found.")
