@@ -346,20 +346,24 @@ def query_apt_similarity_enhanced(evidence, status):
     with open(model_file, 'rb') as f:
         saved_data = pickle.load(f)
     
-    # Load saved embeddings and data
+    # Load saved data
     apt_embeddings = saved_data.get("apt_embeddings")
     apt_ids = saved_data.get("apt_ids", [])
     profiles = saved_data.get("profiles", {})
     apt_name_mapping = saved_data.get("apt_name_mapping", {})
     graph_info = saved_data.get("graph_info", {})
     feature_weights = saved_data.get("feature_weights", {
-        "techniques": 80.0,
-        "software": 70.0,
-        "capec": 60.0,
-        "cwe": 50.0,
-        "cve": 40.0,
-        "pulse": 30.0
+        "techniques": 80.0, "software": 70.0, "capec": 60.0,
+        "cwe": 50.0, "cve": 40.0, "pulse": 30.0
     })
+    
+    # Load the saved graph structure
+    edge_index = saved_data.get("edge_index")
+    edge_weight = saved_data.get("edge_weight")
+    x = saved_data.get("x")
+    
+    if edge_index is None:
+        raise ValueError("Graph structure not saved in model file. Please retrain with updated save function.")
     
     techniques = evidence.get("techniques", [])
     software = evidence.get("software", [])
@@ -390,7 +394,7 @@ def query_apt_similarity_enhanced(evidence, status):
     
     device = next(gnn_model.parameters()).device
     
-    # Reconstruct full graph with query as new node
+    # Get offsets from graph_info
     num_apts = graph_info["num_apts"]
     num_techniques = graph_info["num_techniques"]
     num_software = graph_info["num_software"]
@@ -399,95 +403,67 @@ def query_apt_similarity_enhanced(evidence, status):
     num_cve = graph_info["num_cve"]
     num_pulse = graph_info["num_pulse"]
     
-    # Add one new node for the query
-    total_nodes = num_apts + num_techniques + num_software + num_capec + num_cwe + num_cve + num_pulse + 1
-    
-    # Get offsets
     technique_offset = num_apts
     software_offset = technique_offset + num_techniques
     capec_offset = software_offset + num_software
     cwe_offset = capec_offset + num_capec
     cve_offset = cwe_offset + num_cwe
     pulse_offset = cve_offset + num_cve
-    query_node_idx = pulse_offset + num_pulse  # Query node added at the end
     
-    # Create new node features (all ones)
-    x = torch.ones(total_nodes, 1, device=device)
+    # Add one new node for the query
+    total_nodes = x.shape[0] + 1
+    query_node_idx = x.shape[0]  # Index of the new node
     
-    # Reconstruct edge_index and edge_weight from graph_info
-    # This part needs to be saved during training - you'd need to save edge_index and edge_weight
-    # For now, assuming they're in graph_info
-    edge_index = graph_info.get("edge_index", torch.empty((2, 0), dtype=torch.long))
-    edge_weight = graph_info.get("edge_weight", torch.empty((0,), dtype=torch.float))
+    # Create new node features (copy existing + add one more)
+    new_x = torch.ones(total_nodes, x.shape[1], device=device)
+    new_x[:x.shape[0]] = x.to(device)
     
-    # Move to device
-    edge_index = edge_index.to(device)
-    edge_weight = edge_weight.to(device)
+    # Copy existing edges
+    new_edge_index = edge_index.clone().to(device)
+    new_edge_weight = edge_weight.clone().to(device) if edge_weight is not None else None
     
     # Add edges from query node to matched features
     new_edges = []
     new_weights = []
     
-    for t in techniques:
-        if t in technique_to_idx:
-            feat_idx = technique_to_idx[t] + technique_offset
-            new_edges.append([query_node_idx, feat_idx])
-            new_edges.append([feat_idx, query_node_idx])
-            new_weights.extend([feature_weights["techniques"], feature_weights["techniques"]])
+    # Helper function to add edges
+    def add_feature_edges(feature_list, feature_to_idx, offset, weight):
+        for feat in feature_list:
+            if feat in feature_to_idx:
+                feat_idx = feature_to_idx[feat] + offset
+                new_edges.append([query_node_idx, feat_idx])
+                new_edges.append([feat_idx, query_node_idx])
+                new_weights.extend([weight, weight])
     
-    for s in software:
-        if s in software_to_idx:
-            feat_idx = software_to_idx[s] + software_offset
-            new_edges.append([query_node_idx, feat_idx])
-            new_edges.append([feat_idx, query_node_idx])
-            new_weights.extend([feature_weights["software"], feature_weights["software"]])
-    
-    for c in capec:
-        if c in capec_to_idx:
-            feat_idx = capec_to_idx[c] + capec_offset
-            new_edges.append([query_node_idx, feat_idx])
-            new_edges.append([feat_idx, query_node_idx])
-            new_weights.extend([feature_weights["capec"], feature_weights["capec"]])
-    
-    for w in cwe:
-        if w in cwe_to_idx:
-            feat_idx = cwe_to_idx[w] + cwe_offset
-            new_edges.append([query_node_idx, feat_idx])
-            new_edges.append([feat_idx, query_node_idx])
-            new_weights.extend([feature_weights["cwe"], feature_weights["cwe"]])
-    
-    for v in cve:
-        if v in cve_to_idx:
-            feat_idx = cve_to_idx[v] + cve_offset
-            new_edges.append([query_node_idx, feat_idx])
-            new_edges.append([feat_idx, query_node_idx])
-            new_weights.extend([feature_weights["cve"], feature_weights["cve"]])
-    
-    for p in pulse:
-        if p in pulse_to_idx:
-            feat_idx = pulse_to_idx[p] + pulse_offset
-            new_edges.append([query_node_idx, feat_idx])
-            new_edges.append([feat_idx, query_node_idx])
-            new_weights.extend([feature_weights["pulse"], feature_weights["pulse"]])
+    # Add edges for each feature type
+    add_feature_edges(techniques, technique_to_idx, technique_offset, feature_weights["techniques"])
+    add_feature_edges(software, software_to_idx, software_offset, feature_weights["software"])
+    add_feature_edges(capec, capec_to_idx, capec_offset, feature_weights["capec"])
+    add_feature_edges(cwe, cwe_to_idx, cwe_offset, feature_weights["cwe"])
+    add_feature_edges(cve, cve_to_idx, cve_offset, feature_weights["cve"])
+    add_feature_edges(pulse, pulse_to_idx, pulse_offset, feature_weights["pulse"])
     
     if new_edges:
         new_edges_tensor = torch.tensor(new_edges, dtype=torch.long).t().contiguous().to(device)
         new_weights_tensor = torch.tensor(new_weights, dtype=torch.float).to(device)
         
         # Append new edges to existing edges
-        edge_index = torch.cat([edge_index, new_edges_tensor], dim=1)
-        edge_weight = torch.cat([edge_weight, new_weights_tensor])
+        new_edge_index = torch.cat([new_edge_index, new_edges_tensor], dim=1)
+        if new_edge_weight is not None:
+            new_edge_weight = torch.cat([new_edge_weight, new_weights_tensor])
+        else:
+            new_edge_weight = new_weights_tensor
     
-    # Run GNN forward pass
+    # Run GNN forward pass with the updated graph
     with torch.no_grad():
-        all_embeddings = gnn_model(x, edge_index, edge_weight)
+        all_embeddings = gnn_model(new_x, new_edge_index, new_edge_weight)
         query_embedding = all_embeddings[query_node_idx].unsqueeze(0)
         apt_embeddings_full = all_embeddings[:num_apts]
         
         # Calculate cosine similarity
         similarities = F.cosine_similarity(query_embedding, apt_embeddings_full)
     
-    # Rest of your code remains the same...
+    # Rest of your code remains the same for confidence scoring and result formatting
     confidence = confidence_scoring(similarities.cpu(), top_k=5)
     sorted_similarities, sorted_indices = torch.sort(similarities.cpu(), descending=True)
     
@@ -515,14 +491,12 @@ def query_apt_similarity_enhanced(evidence, status):
             "rank": i + 1,
             "apt_name": apt_name,
             "similarity": sim.item(),
-            
             "tech_match": f"{tech_matches}/{len(techniques)}",
             "soft_match": f"{soft_matches}/{len(software)}",
             "capec_match": f"{capec_matches}/{len(capec)}",
             "cwe_match": f"{cwe_matches}/{len(cwe)}",
             "cve_match": f"{cve_matches}/{len(cve)}",
             "pulse_match": f"{pulse_matches}/{len(pulse)}",
-
             "weighted_match": weighted_match,
             "profile_size": f"{len(profile.get('techniques', []))}T/{len(profile.get('software', []))}S/{len(profile.get('capec', []))}Ca/{len(profile.get('cwe', []))}Cw/{len(profile.get('cve', []))}Cv/{len(profile.get('pulse', []))}P",
             "apt_id": apt_id

@@ -482,12 +482,13 @@ if __name__ == "__main__":
     # FULL 30/70 evidence
     full_results = evaluate_false_flag_attacks_gnn_parallel(model, saved_data, profiles, partial=False)
     analyze_results(full_results, "FULL 30/70")
-    plot_false_flag_deception_gnn(full_results, load_mappings(), saved_data)
+    
     
     # PARTIAL 30/70 + volume reduction
     partial_results = evaluate_false_flag_attacks_gnn_parallel(model, saved_data, profiles, partial=True)
     analyze_results(partial_results, "PARTIAL 30/70")
     
+    plot_false_flag_deception_gnn(full_results, load_mappings(), saved_data)
     print("\n GNN 30/70 FALSE-FLAG EVALUATION COMPLETE!")
     print("Saved: false_flag_deception_matrix_gnn_30_70.png")
 

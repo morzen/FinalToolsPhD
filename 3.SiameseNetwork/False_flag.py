@@ -441,12 +441,14 @@ def main():
     
     # FULL 30/70 (like XGBoost)
     full_results = evaluate_false_flag_attacks_siamese(model, X_apts, apt_ids, apt_names, apt_name_mapping, profiles, partial=False)
-    plot_false_flag_deception_siamese(full_results, apt_names, apt_ids, partial=False)
+    
     
     # PARTIAL 30/70 (like XGBoost partial)
     print("\n" + "="*80)
     partial_results = evaluate_false_flag_attacks_siamese(model, X_apts, apt_ids, apt_names, apt_name_mapping, profiles, partial=True)
-    plot_false_flag_deception_siamese(partial_results, apt_names, apt_ids, partial=True)
+    
+    plot_false_flag_deception_siamese(full_results, apt_names, apt_ids, partial=False)
+    # plot_false_flag_deception_siamese(partial_results, apt_names, apt_ids, partial=True)
     
     print("\n SIAMESE 30/70 FALSE-FLAG COMPLETE!")
     print(" Exact XGBoost/GNN format + structure")

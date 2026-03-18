@@ -786,15 +786,14 @@ def main():
         saved_data, top_x_values=[1, 5, 10, 20]
     )
 
-    # Visualizations (FULL evidence only)
-    plot_false_flag_analysis_pca(results_full, apt_name_mapping, profiles, apt_ids)
     
     # PARTIAL 30/70 + volume reduction with PCA
     results_partial = evaluate_false_flag_attacks_partial_pca(
         saved_data, top_x_values=[1, 5, 10, 20]
     )
     
-    
+    # Visualizations (FULL evidence only)
+    plot_false_flag_analysis_pca(results_full, apt_name_mapping, profiles, apt_ids)
     print("\n XGBOOST PCA 30/70 FALSE-FLAG COMPLETE!")
     print("PCA vector similarity evaluation finished")
 

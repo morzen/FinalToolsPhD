@@ -229,7 +229,7 @@ EVALUATION WITH DIVIDED PROFILES
 Using 50.0% of profile data
 
 Results based on 181 tests:
-Top 1: 98.3% success rate
+Top 1: 100.0% success rate
 Top 5: 100.0% success rate
 Top 10: 100.0% success rate
 Top 20: 100.0% success rate
@@ -237,8 +237,8 @@ Top 20: 100.0% success rate
 ==================================================
 RESOURCE USAGE REPORT../Jaccards_Correlation/Jaccards_correlation.py
 ==================================================
-Execution Time: 211.10 seconds
-Memory Usage: 0.00 MB
-Current Memory: 41.36 MB
-CPU Usage: 0.1%
-System CPU: 25.0%
+Execution Time: 253.42 seconds
+Memory Usage: -28.08 MB
+Current Memory: 13.19 MB
+CPU Usage: 0.2%
+System CPU: 100.0%

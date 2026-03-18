@@ -221,16 +221,16 @@ EVALUATION WITH DIVIDED PROFILES
 Using 50.0% of profile data
 
 Results based on 181 tests:
-Top 1: 78.5% success rate
-Top 5: 99.4% success rate
+Top 1: 80.1% success rate
+Top 5: 98.9% success rate
 Top 10: 100.0% success rate
 Top 20: 100.0% success rate
 
 ==================================================
 RESOURCE USAGE REPORT../TVD_Total_Variation_Distance/TVD_featureIng.py
 ==================================================
-Execution Time: 273.57 seconds
-Memory Usage: 0.00 MB
-Current Memory: 40.97 MB
+Execution Time: 307.99 seconds
+Memory Usage: -27.77 MB
+Current Memory: 13.22 MB
 CPU Usage: 0.1%
-System CPU: 37.5%
+System CPU: 93.4%

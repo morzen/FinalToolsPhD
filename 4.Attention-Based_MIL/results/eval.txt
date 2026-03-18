@@ -9,23 +9,23 @@ Computing cross-similarity matrix for all APT pairs...
 Cross-similarity matrix computation completed!
 Similarity DataFrame sample (first 5x5):
              Axiom    Moafee   Cleaver  Ke3chang     APT12
-Axiom     0.986912  0.895951  0.500512  0.501646  0.500634
-Moafee    0.895951  0.986564  0.500379  0.505622  0.500463
-Cleaver   0.500512  0.500379  0.987113  0.892188  0.500593
-Ke3chang  0.501646  0.505622  0.892188  0.986950  0.500646
-APT12     0.500634  0.500463  0.500593  0.500646  0.987017
+Axiom     0.999810  0.986355  0.500587  0.500312  0.500657
+Moafee    0.986355  0.986317  0.500411  0.534574  0.500386
+Cleaver   0.500587  0.500411  0.999814  0.985296  0.500415
+Ke3chang  0.500312  0.534574  0.985296  0.999803  0.500640
+APT12     0.500657  0.500386  0.500415  0.500640  0.999813
 
 Matrix shape: (181, 181)
 
 Plotting similarity heatmap...
 Data statistics:
-Min: 0.500205
-Max: 0.987113
-Range: 0.486908
-Mean: 0.520885
-Std: 0.079440
+Min: 0.500283
+Max: 0.999814
+Range: 0.499532
+Mean: 0.531065
+Std: 0.106664
 Using full color scale
-Color scale limits: 0.500205 to 0.987113
+Color scale limits: 0.500283 to 0.999814
 
 ================================================================================
 EVALUATING SIMILARITY MATRIX
@@ -33,10 +33,10 @@ EVALUATING SIMILARITY MATRIX
 
 Evaluating similarity matrix for top X matches:
 ==================================================
-Top 1: 181/181 (100.00%)
-Top 5: 181/181 (100.00%)
-Top 10: 181/181 (100.00%)
-Top 20: 181/181 (100.00%)
+Top 1: 175/181 (96.69%)
+Top 5: 180/181 (99.45%)
+Top 10: 180/181 (99.45%)
+Top 20: 180/181 (99.45%)
 
 ================================================================================
 PROFILE DATA DIVISION EVALUATION
@@ -67,8 +67,8 @@ Success rate: 11.049723756906078%
 ==================================================
 RESOURCE USAGE REPORT../4.Attention-Based_MIL/eval.py
 ==================================================
-Execution Time: 176.57 seconds
-Memory Usage: 0.00 MB
-Current Memory: 41.14 MB
+Execution Time: 320.72 seconds
+Memory Usage: -27.86 MB
+Current Memory: 13.28 MB
 CPU Usage: 0.1%
-System CPU: 23.6%
+System CPU: 91.3%

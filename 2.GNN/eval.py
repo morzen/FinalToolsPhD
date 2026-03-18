@@ -73,8 +73,18 @@ def convert_evidence_to_encoded(evidence, mapping_file="../BaseData/comparison_E
 
 
 def query_apt_similarity(evidence, saved_data):
+    """
+    Query APT similarity using the trained GNN with proper graph structure
+    """
+    # Load the saved graph structure
+    if "edge_index" not in saved_data:
+        raise ValueError("Graph structure not saved in model file. Please retrain with updated save function.")
+    
     graph_info = saved_data['graph_info']
-
+    edge_index = saved_data['edge_index']
+    edge_weight = saved_data['edge_weight']
+    x = saved_data['x']
+    
     technique_to_idx = graph_info['technique_to_idx']
     software_to_idx = graph_info['software_to_idx']
     capec_to_idx = graph_info['capec_to_idx']
@@ -100,74 +110,77 @@ def query_apt_similarity(evidence, saved_data):
     cve = evidence.get('cve', [])
     pulse = evidence.get('pulse', [])
 
-    tech_indices = [technique_to_idx.get(t, 0) for t in techniques] if techniques else [0]
-    soft_indices = [software_to_idx.get(s, 0) for s in software] if software else [0]
-    capec_indices = [capec_to_idx.get(c, 0) for c in capec] if capec else [0]
-    cwe_indices = [cwe_to_idx.get(c, 0) for c in cwe] if cwe else [0]
-    cve_indices = [cve_to_idx.get(c, 0) for c in cve] if cve else [0]
-    pulse_indices = [pulse_to_idx.get(c, 0) for c in pulse] if pulse else [0]
+    # Get valid indices (filter out None or 0)
+    tech_indices = [technique_to_idx.get(t) for t in techniques if t in technique_to_idx]
+    soft_indices = [software_to_idx.get(s) for s in software if s in software_to_idx]
+    capec_indices = [capec_to_idx.get(c) for c in capec if c in capec_to_idx]
+    cwe_indices = [cwe_to_idx.get(c) for c in cwe if c in cwe_to_idx]
+    cve_indices = [cve_to_idx.get(c) for c in cve if c in cve_to_idx]
+    pulse_indices = [pulse_to_idx.get(c) for c in pulse if c in pulse_to_idx]
 
-    query_node = 0
+    # Add one new node for the query
+    total_nodes = x.shape[0] + 1
+    query_node_idx = x.shape[0]  # Index of the new node
+    
+    # Create new node features (copy existing + add one more)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    new_x = torch.ones(total_nodes, x.shape[1], device=device)
+    new_x[:x.shape[0]] = x.to(device)
+    
+    # Copy existing edges
+    new_edge_index = edge_index.clone().to(device)
+    new_edge_weight = edge_weight.clone().to(device) if edge_weight is not None else None
 
-    edge_list = []
-    edge_weights = []
+    # Add edges from query node to matched features
+    new_edges = []
+    new_weights = []
 
-    for tech in tech_indices:
-        tech_node = tech + technique_offset
-        edge_list.extend([[query_node, tech_node], [tech_node, query_node]])
-        edge_weights.extend([feature_weights["techniques"], feature_weights["techniques"]])
+    # Helper function to add edges
+    def add_feature_edges(feature_indices, offset, weight):
+        for feat_idx in feature_indices:
+            if feat_idx is not None:
+                feat_node = feat_idx + offset
+                new_edges.append([query_node_idx, feat_node])
+                new_edges.append([feat_node, query_node_idx])
+                new_weights.extend([weight, weight])
 
-    for soft in soft_indices:
-        soft_node = soft + software_offset
-        edge_list.extend([[query_node, soft_node], [soft_node, query_node]])
-        edge_weights.extend([feature_weights["software"], feature_weights["software"]])
+    # Add edges for each feature type
+    add_feature_edges(tech_indices, technique_offset, feature_weights["techniques"])
+    add_feature_edges(soft_indices, software_offset, feature_weights["software"])
+    add_feature_edges(capec_indices, capec_offset, feature_weights["capec"])
+    add_feature_edges(cwe_indices, cwe_offset, feature_weights["cwe"])
+    add_feature_edges(cve_indices, cve_offset, feature_weights["cve"])
+    add_feature_edges(pulse_indices, pulse_offset, feature_weights["pulse"])
 
-    for capec in capec_indices:
-        capec_node = capec + capec_offset
-        edge_list.extend([[query_node, capec_node], [capec_node, query_node]])
-        edge_weights.extend([feature_weights["capec"], feature_weights["capec"]])
+    if new_edges:
+        new_edges_tensor = torch.tensor(new_edges, dtype=torch.long).t().contiguous().to(device)
+        new_weights_tensor = torch.tensor(new_weights, dtype=torch.float).to(device)
+        
+        # Append new edges to existing edges
+        new_edge_index = torch.cat([new_edge_index, new_edges_tensor], dim=1)
+        if new_edge_weight is not None:
+            new_edge_weight = torch.cat([new_edge_weight, new_weights_tensor])
+        else:
+            new_edge_weight = new_weights_tensor
 
-    for cwe in cwe_indices:
-        cwe_node = cwe + cwe_offset
-        edge_list.extend([[query_node, cwe_node], [cwe_node, query_node]])
-        edge_weights.extend([feature_weights["cwe"], feature_weights["cwe"]])
-
-    for cve in cve_indices:
-        cve_node = cve + cve_offset
-        edge_list.extend([[query_node, cve_node], [cve_node, query_node]])
-        edge_weights.extend([feature_weights["cve"], feature_weights["cve"]])
-
-    for pulse in pulse_indices:
-        pulse_node = pulse + pulse_offset
-        edge_list.extend([[query_node, pulse_node], [pulse_node, query_node]])
-        edge_weights.extend([feature_weights["pulse"], feature_weights["pulse"]])
-
-    if edge_list:
-        query_edge_index = torch.tensor(edge_list, dtype=torch.long).t().contiguous()
-        query_edge_weight = torch.tensor(edge_weights, dtype=torch.float)
-    else:
-        query_edge_index = torch.empty((2, 0), dtype=torch.long)
-        query_edge_weight = torch.empty((0,), dtype=torch.float)
-
-    total_nodes = num_apts + graph_info['num_techniques'] + graph_info['num_software'] + graph_info['num_capec'] + graph_info['num_cwe'] + graph_info['num_cve'] + graph_info['num_pulse']
-    query_x = torch.ones(total_nodes, dtype=torch.float).view(-1, 1)
-
-    query_data = Data(x=query_x, edge_index=query_edge_index, edge_weight=query_edge_weight)
-
+    # Load model
     model_config = saved_data['model_config']
     model = APTGNN(model_config['in_channels'], model_config['hidden_dim'], model_config['out_dim'])
     model.load_state_dict(saved_data['model_state_dict'])
+    model = model.to(device)
     model.eval()
 
+    # Run inference
     with torch.no_grad():
-        query_node_emb = model(query_data.x, query_data.edge_index, query_data.edge_weight)
-        query_embedding = query_node_emb[0:1]
+        all_embeddings = model(new_x, new_edge_index, new_edge_weight)
+        query_embedding = all_embeddings[query_node_idx:query_node_idx+1]
+        apt_embeddings = all_embeddings[:num_apts].cpu()
+        
+        # Calculate cosine similarity
+        similarities = F.cosine_similarity(query_embedding.cpu(), apt_embeddings)
 
-    apt_embeddings = saved_data['apt_embeddings']
     apt_ids = saved_data['apt_ids']
-
-    similarities = torch.matmul(query_embedding, apt_embeddings.t()).squeeze(0)
-
+    
     return similarities, apt_ids
 
 

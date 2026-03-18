@@ -298,8 +298,8 @@ Most distinctive feature: Pulse
 ==================================================
 RESOURCE USAGE REPORT../5.RF_FeatureEngineering/query.py
 ==================================================
-Execution Time: 2.73 seconds
-Memory Usage: 0.00 MB
-Current Memory: 40.98 MB
+Execution Time: 5.12 seconds
+Memory Usage: -13.73 MB
+Current Memory: 27.25 MB
 CPU Usage: 0.1%
-System CPU: 24.1%
+System CPU: 99.0%

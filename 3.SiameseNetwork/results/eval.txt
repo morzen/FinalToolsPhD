@@ -41,10 +41,10 @@ Top-20: 181/181 (100.0%)
   140/181...
   160/181...
   180/181...
-Top-1: 8/181 (4.4%)
-Top-5: 20/181 (11.0%)
-Top-10: 31/181 (17.1%)
-Top-20: 53/181 (29.3%)
+Top-1: 10/181 (5.5%)
+Top-5: 25/181 (13.8%)
+Top-10: 42/181 (23.2%)
+Top-20: 60/181 (33.1%)
 
  SIAMESE EVALUATION COMPLETE!
  Uses Siamese MODEL forward pass
@@ -54,8 +54,8 @@ Top-20: 53/181 (29.3%)
 ==================================================
 RESOURCE USAGE REPORT../3.SiameseNetwork/eval.py
 ==================================================
-Execution Time: 50.96 seconds
-Memory Usage: 0.00 MB
-Current Memory: 40.75 MB
+Execution Time: 90.87 seconds
+Memory Usage: -27.84 MB
+Current Memory: 13.30 MB
 CPU Usage: 0.1%
-System CPU: 22.0%
+System CPU: 100.0%

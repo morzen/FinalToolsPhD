@@ -157,8 +157,18 @@ def combine_and_evaluate_evidence(apt_name, evidence_list):
         return combined_entry
 
 
-# Load JSON from a file
-with open('CTI_Eval.json', 'r') as file:
+# Check if file exists, create it with empty data if it doesn't
+json_file = 'CTI_Eval.json'
+
+if not os.path.exists(json_file):
+    # Create file with initial empty data structure (adjust as needed)
+    initial_data = []  # or {} depending on your data structure
+    with open(json_file, 'w') as file:
+        json.dump(initial_data, file)
+    print(f"Created {json_file} with initial data")
+
+# Load JSON from the file
+with open(json_file, 'r') as file:
     data = json.load(file)
 
 # Process each element
@@ -249,5 +259,5 @@ for apt in data:
     # break
 
 # Save the modified data
-with open('CTI_Eval_modified.json', 'w') as file:
+with open('CTI_Eval.json', 'w') as file:
     json.dump(data, file, indent=2)

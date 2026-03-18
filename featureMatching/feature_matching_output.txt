@@ -241,7 +241,7 @@ Processed 160/181 APTs...
 Processed 180/181 APTs...
 
 Results based on 181 tests:
-Top 1: 96.1% success rate (174/181)
+Top 1: 97.2% success rate (176/181)
 Top 5: 100.0% success rate (181/181)
 Top 10: 100.0% success rate (181/181)
 Top 20: 100.0% success rate (181/181)
@@ -249,8 +249,8 @@ Top 20: 100.0% success rate (181/181)
 ==================================================
 RESOURCE USAGE REPORT../featureMatching/featureMatching.py
 ==================================================
-Execution Time: 260.74 seconds
-Memory Usage: 0.00 MB
-Current Memory: 41.14 MB
-CPU Usage: 0.1%
-System CPU: 22.1%
+Execution Time: 311.99 seconds
+Memory Usage: -27.88 MB
+Current Memory: 13.23 MB
+CPU Usage: 0.3%
+System CPU: 100.0%

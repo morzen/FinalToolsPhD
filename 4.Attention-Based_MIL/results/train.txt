@@ -70,17 +70,17 @@ TRAINING THE MODEL
 ============================================================
 
 Starting training for 50 epochs...
-Training on 360 pairs
+Training on 361 pairs
 Using device: cpu
-Epoch   1/50 | Loss: 2.777550 | Avg Similarity: 0.9976
-Epoch  10/50 | Loss: 0.420683 | Avg Similarity: 0.7479
-Epoch  20/50 | Loss: 0.362949 | Avg Similarity: 0.7430
-Epoch  30/50 | Loss: 0.355806 | Avg Similarity: 0.7430
-Epoch  40/50 | Loss: 0.354371 | Avg Similarity: 0.7430
-Epoch  50/50 | Loss: 0.353675 | Avg Similarity: 0.7433
+Epoch   1/50 | Loss: 2.454151 | Avg Similarity: 0.9906
+Epoch  10/50 | Loss: 0.575610 | Avg Similarity: 0.6494
+Epoch  20/50 | Loss: 0.464025 | Avg Similarity: 0.6686
+Epoch  30/50 | Loss: 0.367667 | Avg Similarity: 0.7366
+Epoch  40/50 | Loss: 0.354546 | Avg Similarity: 0.7441
+Epoch  50/50 | Loss: 0.353110 | Avg Similarity: 0.7440
 
 Training completed!
-Final loss: 0.353675
+Final loss: 0.353110
 
 4. MODEL SAVING
 
@@ -88,7 +88,7 @@ Saving model and data...
 Model saved to '6feat_apt_similarity_model_complete.pth'
   APT profiles: 181
   APT IDs: 181
-  File size: 192.08 MB
+  File size: 192.10 MB
 
 TRAINING SUMMARY
 ============================================================
@@ -105,8 +105,8 @@ Model is ready for similarity calculations!
 ==================================================
 RESOURCE USAGE REPORT../4.Attention-Based_MIL/train.py
 ==================================================
-Execution Time: 262.52 seconds
-Memory Usage: 0.00 MB
-Current Memory: 40.83 MB
-CPU Usage: 0.1%
-System CPU: 22.7%
+Execution Time: 1076.81 seconds
+Memory Usage: -27.81 MB
+Current Memory: 13.25 MB
+CPU Usage: 0.2%
+System CPU: 98.1%

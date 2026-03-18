@@ -604,13 +604,15 @@ def main():
     full_results, apt_ids_order = evaluate_false_flag_attacks_mil_parallel(
         model, model.__class__, apt_profiles, partial=False
     )
-    plot_false_flag_deception_mil(full_results, apt_ids_order)
+    
     
     # PARTIAL 30/70 + volume reduction
     partial_results, _ = evaluate_false_flag_attacks_mil_parallel(
         model, model.__class__, apt_profiles, partial=True
     )
     
+
+    plot_false_flag_deception_mil(full_results, apt_ids_order)
     print("\n MIL 30/70 FALSE-FLAG EVALUATION COMPLETE!")
     print("Saved: false_flag_deception_matrix_mil_30_70_continuous.png")
 

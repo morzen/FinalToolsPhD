@@ -514,13 +514,14 @@ def main():
     full_results, apt_name_mapping, profiles, apt_ids = evaluate_false_flag_attacks_rf_parallel(
         model_data, top_x_values=TOP_X_VALUES, partial=False
     )
-    plot_false_flag_deception_rf(full_results, apt_name_mapping, apt_ids)
+    
     
     # PARTIAL 30/70 + 50% volume reduction
     partial_results, _, _, _ = evaluate_false_flag_attacks_rf_parallel(
         model_data, top_x_values=TOP_X_VALUES, partial=True
     )
     
+    plot_false_flag_deception_rf(full_results, apt_name_mapping, apt_ids)
     print("\n RF 30/70 FALSE-FLAG EVALUATION COMPLETE!")
     print("Saved: false_flag_deception_matrix_rf_30_70_continuous.png")
 

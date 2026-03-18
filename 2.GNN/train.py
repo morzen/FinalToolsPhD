@@ -482,8 +482,8 @@ class GNNUtils:
 # 7. MODEL SAVING
 # ============================
 def save_gnn_model(model, apt_embeddings, profiles, graph_info, apt_ids, 
-                   apt_name_mapping, filename=GNNConfig.MODEL_PATH):
-    """Save trained GNN model"""
+                   apt_name_mapping, data, filename=GNNConfig.MODEL_PATH):
+    """Save trained GNN model with graph structure for inference"""
     save_data = {
         "model_state_dict": model.state_dict(),
         "apt_embeddings": apt_embeddings,
@@ -497,12 +497,16 @@ def save_gnn_model(model, apt_embeddings, profiles, graph_info, apt_ids,
             "hidden_dim": model.conv1.out_channels,
             "out_dim": model.conv2.out_channels,
         },
+        # Save the complete graph structure
+        "edge_index": data.edge_index.cpu(),
+        "edge_weight": data.edge_weight.cpu() if data.edge_weight is not None else None,
+        "x": data.x.cpu(),
     }
     
     with open(filename, "wb") as f:
         pickle.dump(save_data, f)
     
-    print(f"\nGNN model saved as '{filename}'")
+    print(f"\nGNN model saved as '{filename}' with graph structure")
     return save_data
 
 # ============================
@@ -538,9 +542,10 @@ def main():
     GNNUtils.debug_gnn_outputs(apt_embeddings, profiles, apt_ids, apt_name_mapping)
     
     # Save model
+    # In main() function, replace the save_gnn_model call with:
     save_data = save_gnn_model(model, apt_embeddings, profiles, 
-                              graph_info, apt_ids, apt_name_mapping)
-    
+                            graph_info, apt_ids, apt_name_mapping, data)  # Add data parameter
+        
     return save_data
 
 if __name__ == "__main__":
