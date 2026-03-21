@@ -1,0 +1,69 @@
+Model loaded successfully
+Creating similarity matrix for all APTs...
+Similarity DataFrame sample (first 5x5):
+          Axiom  Moafee  Cleaver  Ke3chang  APT12
+Axiom       1.0    0.00     0.00       0.0    0.0
+Moafee      0.0    1.00     0.05       0.0    0.0
+Cleaver     0.0    0.05     1.00       0.0    0.0
+Ke3chang    0.0    0.00     0.00       1.0    0.0
+APT12       0.0    0.00     0.00       0.0    1.0
+
+Matrix shape: (181, 181)
+Plotting similarity heatmap...
+
+================================================================================
+EVALUATION 1: STORED SIMILARITY MATRIX (NO DATA DIVISION)
+================================================================================
+Using complete similarity matrix without data division...
+
+Top 1: 181/181 (100.00%)
+
+Top 5: 181/181 (100.00%)
+
+Top 10: 181/181 (100.00%)
+
+Top 20: 181/181 (100.00%)
+
+================================================================================
+EVALUATION 2: FULL DATA QUERY (complete profile)
+================================================================================
+  Processing 0/181...
+  Processing 20/181...
+  Processing 40/181...
+  Processing 60/181...
+  Processing 80/181...
+  Processing 100/181...
+  Processing 120/181...
+  Processing 140/181...
+  Processing 160/181...
+  Processing 180/181...
+
+Results Summary:
+  Top 1: 181/181 (100.00%)
+  Top 5: 181/181 (100.00%)
+  Top 10: 181/181 (100.00%)
+  Top 20: 181/181 (100.00%)
+  Average self‑rank: 1.00
+
+================================================================================
+EVALUATION 3: PROFILE DIVISION (DIVIDER=2)
+================================================================================
+
+Evaluating with divider: 2 (using 50.0% of profile data)
+
+Top 1, Divider 2: 158/181 (87.29%)
+
+Top 5, Divider 2: 180/181 (99.45%)
+
+Top 10, Divider 2: 180/181 (99.45%)
+
+Top 20, Divider 2: 181/181 (100.00%)
+
+==================================================
+RESOURCE USAGE REPORT../5.RF_FeatureEngineering/eval.py
+==================================================
+Execution Time: 488.33 seconds
+Memory Usage: -28.09 MB
+Current Memory: 13.25 MB
+CPU Usage: 0.1%
+System CPU: 53.8%

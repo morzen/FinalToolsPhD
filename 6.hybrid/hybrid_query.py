@@ -292,30 +292,30 @@ def remotequery(evidence_first_batch):
     #     )
 
     #weight determined on precision evaluation through dataset
-    result = hybrid_rank_aggregate(
-            all_lists,
-            weight_xgboost=1,
-            weight_gnn=1.5,
-            weight_siamese=2,
-            weight_mil=0.5,
-            weight_rf=3,
-            weight_featureMatching=5,
-            weight_jaccard=5,
-            weight_tvd=4
-        )
+    # result = hybrid_rank_aggregate(
+    #     all_lists,
+    #     weight_xgboost=9,
+    #     weight_gnn=1,
+    #     weight_siamese=1,
+    #     weight_mil=1,
+    #     weight_rf=8,
+    #     weight_featureMatching=10,
+    #     weight_jaccard=10,
+    #     weight_tvd=10
+    # )
 
     #weight decide on results of CTI evaluation
-    # result = hybrid_rank_aggregate(
-    #         all_lists,
-    #         weight_featureMatching=5,
-    #         weight_jaccard=4,
-    #         weight_xgboost=3,
-    #         weight_mil=2.5,
-    #         weight_gnn=2,
-    #         weight_tvd=1.8,
-    #         weight_siamese=1.5,
-    #         weight_rf=1
-    #     )
+    result = hybrid_rank_aggregate(
+            all_lists,
+            weight_featureMatching=5,
+            weight_jaccard=4,
+            weight_xgboost=3,
+            weight_mil=2.5,
+            weight_gnn=2,
+            weight_tvd=1.8,
+            weight_siamese=1.5,
+            weight_rf=1
+        )
 
 
     # Transform to match first list format (only rank and apt_name)
@@ -397,6 +397,19 @@ def main():
             weight_jaccard=1,
             weight_tvd=1
         )
+    
+    # #weight determined on precision evaluation through dataset
+    # result = hybrid_rank_aggregate(
+    #     all_lists,
+    #     weight_xgboost=9,
+    #     weight_gnn=1,
+    #     weight_siamese=1,
+    #     weight_mil=1,
+    #     weight_rf=8,
+    #     weight_featureMatching=10,
+    #     weight_jaccard=10,
+    #     weight_tvd=10
+    # )
     
     for name, rank in result:
         print(f"  {name}: {rank}")

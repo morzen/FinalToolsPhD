@@ -1,58 +1,3 @@
-import time
-import psutil
-import GPUtil
-
-class ResourceMonitor:
-    def __init__(self):
-        self.process = psutil.Process()
-        self.start_time = None
-        self.start_memory = None
-        
-    def start(self):
-        self.start_time = time.time()
-        self.start_memory = self.process.memory_info().rss / 1024 / 1024  # MB
-        
-    def stop(self):
-        end_time = time.time()
-        end_memory = self.process.memory_info().rss / 1024 / 1024
-        
-        print("\n" + "="*50)
-        print("RESOURCE USAGE REPORT")
-        print("="*50)
-        
-        # Time
-        print(f"Execution Time: {end_time - self.start_time:.2f} seconds")
-        
-        # Memory
-        print(f"Memory Usage: {end_memory - self.start_memory:.2f} MB")
-        print(f"Current Memory: {end_memory:.2f} MB")
-        
-        # CPU
-        cpu_percent = self.process.cpu_percent(interval=0.1)
-        print(f"CPU Usage: {cpu_percent}%")
-        
-        # System-wide CPU
-        sys_cpu = psutil.cpu_percent(interval=0.1)
-        print(f"System CPU: {sys_cpu}%")
-        
-        # GPU (if available)
-        try:
-            gpus = GPUtil.getGPUs()
-            for gpu in gpus:
-                print(f"\nGPU {gpu.id} ({gpu.name}):")
-                print(f"  Utilization: {gpu.load*100:.1f}%")
-                print(f"  Memory: {gpu.memoryUsed}/{gpu.memoryTotal} MB")
-        except:
-            print("\nGPU: Not available or not detected")
-
-# Usage
-monitor = ResourceMonitor()
-monitor.start()
-
-
-
-
-
 import pandas as pd
 import pickle
 import numpy as np
@@ -69,11 +14,11 @@ import math
 
 
 #####################################################################
-# EFFICIENT MODEL PREDICTOR FOR XGBOOST PCA - UPDATED FOR PCA MODEL
+# EFFICIENT MODEL PREDICTOR FOR XGBOOST BINARY VECTORS (NO PCA)
 #####################################################################
 
-class EfficientXGBoostPredictorPCA:
-    """Predictor for the efficient XGBoost model with PCA"""
+class EfficientXGBoostPredictorBinary:
+    """Predictor for the efficient XGBoost model with binary vectors (no PCA)"""
     def __init__(self, model, apt_features, apt_encoder, feature_metadata):
         self.model = model
         self.apt_features = apt_features
@@ -82,7 +27,7 @@ class EfficientXGBoostPredictorPCA:
         self.feature_metadata = feature_metadata
     
     def create_vector_from_evidence(self, evidence):
-        """Create PCA vector from evidence dictionary"""
+        """Create binary vector from evidence dictionary (no PCA)"""
         techniques = evidence.get('techniques', [])
         software = evidence.get('software', [])
         capec = evidence.get('capec', [])
@@ -90,53 +35,87 @@ class EfficientXGBoostPredictorPCA:
         cve = evidence.get('cve', [])
         pulse = evidence.get('pulse', [])
         
+        # Use feature mappings for consistent indexing
+        feature_mapping = self.feature_metadata.get('feature_mapping', {})
+        
         # Create binary vector
-        vector = np.zeros(self.feature_metadata['pulse_offset'] + 
-                        len(self.feature_metadata['all_pulse']), dtype=np.float32)
+        total_length = (self.feature_metadata['pulse_offset'] + 
+                        len(self.feature_metadata['all_pulse']))
+        vector = np.zeros(total_length, dtype=np.float64)
         
-        # Mark all features from evidence
-        for t in techniques:
-            if t in self.feature_metadata['all_techniques']:
-                idx = self.feature_metadata['all_techniques'].index(t)
-                vector[idx] = 1.0
-        
-        for s in software:
-            if s in self.feature_metadata['all_software']:
-                idx = self.feature_metadata['all_software'].index(s) + self.feature_metadata['software_offset']
-                vector[idx] = 1.0
-        
-        for c in capec:
-            if c in self.feature_metadata['all_capec']:
-                idx = self.feature_metadata['all_capec'].index(c) + self.feature_metadata['capec_offset']
-                vector[idx] = 1.0
-        
-        for w in cwe:
-            if w in self.feature_metadata['all_cwe']:
-                idx = self.feature_metadata['all_cwe'].index(w) + self.feature_metadata['cwe_offset']
-                vector[idx] = 1.0
-        
-        for v in cve:
-            if v in self.feature_metadata['all_cve']:
-                idx = self.feature_metadata['all_cve'].index(v) + self.feature_metadata['cve_offset']
-                vector[idx] = 1.0
-        
-        for p in pulse:
-            if p in self.feature_metadata['all_pulse']:
-                idx = self.feature_metadata['all_pulse'].index(p) + self.feature_metadata['pulse_offset']
-                vector[idx] = 1.0
-        
-        # Apply PCA transformation
-        if 'pca' in self.feature_metadata:
-            pca_model = self.feature_metadata['pca']
-            vector_pca = pca_model.transform([vector])[0]
-            return vector_pca
+        if feature_mapping:
+            # Techniques
+            if 'techniques' in feature_mapping:
+                tech_map = feature_mapping['techniques']
+                for t in techniques:
+                    if t in tech_map:
+                        vector[tech_map[t]] = 1.0
+            # Software
+            if 'software' in feature_mapping:
+                soft_map = feature_mapping['software']
+                for s in software:
+                    if s in soft_map:
+                        idx = soft_map[s] + self.feature_metadata['software_offset']
+                        vector[idx] = 1.0
+            # CAPEC
+            if 'capec' in feature_mapping:
+                capec_map = feature_mapping['capec']
+                for c in capec:
+                    if c in capec_map:
+                        idx = capec_map[c] + self.feature_metadata['capec_offset']
+                        vector[idx] = 1.0
+            # CWE
+            if 'cwe' in feature_mapping:
+                cwe_map = feature_mapping['cwe']
+                for w in cwe:
+                    if w in cwe_map:
+                        idx = cwe_map[w] + self.feature_metadata['cwe_offset']
+                        vector[idx] = 1.0
+            # CVE
+            if 'cve' in feature_mapping:
+                cve_map = feature_mapping['cve']
+                for v in cve:
+                    if v in cve_map:
+                        idx = cve_map[v] + self.feature_metadata['cve_offset']
+                        vector[idx] = 1.0
+            # Pulse
+            if 'pulse' in feature_mapping:
+                pulse_map = feature_mapping['pulse']
+                for p in pulse:
+                    if p in pulse_map:
+                        idx = pulse_map[p] + self.feature_metadata['pulse_offset']
+                        vector[idx] = 1.0
         else:
-            print("⚠  WARNING: No PCA model found")
-            return vector
+            # Fallback to index lookup (slower, less reliable)
+            for t in techniques:
+                if t in self.feature_metadata['all_techniques']:
+                    idx = self.feature_metadata['all_techniques'].index(t)
+                    vector[idx] = 1.0
+            for s in software:
+                if s in self.feature_metadata['all_software']:
+                    idx = self.feature_metadata['all_software'].index(s) + self.feature_metadata['software_offset']
+                    vector[idx] = 1.0
+            for c in capec:
+                if c in self.feature_metadata['all_capec']:
+                    idx = self.feature_metadata['all_capec'].index(c) + self.feature_metadata['capec_offset']
+                    vector[idx] = 1.0
+            for w in cwe:
+                if w in self.feature_metadata['all_cwe']:
+                    idx = self.feature_metadata['all_cwe'].index(w) + self.feature_metadata['cwe_offset']
+                    vector[idx] = 1.0
+            for v in cve:
+                if v in self.feature_metadata['all_cve']:
+                    idx = self.feature_metadata['all_cve'].index(v) + self.feature_metadata['cve_offset']
+                    vector[idx] = 1.0
+            for p in pulse:
+                if p in self.feature_metadata['all_pulse']:
+                    idx = self.feature_metadata['all_pulse'].index(p) + self.feature_metadata['pulse_offset']
+                    vector[idx] = 1.0
+        
+        return vector  # No PCA transformation
     
     def predict_vector_similarity(self, vector1, vector2):
-        """Predict similarity between two PCA vectors using cosine similarity"""
-        # Simple cosine similarity
+        """Predict similarity between two binary vectors using cosine similarity"""
         dot_product = np.dot(vector1, vector2)
         norm1 = np.linalg.norm(vector1)
         norm2 = np.linalg.norm(vector2)
@@ -148,16 +127,16 @@ class EfficientXGBoostPredictorPCA:
         return np.clip(similarity, 0.0, 1.0)
 
 
-def load_efficient_xgboost_model():
-    """Load the efficient XGBoost model and data"""
-    print(" LOADING EFFICIENT XGBOOST MODEL...")
+def load_efficient_xgboost_model_nopca():
+    """Load the efficient XGBoost no-PCA model (binary vectors)"""
+    print(" LOADING EFFICIENT XGBOOST NO-PCA MODEL...")
     try:
-        with open('6feat_efficient_apt_similarity.pkl', 'rb') as f:
+        with open('6feat_efficient_apt_similarity_nopca.pkl', 'rb') as f:
             saved_data = pickle.load(f)
-        print(" Loaded efficient_apt_similarity.pkl")
+        print(" Loaded efficient_apt_similarity_nopca.pkl")
         return saved_data
     except FileNotFoundError:
-        print(" efficient_apt_similarity.pkl not found! Please run train.py first.")
+        print(" Model file not found. Please run train.py (no PCA version) first.")
         return None
 
 
@@ -235,28 +214,28 @@ def load_mappings():
     return technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping
 
 
-def create_pca_vector_matrix(saved_data, profiles, apt_ids):
-    """Create PCA vector matrix for all APTs"""
-    print(" Creating PCA vectors for all APTs...")
+def create_binary_vector_matrix(saved_data, profiles, apt_ids):
+    """Create binary vector matrix for all APTs (no PCA)"""
+    print(" Creating binary vectors for all APTs...")
     
     # Create predictor for vector creation
-    predictor = EfficientXGBoostPredictorPCA(
+    predictor = EfficientXGBoostPredictorBinary(
         saved_data['model'], 
         saved_data['apt_features'], 
         saved_data['apt_encoder'],
         saved_data['feature_metadata']
     )
     
-    # Get pre-computed APT vectors if available
-    all_apt_vectors = saved_data.get('all_apt_vectors', {})
+    # Get pre-computed binary vectors if available
+    all_binary_vectors = saved_data.get('all_binary_vectors', {})
     
     apt_vectors = []
     for apt_id in apt_ids:
-        if apt_id in all_apt_vectors:
+        if apt_id in all_binary_vectors:
             # Use pre-computed vector
-            apt_vectors.append(all_apt_vectors[apt_id])
+            apt_vectors.append(all_binary_vectors[apt_id])
         else:
-            # Create vector from profile
+            # Create vector from profile (fallback)
             profile = profiles[apt_id]
             evidence = {
                 'techniques': list(profile['techniques']),
@@ -328,8 +307,8 @@ def sample_mixed_features(attacker_profile, mimicked_profile, rng=None, attacker
     }
 
 
-def process_single_false_flag_pca(args):
-    """Process single false-flag with 30/70 mixed evidence using PCA vectors"""
+def process_single_false_flag_binary(args):
+    """Process single false-flag with 30/70 mixed evidence using binary vectors (no PCA)"""
     attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping, profiles, apt_vectors, apt_ids, seed = args
     
     rng = random.Random(seed)  # Reproducible randomness
@@ -346,17 +325,17 @@ def process_single_false_flag_pca(args):
     )
     
     # Create predictor
-    predictor = EfficientXGBoostPredictorPCA(
+    predictor = EfficientXGBoostPredictorBinary(
         saved_data['model'], 
         saved_data['apt_features'], 
         saved_data['apt_encoder'],
         saved_data['feature_metadata']
     )
     
-    # Create PCA vector from mixed evidence
+    # Create binary vector from mixed evidence (no PCA)
     false_flag_vector = predictor.create_vector_from_evidence(mixed_evidence)
     
-    # Calculate similarities with all APT PCA vectors
+    # Calculate similarities with all APT binary vectors
     similarities = []
     for apt_vector in apt_vectors:
         similarity = predictor.predict_vector_similarity(false_flag_vector, apt_vector)
@@ -384,8 +363,8 @@ def process_single_false_flag_pca(args):
     }
 
 
-def process_single_false_flag_partial_pca(args):
-    """Process single false-flag with 30/70 mixed evidence (HALVED after mixing) using PCA"""
+def process_single_false_flag_partial_binary(args):
+    """Process single false-flag with 30/70 mixed evidence (HALVED after mixing) using binary vectors (no PCA)"""
     attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping, profiles, apt_vectors, apt_ids, seed = args
     
     rng = random.Random(seed)
@@ -458,14 +437,14 @@ def process_single_false_flag_partial_pca(args):
     }
     
     # Create predictor
-    predictor = EfficientXGBoostPredictorPCA(
+    predictor = EfficientXGBoostPredictorBinary(
         saved_data['model'], 
         saved_data['apt_features'], 
         saved_data['apt_encoder'],
         saved_data['feature_metadata']
     )
     
-    # Create PCA vector from partial evidence
+    # Create binary vector from partial evidence (no PCA)
     false_flag_vector = predictor.create_vector_from_evidence(partial_evidence)
     
     # Calculate similarities
@@ -496,26 +475,26 @@ def process_single_false_flag_partial_pca(args):
     }
 
 
-def evaluate_false_flag_attacks_pca_parallel(saved_data, top_x_values=[1, 5, 10, 20]):
-    """FULL EVIDENCE: 30/70 mixed features using PCA vectors"""
-    print(" EVALUATING FALSE-FLAG ATTACKS (XGBOOST PCA - 30/70 MIX FULL)")
+def evaluate_false_flag_attacks_binary_parallel(saved_data, top_x_values=[1, 5, 10, 20]):
+    """FULL EVIDENCE: 30/70 mixed features using binary vectors (no PCA)"""
+    print(" EVALUATING FALSE-FLAG ATTACKS (XGBOOST NO-PCA - 30/70 MIX FULL)")
     print("=" * 80)
     print(" FALSE-FLAG: 30% Attacker + 70% Mimicked features per category")
-    print(" Using PCA-transformed vectors with cosine similarity")
+    print(" Using binary vectors with cosine similarity (no PCA)")
     print("=" * 80)
     
     profiles = load_apt_profiles_from_data()
     apt_ids = list(profiles.keys())
     
-    # Create PCA vectors for all APTs
-    apt_vectors = create_pca_vector_matrix(saved_data, profiles, apt_ids)
+    # Create binary vectors for all APTs
+    apt_vectors = create_binary_vector_matrix(saved_data, profiles, apt_ids)
     
     technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping = load_mappings()
     
     all_combinations = [(a, m) for a in apt_ids for m in apt_ids if a != m]
     total_combinations = len(all_combinations)
     
-    print(f"Testing {total_combinations} false-flag combinations (30/70 FULL PCA)...")
+    print(f"Testing {total_combinations} false-flag combinations (30/70 FULL, no PCA)...")
     print(f"Vector dimension: {apt_vectors.shape[1]}")
     print(f"Using {mp.cpu_count()} CPU cores")
     
@@ -531,7 +510,7 @@ def evaluate_false_flag_attacks_pca_parallel(saved_data, top_x_values=[1, 5, 10,
     max_workers = min(mp.cpu_count(), 8)
     
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        future_to_combination = {executor.submit(process_single_false_flag_pca, args): args 
+        future_to_combination = {executor.submit(process_single_false_flag_binary, args): args 
                                for args in args_list}
         
         completed = 0
@@ -560,7 +539,7 @@ def evaluate_false_flag_attacks_pca_parallel(saved_data, top_x_values=[1, 5, 10,
     
     # Top-k analysis
     print("\n" + "="*80)
-    print("FALSE-FLAG RESULTS - XGBOOST PCA 30/70 FULL EVIDENCE")
+    print("FALSE-FLAG RESULTS - XGBOOST NO-PCA 30/70 FULL EVIDENCE")
     print("="*80)
     
     for top_x in top_x_values:
@@ -589,24 +568,24 @@ def evaluate_false_flag_attacks_pca_parallel(saved_data, top_x_values=[1, 5, 10,
     return all_results, apt_name_mapping, profiles, apt_ids
 
 
-def evaluate_false_flag_attacks_partial_pca(saved_data, top_x_values=[1, 5, 10, 20]):
-    """PARTIAL EVIDENCE: 30/70 mix + volume reduction using PCA"""
+def evaluate_false_flag_attacks_partial_binary(saved_data, top_x_values=[1, 5, 10, 20]):
+    """PARTIAL EVIDENCE: 30/70 mix + volume reduction using binary vectors (no PCA)"""
     print("\n" + "="*80)
-    print("FALSE-FLAG: 30/70 MIX + PARTIAL VOLUME (~33% reduction, PCA)")
+    print("FALSE-FLAG: 30/70 MIX + PARTIAL VOLUME (~33% reduction, no PCA)")
     print("=" * 80)
     
     profiles = load_apt_profiles_from_data()
     apt_ids = list(profiles.keys())
     
-    # Create PCA vectors for all APTs
-    apt_vectors = create_pca_vector_matrix(saved_data, profiles, apt_ids)
+    # Create binary vectors for all APTs
+    apt_vectors = create_binary_vector_matrix(saved_data, profiles, apt_ids)
     
     technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping = load_mappings()
     
     all_combinations = [(a, m) for a in apt_ids for m in apt_ids if a != m]
     total_combinations = len(all_combinations)
     
-    print(f"Testing {total_combinations} partial evidence combinations (PCA)...")
+    print(f"Testing {total_combinations} partial evidence combinations (no PCA)...")
     print(f"Vector dimension: {apt_vectors.shape[1]}")
     
     args_list = []
@@ -621,7 +600,7 @@ def evaluate_false_flag_attacks_partial_pca(saved_data, top_x_values=[1, 5, 10, 
     max_workers = min(mp.cpu_count(), 8)
     
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        future_to_combination = {executor.submit(process_single_false_flag_partial_pca, args): args 
+        future_to_combination = {executor.submit(process_single_false_flag_partial_binary, args): args 
                                for args in args_list}
         
         completed = 0
@@ -647,7 +626,7 @@ def evaluate_false_flag_attacks_partial_pca(saved_data, top_x_values=[1, 5, 10, 
     
     # Same analysis format
     print("\n" + "="*80)
-    print("FALSE-FLAG RESULTS - XGBOOST PCA 30/70 PARTIAL EVIDENCE")
+    print("FALSE-FLAG RESULTS - XGBOOST NO-PCA 30/70 PARTIAL EVIDENCE")
     print("="*80)
     
     for top_x in top_x_values:
@@ -676,15 +655,15 @@ def evaluate_false_flag_attacks_partial_pca(saved_data, top_x_values=[1, 5, 10, 
     return all_results
 
 
-def plot_false_flag_analysis_pca(results, apt_name_mapping, profiles, apt_ids):
+def plot_false_flag_analysis_binary(results, apt_name_mapping, profiles, apt_ids):
     """
-    XGBoost PCA continuous deception heatmap:
+    XGBoost no-PCA continuous deception heatmap:
     deception_score = attacker_rank - mimicked_rank
     
     > 0: mimicked ranked better (smaller rank) -> successful deception (RED)
     < 0: attacker ranked better                -> successful detection (BLUE)
     """
-    print("\n CREATING XGBOOST PCA FALSE-FLAG DECEPTION HEATMAP (30/70, CONTINUOUS)...")
+    print("\n CREATING XGBOOST NO-PCA FALSE-FLAG DECEPTION HEATMAP (30/70, CONTINUOUS)...")
     
     n = len(apt_ids)
     apt_names = [apt_name_mapping.get(aid, f"APT{aid}") for aid in apt_ids]
@@ -749,7 +728,7 @@ def plot_false_flag_analysis_pca(results, apt_name_mapping, profiles, apt_ids):
     )
     
     plt.title(
-        'XGBoost PCA False-Flag Deception (30/70 Mixed Evidence, Continuous)\n'
+        'XGBoost NO-PCA False-Flag Deception (30/70 Mixed Evidence, Continuous)\n'
         'Rows=Actual Attacker | Columns=Mimicked Target',
         fontsize=14, fontweight='bold', pad=20
     )
@@ -760,50 +739,44 @@ def plot_false_flag_analysis_pca(results, apt_name_mapping, profiles, apt_ids):
     plt.tight_layout()
     
     # Save AND display
-    out_name = 'false_flag_deception_matrix_xgboost_pca_30_70_continuous.png'
+    out_name = 'false_flag_deception_matrix_xgboost_nopca_30_70_continuous.png'
     plt.savefig(out_name, dpi=300, bbox_inches='tight')
     plt.show()
     print(f" Saved & displayed: {out_name}")
 
 
 def main():
-    print(" FALSE-FLAG EVALUATION: XGBOOST PCA 30/70 MIX (PCA VECTORS)")
+    print(" FALSE-FLAG EVALUATION: XGBOOST NO-PCA 30/70 MIX (BINARY VECTORS)")
     print("=" * 70)
-    print("Each test creates PCA vectors from mixed evidence")
+    print("Each test creates binary vectors from mixed evidence (no PCA)")
     print("30% attacker + 70% mimicked features per category")
-    print("Similarity = cosine similarity between PCA vectors")
+    print("Similarity = cosine similarity between binary vectors")
     print("=" * 70)
     
-    saved_data = load_efficient_xgboost_model()
+    saved_data = load_efficient_xgboost_model_nopca()
     if saved_data is None:
         return
     
-    print(f"XGBoost PCA model loaded: {saved_data['training_info']['unique_apts']} APTs")
-    print(f"PCA components: {saved_data['feature_metadata']['pca'].n_components_}")
+    print(f"XGBoost no-PCA model loaded: {saved_data['training_info']['unique_apts']} APTs")
+    print(f"Feature vector length: {saved_data['training_info']['feature_vector_length']}")
     
-    # FULL 30/70 evidence with PCA
-    results_full, apt_name_mapping, profiles, apt_ids = evaluate_false_flag_attacks_pca_parallel(
+    # FULL 30/70 evidence with binary vectors
+    results_full, apt_name_mapping, profiles, apt_ids = evaluate_false_flag_attacks_binary_parallel(
         saved_data, top_x_values=[1, 5, 10, 20]
     )
-
     
-    # PARTIAL 30/70 + volume reduction with PCA
-    results_partial = evaluate_false_flag_attacks_partial_pca(
+    # PARTIAL 30/70 + volume reduction with binary vectors
+    results_partial = evaluate_false_flag_attacks_partial_binary(
         saved_data, top_x_values=[1, 5, 10, 20]
     )
     
     # Visualizations (FULL evidence only)
-    plot_false_flag_analysis_pca(results_full, apt_name_mapping, profiles, apt_ids)
-    print("\n XGBOOST PCA 30/70 FALSE-FLAG COMPLETE!")
-    print("PCA vector similarity evaluation finished")
+    plot_false_flag_analysis_binary(results_full, apt_name_mapping, profiles, apt_ids)
+    print("\n XGBOOST NO-PCA 30/70 FALSE-FLAG COMPLETE!")
+    print("Binary vector similarity evaluation finished")
 
 
 if __name__ == "__main__":
     mp.set_start_method('spawn', force=True)
     main()
 
-
-
-
-
-monitor.stop()

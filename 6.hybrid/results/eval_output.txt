@@ -26,8 +26,7 @@ Processing First Batch (Full Data)
   ✓ APT28 completed
 
 [8/181] Processing Carbanak (Full Data)
-  ⚠️ Only 2 modules succeeded, skipping
-  ⚠️ Carbanak returned no results
+  ✓ Carbanak completed
 
 [9/181] Processing Deep Panda (Full Data)
   ✓ Deep Panda completed
@@ -39,8 +38,7 @@ Processing First Batch (Full Data)
   ✓ PittyTiger completed
 
 [12/181] Processing Darkhotel (Full Data)
-  ⚠️ Only 2 modules succeeded, skipping
-  ⚠️ Darkhotel returned no results
+  ✓ Darkhotel completed
 
 [13/181] Processing APT30 (Full Data)
   ✓ APT30 completed
@@ -97,8 +95,7 @@ Processing First Batch (Full Data)
   ✓ Poseidon Group completed
 
 [31/181] Processing Sandworm Team (Full Data)
-  ⚠️ Only 2 modules succeeded, skipping
-  ⚠️ Sandworm Team returned no results
+  ✓ Sandworm Team completed
 
 [32/181] Processing Dragonfly (Full Data)
   ✓ Dragonfly completed
@@ -125,8 +122,7 @@ Processing First Batch (Full Data)
   ✓ Group5 completed
 
 [40/181] Processing Winnti Group (Full Data)
-  ⚠️ Only 2 modules succeeded, skipping
-  ⚠️ Winnti Group returned no results
+  ✓ Winnti Group completed
 
 [41/181] Processing menuPass (Full Data)
   ✓ menuPass completed
@@ -168,26 +164,22 @@ Processing First Batch (Full Data)
   ✓ Magic Hound completed
 
 [54/181] Processing BRONZE BUTLER (Full Data)
-  ⚠️ Only 2 modules succeeded, skipping
-  ⚠️ BRONZE BUTLER returned no results
+  ✓ BRONZE BUTLER completed
 
 [55/181] Processing FIN8 (Full Data)
-  ⚠️ Only 2 modules succeeded, skipping
-  ⚠️ FIN8 returned no results
+  ✓ FIN8 completed
 
 [56/181] Processing TA459 (Full Data)
   ✓ TA459 completed
 
 [57/181] Processing BlackOasis (Full Data)
-  ⚠️ Only 2 modules succeeded, skipping
-  ⚠️ BlackOasis returned no results
+  ✓ BlackOasis completed
 
 [58/181] Processing APT33 (Full Data)
   ✓ APT33 completed
 
 [59/181] Processing Leviathan (Full Data)
-  ⚠️ Only 2 modules succeeded, skipping
-  ⚠️ Leviathan returned no results
+  ✓ Leviathan completed
 
 [60/181] Processing Elderwood (Full Data)
   ✓ Elderwood completed
@@ -226,16 +218,13 @@ Processing First Batch (Full Data)
   ✓ DarkHydrus completed
 
 [72/181] Processing Cobalt Group (Full Data)
-  ⚠️ Only 2 modules succeeded, skipping
-  ⚠️ Cobalt Group returned no results
+  ✓ Cobalt Group completed
 
 [73/181] Processing Tropic Trooper (Full Data)
-  ⚠️ Only 2 modules succeeded, skipping
-  ⚠️ Tropic Trooper returned no results
+  ✓ Tropic Trooper completed
 
 [74/181] Processing APT38 (Full Data)
-  ⚠️ Only 2 modules succeeded, skipping
-  ⚠️ APT38 returned no results
+  ✓ APT38 completed
 
 [75/181] Processing SilverTerrier (Full Data)
   ✓ SilverTerrier completed
@@ -247,8 +236,7 @@ Processing First Batch (Full Data)
   ✓ FIN4 completed
 
 [78/181] Processing APT39 (Full Data)
-  ⚠️ Only 2 modules succeeded, skipping
-  ⚠️ APT39 returned no results
+  ✓ APT39 completed
 
 [79/181] Processing TEMP.Veles (Full Data)
   ✓ TEMP.Veles completed
@@ -257,8 +245,7 @@ Processing First Batch (Full Data)
   ✓ The White Company completed
 
 [81/181] Processing WIRTE (Full Data)
-  ⚠️ Only 2 modules succeeded, skipping
-  ⚠️ WIRTE returned no results
+  ✓ WIRTE completed
 
 [82/181] Processing Silence (Full Data)
   ✓ Silence completed
@@ -357,8 +344,7 @@ Processing First Batch (Full Data)
   ✓ Ajax Security Team completed
 
 [114/181] Processing Tonto Team (Full Data)
-  ⚠️ Only 2 modules succeeded, skipping
-  ⚠️ Tonto Team returned no results
+  ✓ Tonto Team completed
 
 [115/181] Processing Nomadic Octopus (Full Data)
   ✓ Nomadic Octopus completed
@@ -451,8 +437,7 @@ Processing First Batch (Full Data)
   ✓ Mustard Tempest completed
 
 [145/181] Processing Cinnamon Tempest (Full Data)
-  ⚠️ Only 2 modules succeeded, skipping
-  ⚠️ Cinnamon Tempest returned no results
+  ✓ Cinnamon Tempest completed
 
 [146/181] Processing ToddyCat (Full Data)
   ✓ ToddyCat completed
@@ -491,8 +476,7 @@ Processing First Batch (Full Data)
   ✓ Daggerfly completed
 
 [158/181] Processing Winter Vivern (Full Data)
-  ⚠️ Only 2 modules succeeded, skipping
-  ⚠️ Winter Vivern returned no results
+  ✓ Winter Vivern completed
 
 [159/181] Processing Moonstone Sleet (Full Data)
   ✓ Moonstone Sleet completed
@@ -522,8 +506,7 @@ Processing First Batch (Full Data)
   ✓ Open-source Threat Intelligence Group completed
 
 [168/181] Processing Amateurs -Legitimately targeted individuals (Full Data)
-  ⚠️ Only 2 modules succeeded, skipping
-  ⚠️ Amateurs -Legitimately targeted individuals returned no results
+  ✓ Amateurs -Legitimately targeted individuals completed
 
 [169/181] Processing 2MISP (Full Data)
   ✓ 2MISP completed
@@ -587,8 +570,7 @@ Processing Second Batch (Shuffled & Divided Data)
   ✓ APT1 completed
 
 [7/181] Processing APT28 (Shuffled)
-  ⚠️ Only 2 modules succeeded, skipping
-  ⚠️ APT28 returned no results
+  ✓ APT28 completed
 
 [8/181] Processing Carbanak (Shuffled)
   ✓ Carbanak completed
@@ -618,16 +600,13 @@ Processing Second Batch (Shuffled & Divided Data)
   ✓ admin@338 completed
 
 [17/181] Processing Naikon (Shuffled)
-  ⚠️ Only 2 modules succeeded, skipping
-  ⚠️ Naikon returned no results
+  ✓ Naikon completed
 
 [18/181] Processing Equation (Shuffled)
-  ⚠️ Only 2 modules succeeded, skipping
-  ⚠️ Equation returned no results
+  ✓ Equation completed
 
 [19/181] Processing Molerats (Shuffled)
-  ⚠️ Only 2 modules succeeded, skipping
-  ⚠️ Molerats returned no results
+  ✓ Molerats completed
 
 [20/181] Processing APT3 (Shuffled)
   ✓ APT3 completed
@@ -645,8 +624,7 @@ Processing Second Batch (Shuffled & Divided Data)
   ✓ APT18 completed
 
 [25/181] Processing Threat Group-3390 (Shuffled)
-  ⚠️ Only 2 modules succeeded, skipping
-  ⚠️ Threat Group-3390 returned no results
+  ✓ Threat Group-3390 completed
 
 [26/181] Processing Threat Group-1314 (Shuffled)
   ✓ Threat Group-1314 completed
@@ -721,8 +699,7 @@ Processing Second Batch (Shuffled & Divided Data)
   ✓ FIN5 completed
 
 [50/181] Processing Sowbug (Shuffled)
-  ⚠️ Only 2 modules succeeded, skipping
-  ⚠️ Sowbug returned no results
+  ✓ Sowbug completed
 
 [51/181] Processing NEODYMIUM (Shuffled)
   ✓ NEODYMIUM completed
@@ -1120,26 +1097,26 @@ Processing Second Batch (Shuffled & Divided Data)
 ==================================================
 Results for Full Data
 ==================================================
-Top-1: 65/181 (35.91%)
-Top-5: 102/181 (56.35%)
-Top-10: 125/181 (69.06%)
-Top-20: 148/181 (81.77%)
+Top-1: 155/181 (85.64%)
+Top-5: 170/181 (93.92%)
+Top-10: 175/181 (96.69%)
+Top-20: 180/181 (99.45%)
 
 ==================================================
 Results for Shuffled & Divided Data
 ==================================================
-Top-1: 57/181 (31.49%)
-Top-5: 92/181 (50.83%)
-Top-10: 115/181 (63.54%)
-Top-20: 143/181 (79.01%)
+Top-1: 131/181 (72.38%)
+Top-5: 160/181 (88.40%)
+Top-10: 168/181 (92.82%)
+Top-20: 173/181 (95.58%)
 
 ✓ Heatmap saved as 'apt_ranking_heatmap.png'
 
 ==================================================
 RESOURCE USAGE REPORT../6.hybrid/hybrid_eval.py
 ==================================================
-Execution Time: 45935.07 seconds
-Memory Usage: -27.66 MB
-Current Memory: 13.22 MB
-CPU Usage: 0.4%
+Execution Time: 43250.52 seconds
+Memory Usage: -28.12 MB
+Current Memory: 13.20 MB
+CPU Usage: 0.2%
 System CPU: 100.0%

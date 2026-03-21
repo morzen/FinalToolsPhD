@@ -70,17 +70,17 @@ TRAINING THE MODEL
 ============================================================
 
 Starting training for 50 epochs...
-Training on 361 pairs
+Training on 362 pairs
 Using device: cpu
-Epoch   1/50 | Loss: 2.454151 | Avg Similarity: 0.9906
-Epoch  10/50 | Loss: 0.575610 | Avg Similarity: 0.6494
-Epoch  20/50 | Loss: 0.464025 | Avg Similarity: 0.6686
-Epoch  30/50 | Loss: 0.367667 | Avg Similarity: 0.7366
-Epoch  40/50 | Loss: 0.354546 | Avg Similarity: 0.7441
-Epoch  50/50 | Loss: 0.353110 | Avg Similarity: 0.7440
+Epoch   1/50 | Loss: 2.993457 | Avg Similarity: 0.9977
+Epoch  10/50 | Loss: 0.536723 | Avg Similarity: 0.6164
+Epoch  20/50 | Loss: 0.462018 | Avg Similarity: 0.6522
+Epoch  30/50 | Loss: 0.402658 | Avg Similarity: 0.7023
+Epoch  40/50 | Loss: 0.373743 | Avg Similarity: 0.7270
+Epoch  50/50 | Loss: 0.352751 | Avg Similarity: 0.7452
 
 Training completed!
-Final loss: 0.353110
+Final loss: 0.352751
 
 4. MODEL SAVING
 
@@ -105,8 +105,8 @@ Model is ready for similarity calculations!
 ==================================================
 RESOURCE USAGE REPORT../4.Attention-Based_MIL/train.py
 ==================================================
-Execution Time: 1076.81 seconds
-Memory Usage: -27.81 MB
-Current Memory: 13.25 MB
-CPU Usage: 0.2%
-System CPU: 98.1%
+Execution Time: 288.46 seconds
+Memory Usage: -28.12 MB
+Current Memory: 13.27 MB
+CPU Usage: 0.1%
+System CPU: 14.7%

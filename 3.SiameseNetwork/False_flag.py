@@ -1,59 +1,3 @@
-import time
-import psutil
-import GPUtil
-
-class ResourceMonitor:
-    def __init__(self):
-        self.process = psutil.Process()
-        self.start_time = None
-        self.start_memory = None
-        
-    def start(self):
-        self.start_time = time.time()
-        self.start_memory = self.process.memory_info().rss / 1024 / 1024  # MB
-        
-    def stop(self):
-        end_time = time.time()
-        end_memory = self.process.memory_info().rss / 1024 / 1024
-        
-        print("\n" + "="*50)
-        print("RESOURCE USAGE REPORT")
-        print("="*50)
-        
-        # Time
-        print(f"Execution Time: {end_time - self.start_time:.2f} seconds")
-        
-        # Memory
-        print(f"Memory Usage: {end_memory - self.start_memory:.2f} MB")
-        print(f"Current Memory: {end_memory:.2f} MB")
-        
-        # CPU
-        cpu_percent = self.process.cpu_percent(interval=0.1)
-        print(f"CPU Usage: {cpu_percent}%")
-        
-        # System-wide CPU
-        sys_cpu = psutil.cpu_percent(interval=0.1)
-        print(f"System CPU: {sys_cpu}%")
-        
-        # GPU (if available)
-        try:
-            gpus = GPUtil.getGPUs()
-            for gpu in gpus:
-                print(f"\nGPU {gpu.id} ({gpu.name}):")
-                print(f"  Utilization: {gpu.load*100:.1f}%")
-                print(f"  Memory: {gpu.memoryUsed}/{gpu.memoryTotal} MB")
-        except:
-            print("\nGPU: Not available or not detected")
-
-# Usage
-monitor = ResourceMonitor()
-monitor.start()
-
-
-
-
-
-
 import os
 import time
 import random
@@ -71,13 +15,15 @@ from itertools import islice
 from matplotlib.colors import LinearSegmentedColormap
 
 # ============================================================
-# CONFIG - SAME AS XGBoost/GNN
+# CONFIG
 # ============================================================
 MODEL_PATH = "6feat_apt_siamese_feature_model.pkl"
 TOP_X_VALUES = [1, 5, 10, 20]
 MAX_WORKERS = min(mp.cpu_count(), 8)
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+N_SAMPLES = 32  # number of random feature vectors to average for query embedding
 
-# ---------- YOUR EXACT FeatureEncoder from eval.py ----------
+# ---------- FeatureEncoder (must match trained model) ----------
 class FeatureEncoder(nn.Module):
     def __init__(self, num_techniques, num_software, num_capec, num_cwe, num_cve, num_pulse, embed_dim=128):
         super().__init__()
@@ -110,10 +56,10 @@ class FeatureEncoder(nn.Module):
         return F.normalize(x, p=2, dim=-1)
 
 # ============================================================
-# EXACT SAME LOADERS AS XGBoost
+# LOAD MODEL, EMBEDDINGS, AND METADATA
 # ============================================================
 def load_apt_profiles_from_data():
-    """EXACTLY like XGBoost - from EncodedData.csv"""
+    """Load APT profiles from EncodedData.csv (same as XGBoost/GNN)."""
     print(" LOADING APT PROFILES FROM EncodedData.csv...")
     df = pd.read_csv("../BaseData/EncodedData.csv")
     
@@ -130,21 +76,19 @@ def load_apt_profiles_from_data():
             'total_features': len(apt_data)
         }
     
-    print(f" Loaded {len(profiles)} APTs - EXACTLY like XGBoost")
+    print(f" Loaded {len(profiles)} APTs")
     return profiles
 
-def load_model_and_mappings():
-    """Load Siamese FeatureEncoder + mappings"""
-    print(" LOADING SIAMESE FEATURE ENCODER...")
-    
-    # Load YOUR model
+def load_model_and_embeddings():
+    """Load Siamese model, precomputed APT embeddings, and mappings."""
+    print(" LOADING SIAMESE MODEL AND EMBEDDINGS...")
     with open(MODEL_PATH, 'rb') as f:
         data = pickle.load(f)
     
     config = data['model_config']
     model = FeatureEncoder(
-        config['num_techniques'], 
-        config['num_software'], 
+        config['num_techniques'],
+        config['num_software'],
         config['num_capec'],
         config['num_cwe'],
         config['num_cve'],
@@ -153,73 +97,29 @@ def load_model_and_mappings():
     )
     model.load_state_dict(data['model_state_dict'])
     model.eval()
+    model.to(DEVICE)
     
-    # Representative features (EXACTLY like XGBoost)
-    df = pd.read_csv("../BaseData/EncodedData.csv")
-    apt_ids = sorted(df['APTname'].unique().astype(int))
-    profiles = load_apt_profiles_from_data()
+    apt_embeddings = data['apt_embeddings']          # shape (num_apts, embed_dim)
+    apt_ids = data['apt_ids']                         # list of APT IDs
+    apt_to_idx = data['apt_to_idx']                   # mapping APT ID -> index in embedding matrix
     
-    X_apts = []
-    for apt_id in apt_ids:
-        profile = profiles[apt_id]
-        tech = next(iter(profile['techniques'])) if profile['techniques'] else -1
-        soft = next(iter(profile['software'])) if profile['software'] else -1
-        capec = next(iter(profile['capec'])) if profile['capec'] else -1
-        cwe = next(iter(profile['cwe'])) if profile['cwe'] else -1
-        cve = next(iter(profile['cve'])) if profile['cve'] else -1
-        pulse = next(iter(profile['pulse'])) if profile['pulse'] else -1
-        X_apts.append([int(tech), int(soft), int(capec), int(cwe), int(cve), int(pulse)])
-    X_apts = np.array(X_apts)
-    
-    # Name mapping
+    # APT name mapping
     df_mapping = pd.read_csv("../BaseData/comparison_Encoded_df.csv")
     apt_name_mapping = {int(row['APTnameEncoded']): row['APTnameOrigin'] for _, row in df_mapping.iterrows()}
-    apt_names = [apt_name_mapping.get(apt_id, f"APT{apt_id}") for apt_id in apt_ids]
+    apt_names = [apt_name_mapping.get(aid, f"APT{aid}") for aid in apt_ids]
     
-    print(f" Model + {len(apt_ids)} APTs + features ready")
-    return model, X_apts, apt_ids, apt_names, apt_name_mapping, profiles
+    print(f" Model + {len(apt_ids)} embeddings loaded.")
+    return model, apt_embeddings, apt_ids, apt_names, apt_name_mapping, apt_to_idx
 
 # ============================================================
-# SiameseSimilarityPredictor - EXACT XGBoost structure
-# ============================================================
-class SiameseSimilarityPredictor:
-    def __init__(self, model):
-        self.model = model
-    
-    def predict_similarity(self, features1, features2, n_samples=32):
-        """EXACTLY like XGBoost - pure model cosine similarity"""
-        if features1[0] == -1 and features1[1] == -1 and features1[2] == -1 and features1[3] == -1 and features1[4] == -1 and features1[5] == -1:
-            return 0.0
-        if features2[0] == -1 and features2[1] == -1 and features2[2] == -1 and features2[3] == -1 and features2[4] == -1 and features2[5] == -1:
-            return 0.0
-        
-        # Generate embeddings THROUGH MODEL (n_samples like XGBoost prob dist)
-        emb1 = self._get_embedding(features1, n_samples)
-        emb2 = self._get_embedding(features2, n_samples)
-        
-        # Pure cosine similarity (like XGBoost prob1·prob2)
-        sim = F.cosine_similarity(emb1.mean(0).unsqueeze(0), emb2.mean(0).unsqueeze(0)).item()
-        return np.clip(sim, 0.0, 1.0)
-    
-    def _get_embedding(self, features, n_samples=32):
-        """Model forward pass - multiple samples"""
-        vectors = []
-        for _ in range(n_samples):
-            tech, soft, capec, cwe, cve, pulse = features
-            vectors.append([float(tech), float(soft), float(capec), float(cwe), float(cve), float(pulse)])
-        
-        vectors = torch.tensor(vectors, dtype=torch.float32)
-        return self.model(vectors)
-
-# ============================================================
-# EXACT SAME 30/70 SAMPLING AS XGBoost
+# 30/70 SAMPLING (same as XGBoost/GNN)
 # ============================================================
 def sample_mixed_features(attacker_profile, mimicked_profile, rng=None, attacker_fraction=0.3):
-    """EXACTLY like XGBoost 30/70 sampling"""
+    """Return a 6-element array with 30% attacker / 70% mimicked per feature type."""
     if rng is None:
         rng = random
     
-    def pick_feature(atk_list, mim_list):
+    def pick_one(atk_list, mim_list):
         if not atk_list and not mim_list:
             return -1
         use_attacker = (rng.random() < attacker_fraction)
@@ -231,47 +131,81 @@ def sample_mixed_features(attacker_profile, mimicked_profile, rng=None, attacker
             return rng.choice(list(atk_list))
         return -1
     
-    technique = pick_feature(attacker_profile['techniques'], mimicked_profile['techniques'])
-    software = pick_feature(attacker_profile['software'], mimicked_profile['software'])
-    capec = pick_feature(attacker_profile['capec'], mimicked_profile['capec'])
-    cwe = pick_feature(attacker_profile['cwe'], mimicked_profile['cwe'])
-    cve = pick_feature(attacker_profile['cve'], mimicked_profile['cve'])
-    pulse = pick_feature(attacker_profile['pulse'], mimicked_profile['pulse'])
-    
-    return np.array([int(technique), int(software), int(capec), int(cwe), int(cve), int(pulse)])
+    return np.array([
+        pick_one(attacker_profile['techniques'], mimicked_profile['techniques']),
+        pick_one(attacker_profile['software'], mimicked_profile['software']),
+        pick_one(attacker_profile['capec'], mimicked_profile['capec']),
+        pick_one(attacker_profile['cwe'], mimicked_profile['cwe']),
+        pick_one(attacker_profile['cve'], mimicked_profile['cve']),
+        pick_one(attacker_profile['pulse'], mimicked_profile['pulse'])
+    ], dtype=np.float32)
+
+def generate_query_embedding(model, features, n_samples=N_SAMPLES):
+    """
+    Generate a query embedding by averaging the model's output over n_samples
+    random variations of the feature vector (features are scalars; we duplicate them).
+    This mimics the training's subset sampling.
+    """
+    batch = np.tile(features, (n_samples, 1))          # (n_samples, 6)
+    batch_tensor = torch.tensor(batch, dtype=torch.float32).to(DEVICE)
+    with torch.no_grad():
+        emb = model(batch_tensor)                       # (n_samples, embed_dim)
+    return emb.mean(dim=0)                               # averaged embedding
 
 # ============================================================
-# WORKER - EXACT XGBoost structure
+# WORKER PROCESS
 # ============================================================
 def process_single_false_flag_siamese(args):
-    """EXACT XGBoost worker structure"""
-    attacker_apt_id, mimicked_apt_id, model, X_apts, apt_ids, apt_name_mapping, profiles, partial, seed = args
+    """Process one attacker–mimicked pair."""
+    (attacker_apt_id, mimicked_apt_id, model_state_dict, config,
+     apt_embeddings, apt_ids, apt_name_mapping, profiles, 
+     apt_to_idx, partial, seed) = args
     
     rng = random.Random(seed)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    
+    # Reconstruct model in worker (each process gets its own copy)
+    model = FeatureEncoder(
+        config['num_techniques'],
+        config['num_software'],
+        config['num_capec'],
+        config['num_cwe'],
+        config['num_cve'],
+        config['num_pulse'],
+        config['embedding_dim']
+    )
+    model.load_state_dict(model_state_dict)
+    model.eval()
+    model.to(device)
+    
     attacker_profile = profiles[attacker_apt_id]
     mimicked_profile = profiles[mimicked_apt_id]
     
-    # 30/70 mix (EXACTLY like XGBoost)
+    # Create false‑flag evidence (30/70 mix)
     if partial:
         full_mix = sample_mixed_features(attacker_profile, mimicked_profile, rng)
-        mask = [0, 1, 2, 3, 4, 5]
-        rng.shuffle(mask)
+        drop_idx = rng.randint(0, 5)
         false_flag_features = full_mix.copy()
-        false_flag_features[mask[0]] = -1  # Drop 1 slot
+        false_flag_features[drop_idx] = -1.0
     else:
         false_flag_features = sample_mixed_features(attacker_profile, mimicked_profile, rng)
     
-    # Siamese model prediction (like XGBoost predict_proba)
-    predictor = SiameseSimilarityPredictor(model)
-    similarities = [predictor.predict_similarity(false_flag_features, apt_features) 
-                   for apt_features in X_apts]
+    # Generate query embedding
+    query_emb = generate_query_embedding(model, false_flag_features, N_SAMPLES)
     
-    # Ranking (EXACTLY like XGBoost)
+    # Compute cosine similarities with all APT embeddings
+    # apt_embeddings is already a torch tensor; move it to device
+    apt_emb_tensor = apt_embeddings.to(device)          # ← fixed line
+    similarities = torch.matmul(query_emb.unsqueeze(0), apt_emb_tensor.t()).squeeze().cpu().numpy()
+    
+    # Rank
     sorted_indices = np.argsort(similarities)[::-1]
-    ranked_results = {apt_ids[idx]: similarities[idx] for idx in sorted_indices}
+    ranked_apts = [apt_ids[idx] for idx in sorted_indices]
     
-    attacker_rank = list(ranked_results.keys()).index(attacker_apt_id) + 1 if attacker_apt_id in ranked_results else None
-    mimicked_rank = list(ranked_results.keys()).index(mimicked_apt_id) + 1 if mimicked_apt_id in ranked_results else None
+    attacker_rank = ranked_apts.index(attacker_apt_id) + 1 if attacker_apt_id in ranked_apts else None
+    mimicked_rank = ranked_apts.index(mimicked_apt_id) + 1 if mimicked_apt_id in ranked_apts else None
+    attacker_sim = similarities[apt_to_idx[attacker_apt_id]]
+    mimicked_sim = similarities[apt_to_idx[mimicked_apt_id]]
     
     attacker_name = apt_name_mapping.get(attacker_apt_id, f"APT{attacker_apt_id}")
     mimicked_name = apt_name_mapping.get(mimicked_apt_id, f"APT{mimicked_apt_id}")
@@ -281,28 +215,47 @@ def process_single_false_flag_siamese(args):
         'key': key,
         'attacker_rank': attacker_rank,
         'mimicked_rank': mimicked_rank,
-        'attacker_similarity': ranked_results.get(attacker_apt_id),
-        'mimicked_similarity': ranked_results.get(mimicked_apt_id)
+        'attacker_similarity': float(attacker_sim),
+        'mimicked_similarity': float(mimicked_sim)
     }
 
 # ============================================================
-# MAIN EVALUATION - EXACT XGBoost format
+# EVALUATION FUNCTION
 # ============================================================
-def evaluate_false_flag_attacks_siamese(model, X_apts, apt_ids, apt_names, apt_name_mapping, profiles, partial=False):
-    """EXACT XGBoost evaluation structure"""
-    scenario = "PARTIAL (~33% reduction)" if partial else "FULL (30/70 mix)"
+def evaluate_false_flag_attacks_siamese(model, apt_embeddings, apt_ids, apt_names,
+                                        apt_name_mapping, apt_to_idx, profiles,
+                                        partial=False):
+    """Run false‑flag evaluation for all attacker–mimicked pairs."""
+    scenario = "PARTIAL (drop one feature)" if partial else "FULL (30/70 mix)"
     print(f"\n{'='*80}")
-    print(f" SIAMESE FALSE-FLAG: 30% Attacker + 70% Mimicked ({scenario})")
+    print(f" SIAMESE FALSE-FLAG: {scenario}")
     print(f"{'='*80}")
     
+    # Prepare arguments for each worker
     all_combinations = [(a, m) for a in apt_ids for m in apt_ids if a != m]
     total_combinations = len(all_combinations)
-    
     print(f"Testing {total_combinations:,} combinations...")
     print(f"Using {mp.cpu_count()} cores")
     
-    args_list = [(attacker_id, mimicked_id, model, X_apts, apt_ids, apt_name_mapping, profiles, partial, i) 
-                for i, (attacker_id, mimicked_id) in enumerate(all_combinations)]
+    # Get model state dict and config for reconstruction in workers
+    model_state_dict = model.state_dict()
+    config = {
+        'num_techniques': model.tech_embed.num_embeddings - 1,
+        'num_software': model.soft_embed.num_embeddings - 1,
+        'num_capec': model.capec_embed.num_embeddings - 1,
+        'num_cwe': model.cwe_embed.num_embeddings - 1,
+        'num_cve': model.cve_embed.num_embeddings - 1,
+        'num_pulse': model.pulse_embed.num_embeddings - 1,
+        'embedding_dim': model.fc2.out_features
+    }
+    
+    args_list = []
+    for i, (attacker_id, mimicked_id) in enumerate(all_combinations):
+        args_list.append((
+            attacker_id, mimicked_id, model_state_dict, config,
+            apt_embeddings, apt_ids, apt_name_mapping, profiles,
+            apt_to_idx, partial, i
+        ))
     
     all_results = {}
     start_time = time.time()
@@ -314,18 +267,12 @@ def evaluate_false_flag_attacks_siamese(model, X_apts, apt_ids, apt_names, apt_n
         for future in as_completed(futures):
             try:
                 result = future.result()
-                if result:
-                    all_results[result['key']] = {
-                        'attacker_rank': result['attacker_rank'],
-                        'mimicked_rank': result['mimicked_rank'],
-                        'attacker_similarity': result['attacker_similarity'],
-                        'mimicked_similarity': result['mimicked_similarity']
-                    }
+                all_results[result['key']] = result
                 completed += 1
                 if completed % 500 == 0:
                     elapsed = time.time() - start_time
-                    pct = completed/total_combinations*100
-                    eta = (elapsed/completed * total_combinations - elapsed)/60
+                    pct = completed / total_combinations * 100
+                    eta = (elapsed / completed * total_combinations - elapsed) / 60
                     print(f"Progress: {completed:,}/{total_combinations:,} ({pct:.1f}%) ETA: {eta:.1f} min")
             except Exception as e:
                 print(f"Worker error: {e}")
@@ -333,9 +280,9 @@ def evaluate_false_flag_attacks_siamese(model, X_apts, apt_ids, apt_names, apt_n
     total_time = time.time() - start_time
     print(f"\n Completed {len(all_results):,} evals in {total_time/60:.1f} min")
     
-    # EXACT XGBoost analysis format
+    # Print analysis (same format as XGBoost/GNN)
     print("\n" + "=" * 80)
-    print(f"SIAMESE RESULTS - 30/70 ({'PARTIAL' if partial else 'FULL'})")
+    print(f"SIAMESE RESULTS - {scenario}")
     print("=" * 80)
     
     for top_x in TOP_X_VALUES:
@@ -363,10 +310,10 @@ def evaluate_false_flag_attacks_siamese(model, X_apts, apt_ids, apt_names, apt_n
     return all_results
 
 # ============================================================
-# EXACT SAME HEATMAP AS XGBoost/GNN
+# HEATMAP (identical to XGBoost/GNN)
 # ============================================================
 def plot_false_flag_deception_siamese(results, apt_names, apt_ids, partial=False):
-    """EXACT XGBoost/GNN deception heatmap"""
+    """Plot deception heatmap."""
     print("\n CREATING SIAMESE DECEPTION HEATMAP...")
     
     n = len(apt_ids)
@@ -420,7 +367,8 @@ def plot_false_flag_deception_siamese(results, apt_names, apt_ids, partial=False
     scenario = "PARTIAL" if partial else "FULL"
     plt.title(f'Siamese False-Flag Deception (30/70 Mix - {scenario})\nRows=Attacker | Columns=Mimicked', 
               fontsize=14, fontweight='bold', pad=20)
-    plt.xlabel('Mimicked APT (70%)'); plt.ylabel('Actual Attacker (30%)')
+    plt.xlabel('Mimicked APT (70%)')
+    plt.ylabel('Actual Attacker (30%)')
     plt.xticks(rotation=90, fontsize=8)
     plt.yticks(rotation=0, fontsize=8)
     plt.tight_layout()
@@ -431,37 +379,37 @@ def plot_false_flag_deception_siamese(results, apt_names, apt_ids, partial=False
     print(f" Saved: {output_path}")
 
 # ============================================================
-# MAIN - EXACT XGBoost structure
+# MAIN
 # ============================================================
 def main():
-    print(" SIAMESE FALSE-FLAG EVALUATION: 30/70 MIX")
+    print(" SIAMESE FALSE-FLAG EVALUATION (STORED EMBEDDINGS + 30/70 MIX)")
     print("=" * 70)
     
-    model, X_apts, apt_ids, apt_names, apt_name_mapping, profiles = load_model_and_mappings()
+    # Load everything
+    model, apt_embeddings, apt_ids, apt_names, apt_name_mapping, apt_to_idx = load_model_and_embeddings()
+    profiles = load_apt_profiles_from_data()
     
-    # FULL 30/70 (like XGBoost)
-    full_results = evaluate_false_flag_attacks_siamese(model, X_apts, apt_ids, apt_names, apt_name_mapping, profiles, partial=False)
+    # FULL 30/70
+    full_results = evaluate_false_flag_attacks_siamese(
+        model, apt_embeddings, apt_ids, apt_names, apt_name_mapping, apt_to_idx, profiles,
+        partial=False
+    )
     
+    # PARTIAL (drop one feature)
+    partial_results = evaluate_false_flag_attacks_siamese(
+        model, apt_embeddings, apt_ids, apt_names, apt_name_mapping, apt_to_idx, profiles,
+        partial=True
+    )
     
-    # PARTIAL 30/70 (like XGBoost partial)
-    print("\n" + "="*80)
-    partial_results = evaluate_false_flag_attacks_siamese(model, X_apts, apt_ids, apt_names, apt_name_mapping, profiles, partial=True)
-    
+    # Heatmap for full scenario
     plot_false_flag_deception_siamese(full_results, apt_names, apt_ids, partial=False)
+    # Optional: heatmap for partial
     # plot_false_flag_deception_siamese(partial_results, apt_names, apt_ids, partial=True)
     
     print("\n SIAMESE 30/70 FALSE-FLAG COMPLETE!")
-    print(" Exact XGBoost/GNN format + structure")
-    print(" Uses FeatureEncoder forward pass")
-    print(" false_flag_deception_matrix_siamese_30_70_*.png")
+    print(" Uses pre‑computed APT embeddings + model for query generation.")
 
 if __name__ == "__main__":
     mp.set_start_method('spawn', force=True)
     plt.rcParams['font.family'] = 'DejaVu Sans'
     main()
-
-
-
-
-
-monitor.stop()

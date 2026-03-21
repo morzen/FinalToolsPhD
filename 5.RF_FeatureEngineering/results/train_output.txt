@@ -94,8 +94,8 @@ TRAINING SUMMARY
 ==================================================
 RESOURCE USAGE REPORT../5.RF_FeatureEngineering/train.py
 ==================================================
-Execution Time: 21.71 seconds
-Memory Usage: -28.05 MB
+Execution Time: 20.52 seconds
+Memory Usage: -27.58 MB
 Current Memory: 13.28 MB
 CPU Usage: 0.1%
-System CPU: 92.9%
+System CPU: 96.1%

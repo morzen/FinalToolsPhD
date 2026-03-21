@@ -1,0 +1,770 @@
+ GNN FALSE-FLAG EVALUATION: 30/70 MIXED EVIDENCE
+======================================================================
+Pure GNN embeddings + cosine similarity
+30% attacker + 70% mimicked features ACROSS ALL CATEGORIES
+======================================================================
+ LOADING ENHANCED TRAINED GNN MODEL...
+ Loaded 6feat_trained_apt_gnn_model.pkl
+ GNN model loaded successfully!
+   APTs: 181
+   Embedding dimension: 128
+   Feature weights: TTP×80.0, SW×70.0, CAPEC×60.0, CWE×50.0, CVE×40.0, Pulse×30.0
+   Available CPU cores: 10
+   Model uses: Pure GNN cosine similarity on 30/70 mixed evidence
+ LOADING APT PROFILES FROM DATA...
+ Loaded profiles for 181 APTs
+================================================================================
+ FALSE-FLAG: 30% Attacker + 70% Mimicked features across ALL categories
+(FULL (30/70 mixed evidence))
+================================================================================
+Testing 32580 false-flag combinations (30/70 mix)...
+Using 10 CPU cores
+Progress: 100/32580 (0.3%) ETA: 826.8 minutes
+Progress: 200/32580 (0.6%) ETA: 879.4 minutes
+Progress: 300/32580 (0.9%) ETA: 852.4 minutes
+Progress: 400/32580 (1.2%) ETA: 846.2 minutes
+Progress: 500/32580 (1.5%) ETA: 830.0 minutes
+Progress: 600/32580 (1.8%) ETA: 821.9 minutes
+Progress: 700/32580 (2.1%) ETA: 819.6 minutes
+Progress: 800/32580 (2.5%) ETA: 815.5 minutes
+Progress: 900/32580 (2.8%) ETA: 813.5 minutes
+Progress: 1000/32580 (3.1%) ETA: 812.3 minutes
+Progress: 1100/32580 (3.4%) ETA: 809.3 minutes
+Progress: 1200/32580 (3.7%) ETA: 807.7 minutes
+Progress: 1300/32580 (4.0%) ETA: 803.8 minutes
+Progress: 1400/32580 (4.3%) ETA: 802.2 minutes
+Progress: 1500/32580 (4.6%) ETA: 798.4 minutes
+Progress: 1600/32580 (4.9%) ETA: 794.7 minutes
+Progress: 1700/32580 (5.2%) ETA: 790.4 minutes
+Progress: 1800/32580 (5.5%) ETA: 787.1 minutes
+Progress: 1900/32580 (5.8%) ETA: 783.0 minutes
+Progress: 2000/32580 (6.1%) ETA: 781.6 minutes
+Progress: 2100/32580 (6.4%) ETA: 779.9 minutes
+Progress: 2200/32580 (6.8%) ETA: 777.0 minutes
+Progress: 2300/32580 (7.1%) ETA: 774.4 minutes
+Progress: 2400/32580 (7.4%) ETA: 772.1 minutes
+Progress: 2500/32580 (7.7%) ETA: 772.0 minutes
+Progress: 2600/32580 (8.0%) ETA: 771.7 minutes
+Progress: 2700/32580 (8.3%) ETA: 770.1 minutes
+Progress: 2800/32580 (8.6%) ETA: 768.8 minutes
+Progress: 2900/32580 (8.9%) ETA: 767.8 minutes
+Progress: 3000/32580 (9.2%) ETA: 767.6 minutes
+Progress: 3100/32580 (9.5%) ETA: 767.3 minutes
+Progress: 3200/32580 (9.8%) ETA: 766.7 minutes
+Progress: 3300/32580 (10.1%) ETA: 766.1 minutes
+Progress: 3400/32580 (10.4%) ETA: 764.2 minutes
+Progress: 3500/32580 (10.7%) ETA: 762.4 minutes
+Progress: 3600/32580 (11.0%) ETA: 761.4 minutes
+Progress: 3700/32580 (11.4%) ETA: 760.3 minutes
+Progress: 3800/32580 (11.7%) ETA: 761.0 minutes
+Progress: 3900/32580 (12.0%) ETA: 758.6 minutes
+Progress: 4000/32580 (12.3%) ETA: 755.0 minutes
+Progress: 4100/32580 (12.6%) ETA: 753.2 minutes
+Progress: 4200/32580 (12.9%) ETA: 752.3 minutes
+Progress: 4300/32580 (13.2%) ETA: 751.3 minutes
+Progress: 4400/32580 (13.5%) ETA: 750.6 minutes
+Progress: 4500/32580 (13.8%) ETA: 750.5 minutes
+Progress: 4600/32580 (14.1%) ETA: 748.0 minutes
+Progress: 4700/32580 (14.4%) ETA: 743.6 minutes
+Progress: 4800/32580 (14.7%) ETA: 738.7 minutes
+Progress: 4900/32580 (15.0%) ETA: 735.0 minutes
+Progress: 5000/32580 (15.3%) ETA: 732.2 minutes
+Progress: 5100/32580 (15.7%) ETA: 729.2 minutes
+Progress: 5200/32580 (16.0%) ETA: 726.0 minutes
+Progress: 5300/32580 (16.3%) ETA: 723.0 minutes
+Progress: 5400/32580 (16.6%) ETA: 720.1 minutes
+Progress: 5500/32580 (16.9%) ETA: 717.1 minutes
+Progress: 5600/32580 (17.2%) ETA: 714.1 minutes
+Progress: 5700/32580 (17.5%) ETA: 711.0 minutes
+Progress: 5800/32580 (17.8%) ETA: 707.9 minutes
+Progress: 5900/32580 (18.1%) ETA: 704.8 minutes
+Progress: 6000/32580 (18.4%) ETA: 701.3 minutes
+Progress: 6100/32580 (18.7%) ETA: 698.3 minutes
+Progress: 6200/32580 (19.0%) ETA: 695.3 minutes
+Progress: 6300/32580 (19.3%) ETA: 692.2 minutes
+Progress: 6400/32580 (19.6%) ETA: 689.5 minutes
+Progress: 6500/32580 (20.0%) ETA: 686.7 minutes
+Progress: 6600/32580 (20.3%) ETA: 683.9 minutes
+Progress: 6700/32580 (20.6%) ETA: 681.1 minutes
+Progress: 6800/32580 (20.9%) ETA: 678.5 minutes
+Progress: 6900/32580 (21.2%) ETA: 675.5 minutes
+Progress: 7000/32580 (21.5%) ETA: 672.4 minutes
+Progress: 7100/32580 (21.8%) ETA: 669.9 minutes
+Progress: 7200/32580 (22.1%) ETA: 667.3 minutes
+Progress: 7300/32580 (22.4%) ETA: 664.4 minutes
+Progress: 7400/32580 (22.7%) ETA: 661.7 minutes
+Progress: 7500/32580 (23.0%) ETA: 659.0 minutes
+Progress: 7600/32580 (23.3%) ETA: 656.4 minutes
+Progress: 7700/32580 (23.6%) ETA: 653.7 minutes
+Progress: 7800/32580 (23.9%) ETA: 651.0 minutes
+Progress: 7900/32580 (24.2%) ETA: 648.1 minutes
+Progress: 8000/32580 (24.6%) ETA: 645.1 minutes
+Progress: 8100/32580 (24.9%) ETA: 642.4 minutes
+Progress: 8200/32580 (25.2%) ETA: 639.5 minutes
+Progress: 8300/32580 (25.5%) ETA: 636.7 minutes
+Progress: 8400/32580 (25.8%) ETA: 633.9 minutes
+Progress: 8500/32580 (26.1%) ETA: 631.2 minutes
+Progress: 8600/32580 (26.4%) ETA: 628.7 minutes
+Progress: 8700/32580 (26.7%) ETA: 626.1 minutes
+Progress: 8800/32580 (27.0%) ETA: 623.4 minutes
+Progress: 8900/32580 (27.3%) ETA: 621.0 minutes
+Progress: 9000/32580 (27.6%) ETA: 618.3 minutes
+Progress: 9100/32580 (27.9%) ETA: 615.9 minutes
+Progress: 9200/32580 (28.2%) ETA: 613.3 minutes
+Progress: 9300/32580 (28.5%) ETA: 610.6 minutes
+Progress: 9400/32580 (28.9%) ETA: 608.1 minutes
+Progress: 9500/32580 (29.2%) ETA: 605.5 minutes
+Progress: 9600/32580 (29.5%) ETA: 602.9 minutes
+Progress: 9700/32580 (29.8%) ETA: 600.2 minutes
+Progress: 9800/32580 (30.1%) ETA: 597.6 minutes
+Progress: 9900/32580 (30.4%) ETA: 594.8 minutes
+Progress: 10000/32580 (30.7%) ETA: 592.0 minutes
+Progress: 10100/32580 (31.0%) ETA: 589.4 minutes
+Progress: 10200/32580 (31.3%) ETA: 586.6 minutes
+Progress: 10300/32580 (31.6%) ETA: 583.8 minutes
+Progress: 10400/32580 (31.9%) ETA: 581.0 minutes
+Progress: 10500/32580 (32.2%) ETA: 578.2 minutes
+Progress: 10600/32580 (32.5%) ETA: 575.5 minutes
+Progress: 10700/32580 (32.8%) ETA: 572.9 minutes
+Progress: 10800/32580 (33.1%) ETA: 570.2 minutes
+Progress: 10900/32580 (33.5%) ETA: 567.5 minutes
+Progress: 11000/32580 (33.8%) ETA: 565.0 minutes
+Progress: 11100/32580 (34.1%) ETA: 562.4 minutes
+Progress: 11200/32580 (34.4%) ETA: 559.8 minutes
+Progress: 11300/32580 (34.7%) ETA: 557.2 minutes
+Progress: 11400/32580 (35.0%) ETA: 554.6 minutes
+Progress: 11500/32580 (35.3%) ETA: 552.0 minutes
+Progress: 11600/32580 (35.6%) ETA: 549.2 minutes
+Progress: 11700/32580 (35.9%) ETA: 546.7 minutes
+Progress: 11800/32580 (36.2%) ETA: 543.9 minutes
+Progress: 11900/32580 (36.5%) ETA: 541.1 minutes
+Progress: 12000/32580 (36.8%) ETA: 538.7 minutes
+Progress: 12100/32580 (37.1%) ETA: 536.4 minutes
+Progress: 12200/32580 (37.4%) ETA: 533.2 minutes
+Progress: 12300/32580 (37.8%) ETA: 530.0 minutes
+Progress: 12400/32580 (38.1%) ETA: 527.1 minutes
+Progress: 12500/32580 (38.4%) ETA: 524.5 minutes
+Progress: 12600/32580 (38.7%) ETA: 521.8 minutes
+Progress: 12700/32580 (39.0%) ETA: 519.3 minutes
+Progress: 12800/32580 (39.3%) ETA: 516.8 minutes
+Progress: 12900/32580 (39.6%) ETA: 514.4 minutes
+Progress: 13000/32580 (39.9%) ETA: 512.3 minutes
+Progress: 13100/32580 (40.2%) ETA: 509.7 minutes
+Progress: 13200/32580 (40.5%) ETA: 506.4 minutes
+Progress: 13300/32580 (40.8%) ETA: 503.3 minutes
+Progress: 13400/32580 (41.1%) ETA: 500.4 minutes
+Progress: 13500/32580 (41.4%) ETA: 497.8 minutes
+Progress: 13600/32580 (41.7%) ETA: 495.1 minutes
+Progress: 13700/32580 (42.1%) ETA: 492.5 minutes
+Progress: 13800/32580 (42.4%) ETA: 489.9 minutes
+Progress: 13900/32580 (42.7%) ETA: 487.3 minutes
+Progress: 14000/32580 (43.0%) ETA: 484.7 minutes
+Progress: 14100/32580 (43.3%) ETA: 482.1 minutes
+Progress: 14200/32580 (43.6%) ETA: 479.5 minutes
+Progress: 14300/32580 (43.9%) ETA: 476.7 minutes
+Progress: 14400/32580 (44.2%) ETA: 474.1 minutes
+Progress: 14500/32580 (44.5%) ETA: 471.3 minutes
+Progress: 14600/32580 (44.8%) ETA: 468.7 minutes
+Progress: 14700/32580 (45.1%) ETA: 466.0 minutes
+Progress: 14800/32580 (45.4%) ETA: 463.3 minutes
+Progress: 14900/32580 (45.7%) ETA: 460.6 minutes
+Progress: 15000/32580 (46.0%) ETA: 458.0 minutes
+Progress: 15100/32580 (46.3%) ETA: 455.2 minutes
+Progress: 15200/32580 (46.7%) ETA: 452.5 minutes
+Progress: 15300/32580 (47.0%) ETA: 449.7 minutes
+Progress: 15400/32580 (47.3%) ETA: 446.9 minutes
+Progress: 15500/32580 (47.6%) ETA: 444.2 minutes
+Progress: 15600/32580 (47.9%) ETA: 441.4 minutes
+Progress: 15700/32580 (48.2%) ETA: 438.6 minutes
+Progress: 15800/32580 (48.5%) ETA: 435.8 minutes
+Progress: 15900/32580 (48.8%) ETA: 433.1 minutes
+Progress: 16000/32580 (49.1%) ETA: 430.3 minutes
+Progress: 16100/32580 (49.4%) ETA: 427.6 minutes
+Progress: 16200/32580 (49.7%) ETA: 424.8 minutes
+Progress: 16300/32580 (50.0%) ETA: 422.0 minutes
+Progress: 16400/32580 (50.3%) ETA: 419.3 minutes
+Progress: 16500/32580 (50.6%) ETA: 416.7 minutes
+Progress: 16600/32580 (51.0%) ETA: 414.0 minutes
+Progress: 16700/32580 (51.3%) ETA: 411.4 minutes
+Progress: 16800/32580 (51.6%) ETA: 408.7 minutes
+Progress: 16900/32580 (51.9%) ETA: 406.1 minutes
+Progress: 17000/32580 (52.2%) ETA: 403.4 minutes
+Progress: 17100/32580 (52.5%) ETA: 400.8 minutes
+Progress: 17200/32580 (52.8%) ETA: 398.1 minutes
+Progress: 17300/32580 (53.1%) ETA: 395.4 minutes
+Progress: 17400/32580 (53.4%) ETA: 392.7 minutes
+Progress: 17500/32580 (53.7%) ETA: 390.1 minutes
+Progress: 17600/32580 (54.0%) ETA: 387.5 minutes
+Progress: 17700/32580 (54.3%) ETA: 384.9 minutes
+Progress: 17800/32580 (54.6%) ETA: 382.2 minutes
+Progress: 17900/32580 (54.9%) ETA: 379.6 minutes
+Progress: 18000/32580 (55.2%) ETA: 376.9 minutes
+Progress: 18100/32580 (55.6%) ETA: 374.3 minutes
+Progress: 18200/32580 (55.9%) ETA: 371.6 minutes
+Progress: 18300/32580 (56.2%) ETA: 369.0 minutes
+Progress: 18400/32580 (56.5%) ETA: 366.3 minutes
+Progress: 18500/32580 (56.8%) ETA: 363.7 minutes
+Progress: 18600/32580 (57.1%) ETA: 361.0 minutes
+Progress: 18700/32580 (57.4%) ETA: 358.3 minutes
+Progress: 18800/32580 (57.7%) ETA: 355.6 minutes
+Progress: 18900/32580 (58.0%) ETA: 353.0 minutes
+Progress: 19000/32580 (58.3%) ETA: 350.4 minutes
+Progress: 19100/32580 (58.6%) ETA: 347.7 minutes
+Progress: 19200/32580 (58.9%) ETA: 345.0 minutes
+Progress: 19300/32580 (59.2%) ETA: 342.4 minutes
+Progress: 19400/32580 (59.5%) ETA: 339.8 minutes
+Progress: 19500/32580 (59.9%) ETA: 337.2 minutes
+Progress: 19600/32580 (60.2%) ETA: 334.5 minutes
+Progress: 19700/32580 (60.5%) ETA: 331.9 minutes
+Progress: 19800/32580 (60.8%) ETA: 329.2 minutes
+Progress: 19900/32580 (61.1%) ETA: 326.6 minutes
+Progress: 20000/32580 (61.4%) ETA: 323.9 minutes
+Progress: 20100/32580 (61.7%) ETA: 321.3 minutes
+Progress: 20200/32580 (62.0%) ETA: 318.7 minutes
+Progress: 20300/32580 (62.3%) ETA: 316.1 minutes
+Progress: 20400/32580 (62.6%) ETA: 313.5 minutes
+Progress: 20500/32580 (62.9%) ETA: 311.0 minutes
+Progress: 20600/32580 (63.2%) ETA: 308.5 minutes
+Progress: 20700/32580 (63.5%) ETA: 306.1 minutes
+Progress: 20800/32580 (63.8%) ETA: 303.5 minutes
+Progress: 20900/32580 (64.1%) ETA: 300.9 minutes
+Progress: 21000/32580 (64.5%) ETA: 298.4 minutes
+Progress: 21100/32580 (64.8%) ETA: 295.8 minutes
+Progress: 21200/32580 (65.1%) ETA: 293.2 minutes
+Progress: 21300/32580 (65.4%) ETA: 290.4 minutes
+Progress: 21400/32580 (65.7%) ETA: 287.7 minutes
+Progress: 21500/32580 (66.0%) ETA: 285.1 minutes
+Progress: 21600/32580 (66.3%) ETA: 282.5 minutes
+Progress: 21700/32580 (66.6%) ETA: 280.0 minutes
+Progress: 21800/32580 (66.9%) ETA: 277.5 minutes
+Progress: 21900/32580 (67.2%) ETA: 275.0 minutes
+Progress: 22000/32580 (67.5%) ETA: 272.5 minutes
+Progress: 22100/32580 (67.8%) ETA: 269.8 minutes
+Progress: 22200/32580 (68.1%) ETA: 267.0 minutes
+Progress: 22300/32580 (68.4%) ETA: 264.2 minutes
+Progress: 22400/32580 (68.8%) ETA: 261.7 minutes
+Progress: 22500/32580 (69.1%) ETA: 259.1 minutes
+Progress: 22600/32580 (69.4%) ETA: 256.5 minutes
+Progress: 22700/32580 (69.7%) ETA: 253.9 minutes
+Progress: 22800/32580 (70.0%) ETA: 251.3 minutes
+Progress: 22900/32580 (70.3%) ETA: 248.7 minutes
+Progress: 23000/32580 (70.6%) ETA: 246.2 minutes
+Progress: 23100/32580 (70.9%) ETA: 243.7 minutes
+Progress: 23200/32580 (71.2%) ETA: 241.1 minutes
+Progress: 23300/32580 (71.5%) ETA: 238.6 minutes
+Progress: 23400/32580 (71.8%) ETA: 236.0 minutes
+Progress: 23500/32580 (72.1%) ETA: 233.4 minutes
+Progress: 23600/32580 (72.4%) ETA: 230.8 minutes
+Progress: 23700/32580 (72.7%) ETA: 228.3 minutes
+Progress: 23800/32580 (73.1%) ETA: 225.7 minutes
+Progress: 23900/32580 (73.4%) ETA: 223.1 minutes
+Progress: 24000/32580 (73.7%) ETA: 220.6 minutes
+Progress: 24100/32580 (74.0%) ETA: 218.0 minutes
+Progress: 24200/32580 (74.3%) ETA: 215.4 minutes
+Progress: 24300/32580 (74.6%) ETA: 212.8 minutes
+Progress: 24400/32580 (74.9%) ETA: 210.3 minutes
+Progress: 24500/32580 (75.2%) ETA: 207.7 minutes
+Progress: 24600/32580 (75.5%) ETA: 205.1 minutes
+Progress: 24700/32580 (75.8%) ETA: 202.6 minutes
+Progress: 24800/32580 (76.1%) ETA: 200.0 minutes
+Progress: 24900/32580 (76.4%) ETA: 197.4 minutes
+Progress: 25000/32580 (76.7%) ETA: 194.8 minutes
+Progress: 25100/32580 (77.0%) ETA: 192.2 minutes
+Progress: 25200/32580 (77.3%) ETA: 189.7 minutes
+Progress: 25300/32580 (77.7%) ETA: 187.1 minutes
+Progress: 25400/32580 (78.0%) ETA: 184.5 minutes
+Progress: 25500/32580 (78.3%) ETA: 181.9 minutes
+Progress: 25600/32580 (78.6%) ETA: 179.3 minutes
+Progress: 25700/32580 (78.9%) ETA: 176.7 minutes
+Progress: 25800/32580 (79.2%) ETA: 174.1 minutes
+Progress: 25900/32580 (79.5%) ETA: 171.5 minutes
+Progress: 26000/32580 (79.8%) ETA: 168.9 minutes
+Progress: 26100/32580 (80.1%) ETA: 166.3 minutes
+Progress: 26200/32580 (80.4%) ETA: 163.8 minutes
+Progress: 26300/32580 (80.7%) ETA: 161.3 minutes
+Progress: 26400/32580 (81.0%) ETA: 158.7 minutes
+Progress: 26500/32580 (81.3%) ETA: 156.1 minutes
+Progress: 26600/32580 (81.6%) ETA: 153.5 minutes
+Progress: 26700/32580 (82.0%) ETA: 150.9 minutes
+Progress: 26800/32580 (82.3%) ETA: 148.4 minutes
+Progress: 26900/32580 (82.6%) ETA: 145.8 minutes
+Progress: 27000/32580 (82.9%) ETA: 143.3 minutes
+Progress: 27100/32580 (83.2%) ETA: 140.7 minutes
+Progress: 27200/32580 (83.5%) ETA: 138.2 minutes
+Progress: 27300/32580 (83.8%) ETA: 135.6 minutes
+Progress: 27400/32580 (84.1%) ETA: 133.0 minutes
+Progress: 27500/32580 (84.4%) ETA: 130.4 minutes
+Progress: 27600/32580 (84.7%) ETA: 127.8 minutes
+Progress: 27700/32580 (85.0%) ETA: 125.3 minutes
+Progress: 27800/32580 (85.3%) ETA: 122.7 minutes
+Progress: 27900/32580 (85.6%) ETA: 120.1 minutes
+Progress: 28000/32580 (85.9%) ETA: 117.6 minutes
+Progress: 28100/32580 (86.2%) ETA: 115.0 minutes
+Progress: 28200/32580 (86.6%) ETA: 112.4 minutes
+Progress: 28300/32580 (86.9%) ETA: 109.9 minutes
+Progress: 28400/32580 (87.2%) ETA: 107.3 minutes
+Progress: 28500/32580 (87.5%) ETA: 104.6 minutes
+Progress: 28600/32580 (87.8%) ETA: 101.9 minutes
+Progress: 28700/32580 (88.1%) ETA: 99.2 minutes
+Progress: 28800/32580 (88.4%) ETA: 96.5 minutes
+Progress: 28900/32580 (88.7%) ETA: 93.8 minutes
+Progress: 29000/32580 (89.0%) ETA: 91.1 minutes
+Progress: 29100/32580 (89.3%) ETA: 88.4 minutes
+Progress: 29200/32580 (89.6%) ETA: 85.8 minutes
+Progress: 29300/32580 (89.9%) ETA: 83.2 minutes
+Progress: 29400/32580 (90.2%) ETA: 80.5 minutes
+Progress: 29500/32580 (90.5%) ETA: 77.9 minutes
+Progress: 29600/32580 (90.9%) ETA: 75.2 minutes
+Progress: 29700/32580 (91.2%) ETA: 72.6 minutes
+Progress: 29800/32580 (91.5%) ETA: 69.9 minutes
+Progress: 29900/32580 (91.8%) ETA: 67.3 minutes
+Progress: 30000/32580 (92.1%) ETA: 64.7 minutes
+Progress: 30100/32580 (92.4%) ETA: 62.0 minutes
+Progress: 30200/32580 (92.7%) ETA: 59.4 minutes
+Progress: 30300/32580 (93.0%) ETA: 56.8 minutes
+Progress: 30400/32580 (93.3%) ETA: 54.3 minutes
+Progress: 30500/32580 (93.6%) ETA: 51.7 minutes
+Progress: 30600/32580 (93.9%) ETA: 49.1 minutes
+Progress: 30700/32580 (94.2%) ETA: 46.6 minutes
+Progress: 30800/32580 (94.5%) ETA: 44.0 minutes
+Progress: 30900/32580 (94.8%) ETA: 41.5 minutes
+Progress: 31000/32580 (95.2%) ETA: 39.0 minutes
+Progress: 31100/32580 (95.5%) ETA: 36.4 minutes
+Progress: 31200/32580 (95.8%) ETA: 33.9 minutes
+Progress: 31300/32580 (96.1%) ETA: 31.4 minutes
+Progress: 31400/32580 (96.4%) ETA: 28.9 minutes
+Progress: 31500/32580 (96.7%) ETA: 26.4 minutes
+Progress: 31600/32580 (97.0%) ETA: 23.9 minutes
+Progress: 31700/32580 (97.3%) ETA: 21.4 minutes
+Progress: 31800/32580 (97.6%) ETA: 19.0 minutes
+Progress: 31900/32580 (97.9%) ETA: 16.5 minutes
+Progress: 32000/32580 (98.2%) ETA: 14.1 minutes
+Progress: 32100/32580 (98.5%) ETA: 11.6 minutes
+Progress: 32200/32580 (98.8%) ETA: 9.2 minutes
+Progress: 32300/32580 (99.1%) ETA: 6.8 minutes
+Progress: 32400/32580 (99.4%) ETA: 4.3 minutes
+Progress: 32500/32580 (99.8%) ETA: 1.9 minutes
+Progress: 32580/32580 (100.0%) ETA: 0.0 minutes
+
+ Completed 32580 evaluations in 782.8 minutes
+
+================================================================================
+FALSE-FLAG RESULTS - GNN 30/70 MIX (FULL 30/70)
+================================================================================
+
+ Top-1 Analysis:
+  Actual attacker: 187/32580 (0.6%)
+  Mimicked APT: 260/32580 (0.8%)
+  Both: 0/32580 (0.0%)
+  Neither: 32133/32580 (98.6%)
+   Deception: 0.8% |  Detection: 0.6%
+  ⚖ Net Advantage: +0.2%
+
+ Top-5 Analysis:
+  Actual attacker: 875/32580 (2.7%)
+  Mimicked APT: 1153/32580 (3.5%)
+  Both: 39/32580 (0.1%)
+  Neither: 30591/32580 (93.9%)
+   Deception: 3.5% |  Detection: 2.7%
+  ⚖ Net Advantage: +0.9%
+
+ Top-10 Analysis:
+  Actual attacker: 1795/32580 (5.5%)
+  Mimicked APT: 2093/32580 (6.4%)
+  Both: 140/32580 (0.4%)
+  Neither: 28832/32580 (88.5%)
+   Deception: 6.4% |  Detection: 5.5%
+  ⚖ Net Advantage: +0.9%
+
+ Top-20 Analysis:
+  Actual attacker: 3623/32580 (11.1%)
+  Mimicked APT: 3780/32580 (11.6%)
+  Both: 433/32580 (1.3%)
+  Neither: 25610/32580 (78.6%)
+   Deception: 11.6% |  Detection: 11.1%
+  ⚖ Net Advantage: +0.5%
+================================================================================
+ FALSE-FLAG: 30% Attacker + 70% Mimicked features across ALL categories
+(PARTIAL (50% volume from 30/70 mix))
+================================================================================
+Testing 32580 false-flag combinations (30/70 mix)...
+Using 10 CPU cores
+Progress: 100/32580 (0.3%) ETA: 366.0 minutes
+Progress: 200/32580 (0.6%) ETA: 350.8 minutes
+Progress: 300/32580 (0.9%) ETA: 351.1 minutes
+Progress: 400/32580 (1.2%) ETA: 340.4 minutes
+Progress: 500/32580 (1.5%) ETA: 336.2 minutes
+Progress: 600/32580 (1.8%) ETA: 333.8 minutes
+Progress: 700/32580 (2.1%) ETA: 333.1 minutes
+Progress: 800/32580 (2.5%) ETA: 331.8 minutes
+Progress: 900/32580 (2.8%) ETA: 331.6 minutes
+Progress: 1000/32580 (3.1%) ETA: 330.0 minutes
+Progress: 1100/32580 (3.4%) ETA: 327.9 minutes
+Progress: 1200/32580 (3.7%) ETA: 328.4 minutes
+Progress: 1300/32580 (4.0%) ETA: 327.4 minutes
+Progress: 1400/32580 (4.3%) ETA: 325.8 minutes
+Progress: 1500/32580 (4.6%) ETA: 325.4 minutes
+Progress: 1600/32580 (4.9%) ETA: 323.8 minutes
+Progress: 1700/32580 (5.2%) ETA: 322.6 minutes
+Progress: 1800/32580 (5.5%) ETA: 321.7 minutes
+Progress: 1900/32580 (5.8%) ETA: 321.4 minutes
+Progress: 2000/32580 (6.1%) ETA: 320.3 minutes
+Progress: 2100/32580 (6.4%) ETA: 320.8 minutes
+Progress: 2200/32580 (6.8%) ETA: 320.5 minutes
+Progress: 2300/32580 (7.1%) ETA: 320.8 minutes
+Progress: 2400/32580 (7.4%) ETA: 320.1 minutes
+Progress: 2500/32580 (7.7%) ETA: 319.5 minutes
+Progress: 2600/32580 (8.0%) ETA: 319.3 minutes
+Progress: 2700/32580 (8.3%) ETA: 319.5 minutes
+Progress: 2800/32580 (8.6%) ETA: 318.3 minutes
+Progress: 2900/32580 (8.9%) ETA: 318.0 minutes
+Progress: 3000/32580 (9.2%) ETA: 316.8 minutes
+Progress: 3100/32580 (9.5%) ETA: 316.8 minutes
+Progress: 3200/32580 (9.8%) ETA: 316.2 minutes
+Progress: 3300/32580 (10.1%) ETA: 315.1 minutes
+Progress: 3400/32580 (10.4%) ETA: 314.5 minutes
+Progress: 3500/32580 (10.7%) ETA: 313.4 minutes
+Progress: 3600/32580 (11.0%) ETA: 312.6 minutes
+Progress: 3700/32580 (11.4%) ETA: 312.4 minutes
+Progress: 3800/32580 (11.7%) ETA: 311.4 minutes
+Progress: 3900/32580 (12.0%) ETA: 310.6 minutes
+Progress: 4000/32580 (12.3%) ETA: 309.6 minutes
+Progress: 4100/32580 (12.6%) ETA: 308.9 minutes
+Progress: 4200/32580 (12.9%) ETA: 307.4 minutes
+Progress: 4300/32580 (13.2%) ETA: 306.3 minutes
+Progress: 4400/32580 (13.5%) ETA: 305.2 minutes
+Progress: 4500/32580 (13.8%) ETA: 304.5 minutes
+Progress: 4600/32580 (14.1%) ETA: 303.1 minutes
+Progress: 4700/32580 (14.4%) ETA: 302.6 minutes
+Progress: 4800/32580 (14.7%) ETA: 301.3 minutes
+Progress: 4900/32580 (15.0%) ETA: 300.4 minutes
+Progress: 5000/32580 (15.3%) ETA: 299.7 minutes
+Progress: 5100/32580 (15.7%) ETA: 299.0 minutes
+Progress: 5200/32580 (16.0%) ETA: 298.2 minutes
+Progress: 5300/32580 (16.3%) ETA: 297.2 minutes
+Progress: 5400/32580 (16.6%) ETA: 296.1 minutes
+Progress: 5500/32580 (16.9%) ETA: 295.0 minutes
+Progress: 5600/32580 (17.2%) ETA: 293.9 minutes
+Progress: 5700/32580 (17.5%) ETA: 292.7 minutes
+Progress: 5800/32580 (17.8%) ETA: 291.6 minutes
+Progress: 5900/32580 (18.1%) ETA: 290.5 minutes
+Progress: 6000/32580 (18.4%) ETA: 289.5 minutes
+Progress: 6100/32580 (18.7%) ETA: 288.3 minutes
+Progress: 6200/32580 (19.0%) ETA: 287.2 minutes
+Progress: 6300/32580 (19.3%) ETA: 286.2 minutes
+Progress: 6400/32580 (19.6%) ETA: 285.4 minutes
+Progress: 6500/32580 (20.0%) ETA: 284.6 minutes
+Progress: 6600/32580 (20.3%) ETA: 283.5 minutes
+Progress: 6700/32580 (20.6%) ETA: 282.3 minutes
+Progress: 6800/32580 (20.9%) ETA: 281.3 minutes
+Progress: 6900/32580 (21.2%) ETA: 280.2 minutes
+Progress: 7000/32580 (21.5%) ETA: 279.2 minutes
+Progress: 7100/32580 (21.8%) ETA: 278.2 minutes
+Progress: 7200/32580 (22.1%) ETA: 277.4 minutes
+Progress: 7300/32580 (22.4%) ETA: 276.2 minutes
+Progress: 7400/32580 (22.7%) ETA: 275.3 minutes
+Progress: 7500/32580 (23.0%) ETA: 274.4 minutes
+Progress: 7600/32580 (23.3%) ETA: 273.4 minutes
+Progress: 7700/32580 (23.6%) ETA: 272.5 minutes
+Progress: 7800/32580 (23.9%) ETA: 271.6 minutes
+Progress: 7900/32580 (24.2%) ETA: 270.6 minutes
+Progress: 8000/32580 (24.6%) ETA: 269.4 minutes
+Progress: 8100/32580 (24.9%) ETA: 268.5 minutes
+Progress: 8200/32580 (25.2%) ETA: 267.5 minutes
+Progress: 8300/32580 (25.5%) ETA: 266.5 minutes
+Progress: 8400/32580 (25.8%) ETA: 265.6 minutes
+Progress: 8500/32580 (26.1%) ETA: 264.5 minutes
+Progress: 8600/32580 (26.4%) ETA: 263.4 minutes
+Progress: 8700/32580 (26.7%) ETA: 262.5 minutes
+Progress: 8800/32580 (27.0%) ETA: 261.4 minutes
+Progress: 8900/32580 (27.3%) ETA: 260.4 minutes
+Progress: 9000/32580 (27.6%) ETA: 259.2 minutes
+Progress: 9100/32580 (27.9%) ETA: 258.3 minutes
+Progress: 9200/32580 (28.2%) ETA: 257.2 minutes
+Progress: 9300/32580 (28.5%) ETA: 256.1 minutes
+Progress: 9400/32580 (28.9%) ETA: 255.0 minutes
+Progress: 9500/32580 (29.2%) ETA: 253.9 minutes
+Progress: 9600/32580 (29.5%) ETA: 252.9 minutes
+Progress: 9700/32580 (29.8%) ETA: 251.8 minutes
+Progress: 9800/32580 (30.1%) ETA: 250.7 minutes
+Progress: 9900/32580 (30.4%) ETA: 249.7 minutes
+Progress: 10000/32580 (30.7%) ETA: 248.6 minutes
+Progress: 10100/32580 (31.0%) ETA: 247.4 minutes
+Progress: 10200/32580 (31.3%) ETA: 246.4 minutes
+Progress: 10300/32580 (31.6%) ETA: 245.3 minutes
+Progress: 10400/32580 (31.9%) ETA: 244.2 minutes
+Progress: 10500/32580 (32.2%) ETA: 243.3 minutes
+Progress: 10600/32580 (32.5%) ETA: 242.2 minutes
+Progress: 10700/32580 (32.8%) ETA: 241.2 minutes
+Progress: 10800/32580 (33.1%) ETA: 240.2 minutes
+Progress: 10900/32580 (33.5%) ETA: 239.5 minutes
+Progress: 11000/32580 (33.8%) ETA: 238.4 minutes
+Progress: 11100/32580 (34.1%) ETA: 237.4 minutes
+Progress: 11200/32580 (34.4%) ETA: 236.3 minutes
+Progress: 11300/32580 (34.7%) ETA: 235.2 minutes
+Progress: 11400/32580 (35.0%) ETA: 234.2 minutes
+Progress: 11500/32580 (35.3%) ETA: 233.2 minutes
+Progress: 11600/32580 (35.6%) ETA: 232.4 minutes
+Progress: 11700/32580 (35.9%) ETA: 231.4 minutes
+Progress: 11800/32580 (36.2%) ETA: 230.5 minutes
+Progress: 11900/32580 (36.5%) ETA: 229.4 minutes
+Progress: 12000/32580 (36.8%) ETA: 228.6 minutes
+Progress: 12100/32580 (37.1%) ETA: 227.8 minutes
+Progress: 12200/32580 (37.4%) ETA: 226.8 minutes
+Progress: 12300/32580 (37.8%) ETA: 225.8 minutes
+Progress: 12400/32580 (38.1%) ETA: 224.9 minutes
+Progress: 12500/32580 (38.4%) ETA: 223.9 minutes
+Progress: 12600/32580 (38.7%) ETA: 223.0 minutes
+Progress: 12700/32580 (39.0%) ETA: 222.0 minutes
+Progress: 12800/32580 (39.3%) ETA: 221.0 minutes
+Progress: 12900/32580 (39.6%) ETA: 220.0 minutes
+Progress: 13000/32580 (39.9%) ETA: 218.9 minutes
+Progress: 13100/32580 (40.2%) ETA: 217.9 minutes
+Progress: 13200/32580 (40.5%) ETA: 216.9 minutes
+Progress: 13300/32580 (40.8%) ETA: 215.9 minutes
+Progress: 13400/32580 (41.1%) ETA: 214.9 minutes
+Progress: 13500/32580 (41.4%) ETA: 214.1 minutes
+Progress: 13600/32580 (41.7%) ETA: 213.2 minutes
+Progress: 13700/32580 (42.1%) ETA: 212.5 minutes
+Progress: 13800/32580 (42.4%) ETA: 211.4 minutes
+Progress: 13900/32580 (42.7%) ETA: 210.4 minutes
+Progress: 14000/32580 (43.0%) ETA: 209.5 minutes
+Progress: 14100/32580 (43.3%) ETA: 208.5 minutes
+Progress: 14200/32580 (43.6%) ETA: 207.8 minutes
+Progress: 14300/32580 (43.9%) ETA: 206.8 minutes
+Progress: 14400/32580 (44.2%) ETA: 205.5 minutes
+Progress: 14500/32580 (44.5%) ETA: 204.3 minutes
+Progress: 14600/32580 (44.8%) ETA: 203.1 minutes
+Progress: 14700/32580 (45.1%) ETA: 202.0 minutes
+Progress: 14800/32580 (45.4%) ETA: 200.9 minutes
+Progress: 14900/32580 (45.7%) ETA: 199.9 minutes
+Progress: 15000/32580 (46.0%) ETA: 198.9 minutes
+Progress: 15100/32580 (46.3%) ETA: 197.9 minutes
+Progress: 15200/32580 (46.7%) ETA: 196.8 minutes
+Progress: 15300/32580 (47.0%) ETA: 195.7 minutes
+Progress: 15400/32580 (47.3%) ETA: 194.7 minutes
+Progress: 15500/32580 (47.6%) ETA: 193.7 minutes
+Progress: 15600/32580 (47.9%) ETA: 192.7 minutes
+Progress: 15700/32580 (48.2%) ETA: 191.6 minutes
+Progress: 15800/32580 (48.5%) ETA: 190.7 minutes
+Progress: 15900/32580 (48.8%) ETA: 189.7 minutes
+Progress: 16000/32580 (49.1%) ETA: 188.7 minutes
+Progress: 16100/32580 (49.4%) ETA: 187.8 minutes
+Progress: 16200/32580 (49.7%) ETA: 186.9 minutes
+Progress: 16300/32580 (50.0%) ETA: 185.9 minutes
+Progress: 16400/32580 (50.3%) ETA: 184.9 minutes
+Progress: 16500/32580 (50.6%) ETA: 183.7 minutes
+Progress: 16600/32580 (51.0%) ETA: 182.4 minutes
+Progress: 16700/32580 (51.3%) ETA: 181.0 minutes
+Progress: 16800/32580 (51.6%) ETA: 179.8 minutes
+Progress: 16900/32580 (51.9%) ETA: 178.6 minutes
+Progress: 17000/32580 (52.2%) ETA: 177.4 minutes
+Progress: 17100/32580 (52.5%) ETA: 176.2 minutes
+Progress: 17200/32580 (52.8%) ETA: 175.0 minutes
+Progress: 17300/32580 (53.1%) ETA: 173.7 minutes
+Progress: 17400/32580 (53.4%) ETA: 172.5 minutes
+Progress: 17500/32580 (53.7%) ETA: 171.3 minutes
+Progress: 17600/32580 (54.0%) ETA: 170.1 minutes
+Progress: 17700/32580 (54.3%) ETA: 168.9 minutes
+Progress: 17800/32580 (54.6%) ETA: 167.7 minutes
+Progress: 17900/32580 (54.9%) ETA: 166.5 minutes
+Progress: 18000/32580 (55.2%) ETA: 165.3 minutes
+Progress: 18100/32580 (55.6%) ETA: 164.1 minutes
+Progress: 18200/32580 (55.9%) ETA: 163.0 minutes
+Progress: 18300/32580 (56.2%) ETA: 161.8 minutes
+Progress: 18400/32580 (56.5%) ETA: 160.7 minutes
+Progress: 18500/32580 (56.8%) ETA: 159.5 minutes
+Progress: 18600/32580 (57.1%) ETA: 158.3 minutes
+Progress: 18700/32580 (57.4%) ETA: 157.1 minutes
+Progress: 18800/32580 (57.7%) ETA: 156.0 minutes
+Progress: 18900/32580 (58.0%) ETA: 154.8 minutes
+Progress: 19000/32580 (58.3%) ETA: 153.7 minutes
+Progress: 19100/32580 (58.6%) ETA: 152.5 minutes
+Progress: 19200/32580 (58.9%) ETA: 151.5 minutes
+Progress: 19300/32580 (59.2%) ETA: 150.4 minutes
+Progress: 19400/32580 (59.5%) ETA: 149.3 minutes
+Progress: 19500/32580 (59.9%) ETA: 148.2 minutes
+Progress: 19600/32580 (60.2%) ETA: 147.0 minutes
+Progress: 19700/32580 (60.5%) ETA: 146.0 minutes
+Progress: 19800/32580 (60.8%) ETA: 144.9 minutes
+Progress: 19900/32580 (61.1%) ETA: 143.8 minutes
+Progress: 20000/32580 (61.4%) ETA: 142.7 minutes
+Progress: 20100/32580 (61.7%) ETA: 141.7 minutes
+Progress: 20200/32580 (62.0%) ETA: 140.6 minutes
+Progress: 20300/32580 (62.3%) ETA: 139.4 minutes
+Progress: 20400/32580 (62.6%) ETA: 138.4 minutes
+Progress: 20500/32580 (62.9%) ETA: 137.3 minutes
+Progress: 20600/32580 (63.2%) ETA: 136.2 minutes
+Progress: 20700/32580 (63.5%) ETA: 135.1 minutes
+Progress: 20800/32580 (63.8%) ETA: 134.0 minutes
+Progress: 20900/32580 (64.1%) ETA: 133.1 minutes
+Progress: 21000/32580 (64.5%) ETA: 132.1 minutes
+Progress: 21100/32580 (64.8%) ETA: 131.0 minutes
+Progress: 21200/32580 (65.1%) ETA: 130.0 minutes
+Progress: 21300/32580 (65.4%) ETA: 128.9 minutes
+Progress: 21400/32580 (65.7%) ETA: 127.8 minutes
+Progress: 21500/32580 (66.0%) ETA: 126.7 minutes
+Progress: 21600/32580 (66.3%) ETA: 125.7 minutes
+Progress: 21700/32580 (66.6%) ETA: 124.6 minutes
+Progress: 21800/32580 (66.9%) ETA: 123.5 minutes
+Progress: 21900/32580 (67.2%) ETA: 122.5 minutes
+Progress: 22000/32580 (67.5%) ETA: 121.4 minutes
+Progress: 22100/32580 (67.8%) ETA: 120.3 minutes
+Progress: 22200/32580 (68.1%) ETA: 119.3 minutes
+Progress: 22300/32580 (68.4%) ETA: 118.2 minutes
+Progress: 22400/32580 (68.8%) ETA: 117.1 minutes
+Progress: 22500/32580 (69.1%) ETA: 116.0 minutes
+Progress: 22600/32580 (69.4%) ETA: 115.0 minutes
+Progress: 22700/32580 (69.7%) ETA: 113.9 minutes
+Progress: 22800/32580 (70.0%) ETA: 112.8 minutes
+Progress: 22900/32580 (70.3%) ETA: 111.8 minutes
+Progress: 23000/32580 (70.6%) ETA: 110.7 minutes
+Progress: 23100/32580 (70.9%) ETA: 109.6 minutes
+Progress: 23200/32580 (71.2%) ETA: 108.5 minutes
+Progress: 23300/32580 (71.5%) ETA: 107.4 minutes
+Progress: 23400/32580 (71.8%) ETA: 106.3 minutes
+Progress: 23500/32580 (72.1%) ETA: 105.1 minutes
+Progress: 23600/32580 (72.4%) ETA: 104.0 minutes
+Progress: 23700/32580 (72.7%) ETA: 102.8 minutes
+Progress: 23800/32580 (73.1%) ETA: 101.6 minutes
+Progress: 23900/32580 (73.4%) ETA: 100.5 minutes
+Progress: 24000/32580 (73.7%) ETA: 99.3 minutes
+Progress: 24100/32580 (74.0%) ETA: 98.2 minutes
+Progress: 24200/32580 (74.3%) ETA: 97.0 minutes
+Progress: 24300/32580 (74.6%) ETA: 95.9 minutes
+Progress: 24400/32580 (74.9%) ETA: 94.7 minutes
+Progress: 24500/32580 (75.2%) ETA: 93.6 minutes
+Progress: 24600/32580 (75.5%) ETA: 92.4 minutes
+Progress: 24700/32580 (75.8%) ETA: 91.3 minutes
+Progress: 24800/32580 (76.1%) ETA: 90.1 minutes
+Progress: 24900/32580 (76.4%) ETA: 89.0 minutes
+Progress: 25000/32580 (76.7%) ETA: 87.9 minutes
+Progress: 25100/32580 (77.0%) ETA: 86.7 minutes
+Progress: 25200/32580 (77.3%) ETA: 85.6 minutes
+Progress: 25300/32580 (77.7%) ETA: 84.4 minutes
+Progress: 25400/32580 (78.0%) ETA: 83.3 minutes
+Progress: 25500/32580 (78.3%) ETA: 82.1 minutes
+Progress: 25600/32580 (78.6%) ETA: 80.9 minutes
+Progress: 25700/32580 (78.9%) ETA: 79.8 minutes
+Progress: 25800/32580 (79.2%) ETA: 78.6 minutes
+Progress: 25900/32580 (79.5%) ETA: 77.5 minutes
+Progress: 26000/32580 (79.8%) ETA: 76.3 minutes
+Progress: 26100/32580 (80.1%) ETA: 75.2 minutes
+Progress: 26200/32580 (80.4%) ETA: 74.0 minutes
+Progress: 26300/32580 (80.7%) ETA: 72.8 minutes
+Progress: 26400/32580 (81.0%) ETA: 71.7 minutes
+Progress: 26500/32580 (81.3%) ETA: 70.5 minutes
+Progress: 26600/32580 (81.6%) ETA: 69.3 minutes
+Progress: 26700/32580 (82.0%) ETA: 68.2 minutes
+Progress: 26800/32580 (82.3%) ETA: 67.0 minutes
+Progress: 26900/32580 (82.6%) ETA: 65.9 minutes
+Progress: 27000/32580 (82.9%) ETA: 64.7 minutes
+Progress: 27100/32580 (83.2%) ETA: 63.6 minutes
+Progress: 27200/32580 (83.5%) ETA: 62.4 minutes
+Progress: 27300/32580 (83.8%) ETA: 61.2 minutes
+Progress: 27400/32580 (84.1%) ETA: 60.1 minutes
+Progress: 27500/32580 (84.4%) ETA: 58.9 minutes
+Progress: 27600/32580 (84.7%) ETA: 57.8 minutes
+Progress: 27700/32580 (85.0%) ETA: 56.7 minutes
+Progress: 27800/32580 (85.3%) ETA: 55.5 minutes
+Progress: 27900/32580 (85.6%) ETA: 54.4 minutes
+Progress: 28000/32580 (85.9%) ETA: 53.3 minutes
+Progress: 28100/32580 (86.2%) ETA: 52.1 minutes
+Progress: 28200/32580 (86.6%) ETA: 51.0 minutes
+Progress: 28300/32580 (86.9%) ETA: 49.8 minutes
+Progress: 28400/32580 (87.2%) ETA: 48.6 minutes
+Progress: 28500/32580 (87.5%) ETA: 47.5 minutes
+Progress: 28600/32580 (87.8%) ETA: 46.3 minutes
+Progress: 28700/32580 (88.1%) ETA: 45.2 minutes
+Progress: 28800/32580 (88.4%) ETA: 44.0 minutes
+Progress: 28900/32580 (88.7%) ETA: 42.8 minutes
+Progress: 29000/32580 (89.0%) ETA: 41.7 minutes
+Progress: 29100/32580 (89.3%) ETA: 40.5 minutes
+Progress: 29200/32580 (89.6%) ETA: 39.3 minutes
+Progress: 29300/32580 (89.9%) ETA: 38.2 minutes
+Progress: 29400/32580 (90.2%) ETA: 37.0 minutes
+Progress: 29500/32580 (90.5%) ETA: 35.9 minutes
+Progress: 29600/32580 (90.9%) ETA: 34.7 minutes
+Progress: 29700/32580 (91.2%) ETA: 33.5 minutes
+Progress: 29800/32580 (91.5%) ETA: 32.3 minutes
+Progress: 29900/32580 (91.8%) ETA: 31.2 minutes
+Progress: 30000/32580 (92.1%) ETA: 30.0 minutes
+Progress: 30100/32580 (92.4%) ETA: 28.8 minutes
+Progress: 30200/32580 (92.7%) ETA: 27.7 minutes
+Progress: 30300/32580 (93.0%) ETA: 26.5 minutes
+Progress: 30400/32580 (93.3%) ETA: 25.4 minutes
+Progress: 30500/32580 (93.6%) ETA: 24.2 minutes
+Progress: 30600/32580 (93.9%) ETA: 23.0 minutes
+Progress: 30700/32580 (94.2%) ETA: 21.9 minutes
+Progress: 30800/32580 (94.5%) ETA: 20.7 minutes
+Progress: 30900/32580 (94.8%) ETA: 19.6 minutes
+Progress: 31000/32580 (95.2%) ETA: 18.4 minutes
+Progress: 31100/32580 (95.5%) ETA: 17.2 minutes
+Progress: 31200/32580 (95.8%) ETA: 16.1 minutes
+Progress: 31300/32580 (96.1%) ETA: 14.9 minutes
+Progress: 31400/32580 (96.4%) ETA: 13.7 minutes
+Progress: 31500/32580 (96.7%) ETA: 12.6 minutes
+Progress: 31600/32580 (97.0%) ETA: 11.4 minutes
+Progress: 31700/32580 (97.3%) ETA: 10.2 minutes
+Progress: 31800/32580 (97.6%) ETA: 9.1 minutes
+Progress: 31900/32580 (97.9%) ETA: 7.9 minutes
+Progress: 32000/32580 (98.2%) ETA: 6.8 minutes
+Progress: 32100/32580 (98.5%) ETA: 5.6 minutes
+Progress: 32200/32580 (98.8%) ETA: 4.4 minutes
+Progress: 32300/32580 (99.1%) ETA: 3.3 minutes
+Progress: 32400/32580 (99.4%) ETA: 2.1 minutes
+Progress: 32500/32580 (99.8%) ETA: 0.9 minutes
+Progress: 32580/32580 (100.0%) ETA: 0.0 minutes
+
+ Completed 32580 evaluations in 380.0 minutes
+
+================================================================================
+FALSE-FLAG RESULTS - GNN 30/70 MIX (PARTIAL 30/70)
+================================================================================
+
+ Top-1 Analysis:
+  Actual attacker: 194/32580 (0.6%)
+  Mimicked APT: 411/32580 (1.3%)
+  Both: 0/32580 (0.0%)
+  Neither: 31975/32580 (98.1%)
+   Deception: 1.3% |  Detection: 0.6%
+  ⚖ Net Advantage: +0.7%
+
+ Top-5 Analysis:
+  Actual attacker: 919/32580 (2.8%)
+  Mimicked APT: 1951/32580 (6.0%)
+  Both: 44/32580 (0.1%)
+  Neither: 29754/32580 (91.3%)
+   Deception: 6.0% |  Detection: 2.8%
+  ⚖ Net Advantage: +3.2%
+
+ Top-10 Analysis:
+  Actual attacker: 1891/32580 (5.8%)
+  Mimicked APT: 3507/32580 (10.8%)
+  Both: 187/32580 (0.6%)
+  Neither: 27369/32580 (84.0%)
+   Deception: 10.8% |  Detection: 5.8%
+  ⚖ Net Advantage: +5.0%
+
+ Top-20 Analysis:
+  Actual attacker: 3789/32580 (11.6%)
+  Mimicked APT: 6108/32580 (18.7%)
+  Both: 665/32580 (2.0%)
+  Neither: 23348/32580 (71.7%)
+   Deception: 18.7% |  Detection: 11.6%
+  ⚖ Net Advantage: +7.1%
+
+ CREATING FALSE-FLAG DECEPTION HEATMAP (GNN 30/70, CONTINUOUS)...
+ Saved: false_flag_deception_matrix_gnn_30_70_continuous.png
+
+ GNN 30/70 FALSE-FLAG EVALUATION COMPLETE!
+Saved: false_flag_deception_matrix_gnn_30_70.png
+
+==================================================
+RESOURCE USAGE REPORT../2.GNN/False_flag.py
+==================================================
+Execution Time: 69838.84 seconds
+Memory Usage: -27.91 MB
+Current Memory: 13.17 MB
+CPU Usage: 0.2%
+System CPU: 100.0%
