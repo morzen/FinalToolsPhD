@@ -22,24 +22,15 @@ def create_apt_profiles_with_names(df_encoded, name_mapping):
                 'encoded_id': apt_encoded,
                 'techniques': set(),
                 'software': set(),
-                'capec': set(),
-                'cwe': set(),
-                'cve': set(),
-                'pulse': set()
+                'cve': set()
             }
         
         if row['techniques_str'] != -1:
             profiles[apt_name]['techniques'].add(row['techniques_str'])
         if row['software_str'] != -1:
             profiles[apt_name]['software'].add(row['software_str'])
-        if row['CAPEC_ID'] != -1:
-            profiles[apt_name]['capec'].add(row['CAPEC_ID'])
-        if row['CWE_ID'] != -1:
-            profiles[apt_name]['cwe'].add(row['CWE_ID'])
         if row['CVE_ID'] != -1:
             profiles[apt_name]['cve'].add(row['CVE_ID'])
-        if row['Pulse_ID'] != -1:
-            profiles[apt_name]['pulse'].add(row['Pulse_ID'])
     
     return profiles
 
@@ -53,10 +44,7 @@ def sanitize_evidence(evidence, df_mapping):
     column_mapping = {
         'techniques_str': ('techniques_Origin', 'techniques_Encoded'),
         'software_str': ('software_Origin', 'software_Encoded'),
-        'CAPEC_ID': ('CAPEC_ID_Origin', 'CAPEC_ID_Encoded'),
-        'CWE_ID': ('CWE_ID_Origin', 'CWE_ID_Encoded'),
-        'CVE_ID': ('CVE_ID_Origin', 'CVE_ID_Encoded'),
-        'Pulse_ID': ('Pulse_ID_Origin', 'Pulse_ID_Encoded')
+        'CVE_ID': ('CVE_ID_Origin', 'CVE_ID_Encoded')
     }
     
     for evidence_key, (origin_col, _) in column_mapping.items():
@@ -94,11 +82,8 @@ def translate_to_encoded(evidence, df_mapping):
     
     column_mapping = {
         'techniques_str': ('techniques_Encoded', 'techniques'),
-        'software_str': ('software_Encoded', 'software'), 
-        'CAPEC_ID': ('CAPEC_ID_Encoded', 'capec'),
-        'CWE_ID': ('CWE_ID_Encoded', 'cwe'),
-        'CVE_ID': ('CVE_ID_Encoded', 'cve'),
-        'Pulse_ID': ('Pulse_ID_Encoded', 'pulse')
+        'software_str': ('software_Encoded', 'software'),
+        'CVE_ID': ('CVE_ID_Encoded', 'cve')
     }
     
     for evidence_key, (encoded_col, output_key) in column_mapping.items():
@@ -261,10 +246,7 @@ def evaluate_profile_division(feature_weights, apt_profiles, apt_name_dict, df_m
         
         for feature_type, evidence_key in [('techniques', 'techniques_str'),
                                          ('software', 'software_str'),
-                                         ('capec', 'CAPEC_ID'),
-                                         ('cwe', 'CWE_ID'),
-                                         ('cve', 'CVE_ID'),
-                                         ('pulse', 'Pulse_ID')]:
+                                         ('cve', 'CVE_ID')]:
             
             if feature_type in target_data and target_data[feature_type]:
                 feature_list = target_data[feature_type].copy()
@@ -279,18 +261,10 @@ def evaluate_profile_division(feature_weights, apt_profiles, apt_name_dict, df_m
                 elif feature_type == 'software':
                     mapping = dict(zip(df_mapping['software_Encoded'], df_mapping['software_Origin']))
                     divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
-                elif feature_type == 'capec':
-                    mapping = dict(zip(df_mapping['CAPEC_ID_Encoded'], df_mapping['CAPEC_ID_Origin']))
-                    divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
-                elif feature_type == 'cwe':
-                    mapping = dict(zip(df_mapping['CWE_ID_Encoded'], df_mapping['CWE_ID_Origin']))
-                    divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
                 elif feature_type == 'cve':
                     mapping = dict(zip(df_mapping['CVE_ID_Encoded'], df_mapping['CVE_ID_Origin']))
                     divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
-                elif feature_type == 'pulse':
-                    mapping = dict(zip(df_mapping['Pulse_ID_Encoded'], df_mapping['Pulse_ID_Origin']))
-                    divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
+                
         
         # Process the divided evidence
         clean_evidence = sanitize_evidence(divided_evidence, df_mapping)
@@ -335,10 +309,7 @@ def hybrid_query(evidence_forhybrid):
     key_mapping = {
         'techniques' : 'techniques_str',
         'software' : 'software_str',
-        'capec' : 'CAPEC_ID',
-        'cwe' : 'CWE_ID',
-        'cve' : 'CVE_ID',
-        'pulse' : 'Pulse_ID'
+        'cve' : 'CVE_ID'
     }
     
     # Replace keys using mapping
@@ -398,7 +369,7 @@ def main():
     # Convert sets to lists and add counts
     for apt_name in apt_profiles:
         profile = apt_profiles[apt_name]
-        for key in ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']:
+        for key in ['techniques', 'software', 'cve']:
             profile[key] = list(profile[key])
             profile[f'{key}_count'] = len(profile[key])
 
@@ -408,10 +379,7 @@ def main():
     feature_weights = {
         'techniques': 1.5,
         'software': 1.3,
-        'capec': 1.0,
-        'cwe': 1.0,
-        'cve': 0.8,
-        'pulse': 0.7
+        'cve': 0.8
     }
 
     # Load evidence from query_input.json
@@ -423,69 +391,65 @@ def main():
         evidence = {
             'techniques_str': evidence_data.get('techniques', []),
             'software_str': evidence_data.get('software', []),
-            'CAPEC_ID': evidence_data.get('capec', []),
-            'CWE_ID': evidence_data.get('cwe', []),
-            'CVE_ID': evidence_data.get('cve', []),
-            'Pulse_ID': evidence_data.get('pulse', [])
+            'CVE_ID': evidence_data.get('cve', [])
         }
         print("Successfully loaded evidence from query_input.json")
         print(f"Found: {len(evidence['techniques_str'])} techniques, {len(evidence['software_str'])} software, "
-              f"{len(evidence['CAPEC_ID'])} capec, {len(evidence['CWE_ID'])} cwe, "
-              f"{len(evidence['CVE_ID'])} cve, {len(evidence['Pulse_ID'])} pulse")
+              f"{len(evidence['CVE_ID'])} cve")
     except FileNotFoundError:
         print("Warning: query_input.json not found, using default evidence")
-        evidence = {
-            'techniques_str': [
-                'T0865', 'T1001.003', 'T1005', 'T1008', 'T1010', 'T1012', 'T1016', 
-                'T1021.001', 'T1021.002', 'T1021.004', 'T1027.002', 'T1027.007', 
-                'T1027.013', 'T1033', 'T1036.003', 'T1036.004', 'T1036.005', 
-                'T1036.008', 'T1041', 'T1046', 'T1047', 'T1048.003', 'T1049', 
-                'T1053.005', 'T1055.001', 'T1056.001', 'T1057', 'T1059.001', 
-                'T1059.003', 'T1059.005', 'T1070', 'T1070.003', 'T1070.004', 
-                'T1070.006', 'T1071.001', 'T1074.001', 'T1078', 'T1082', 'T1083', 
-                'T1087.002', 'T1090.001', 'T1090.002', 'T1098', 'T1102.002', 
-                'T1104', 'T1105', 'T1106', 'T1110.003', 'T1124', 'T1132.001', 
-                'T1134.002', 'T1140', 'T1189', 'T1202', 'T1203', 'T1204.001', 
-                'T1204.002', 'T1218', 'T1218.005', 'T1218.010', 'T1218.011', 
-                'T1220', 'T1221', 'T1485', 'T1489', 'T1491.001', 'T1497.001', 
-                'T1497.003', 'T1505.004', 'T1529', 'T1534', 'T1542.003', 
-                'T1543.003', 'T1547.001', 'T1547.009', 'T1553.002', 'T1557.001', 
-                'T1560', 'T1560.001', 'T1560.002', 'T1560.003', 'T1561.001', 
-                'T1561.002', 'T1562.001', 'T1562.004', 'T1564.001', 'T1566.001', 
-                'T1566.002', 'T1566.003', 'T1567.002', 'T1571', 'T1573.001', 
-                'T1574.002', 'T1574.013', 'T1583.001', 'T1583.004', 'T1583.006', 
-                'T1584.001', 'T1584.004', 'T1585.001', 'T1585.002', 'T1587.001', 
-                'T1587.002', 'T1588.002', 'T1588.003', 'T1588.004', 'T1589.002', 
-                'T1591', 'T1591.004', 'T1593.001', 'T1608.001', 'T1608.002', 
-                'T1614.001', 'T1620', 'T1622', 'T1656'
-            ],
-            'software_str': [
-                'S0181', 'S0239', 'S0245', 'S0246', 'S0586', 'S0238', 'S0498', 
-                'S0520', 'S0567', 'S0665', 'S0694', 'S0376', 'S0431', 'S0180', 
-                'S0241', 'S0103', 'S0271', 'S0366', 'S0678', 'S0263', 'S0347', 
-                'S0497', 'S0584', 'S0593', 'S0364', 'S0174', 'S0108'
-            ],
-            'CAPEC_ID': [
-                'CAPEC-204', 'CAPEC-37', 'CAPEC-545', 'CAPEC-647', 'CAPEC-309', 
-                'CAPEC-561', 'CAPEC-577', 'CAPEC-165', 'CAPEC-504', 'CAPEC-543', 
-                'CAPEC-616', 'CAPEC-300', 'CAPEC-568', 'CAPEC-573', 'CAPEC-268', 
-                'CAPEC-560', 'CAPEC-70', 'CAPEC-312', 'CAPEC-313', 'CAPEC-580', 
-                'CAPEC-127', 'CAPEC-497', 'CAPEC-465', 'CAPEC-565', 'CAPEC-295', 
-                'CAPEC-196', 'CAPEC-698', 'CAPEC-163', 'CAPEC-552', 'CAPEC-478', 
-                'CAPEC-132', 'CAPEC-206', 'CAPEC-473', 'CAPEC-68', 'CAPEC-578', 
-                'CAPEC-641', 'CAPEC-640', 'CAPEC-542'
-            ],
-            'CWE_ID': [
-                'CWE-524', 'CWE-311', 'CWE-1258', 'CWE-226', 'CWE-312', 'CWE-318', 
-                'CWE-1278', 'CWE-285', 'CWE-200', 'CWE-522', 'CWE-294', 'CWE-521', 
-                'CWE-1021', 'CWE-117', 'CWE-307', 'CWE-798', 'CWE-204', 'CWE-208', 
-                'CWE-425', 'CWE-288', 'CWE-732', 'CWE-276', 'CWE-693', 'CWE-441', 
-                'CWE-384', 'CWE-664', 'CWE-829', 'CWE-451', 'CWE-284', 'CWE-59', 
-                'CWE-20', 'CWE-327', 'CWE-290', 'CWE-325', 'CWE-706', 'CWE-114'
-            ],
-            'CVE_ID': [],  # No CVE data provided in the original
-            'Pulse_ID': []  # No Pulse data provided in the original
-        }
+        # evidence = {
+        #     'techniques_str': [
+        #         'T0865', 'T1001.003', 'T1005', 'T1008', 'T1010', 'T1012', 'T1016', 
+        #         'T1021.001', 'T1021.002', 'T1021.004', 'T1027.002', 'T1027.007', 
+        #         'T1027.013', 'T1033', 'T1036.003', 'T1036.004', 'T1036.005', 
+        #         'T1036.008', 'T1041', 'T1046', 'T1047', 'T1048.003', 'T1049', 
+        #         'T1053.005', 'T1055.001', 'T1056.001', 'T1057', 'T1059.001', 
+        #         'T1059.003', 'T1059.005', 'T1070', 'T1070.003', 'T1070.004', 
+        #         'T1070.006', 'T1071.001', 'T1074.001', 'T1078', 'T1082', 'T1083', 
+        #         'T1087.002', 'T1090.001', 'T1090.002', 'T1098', 'T1102.002', 
+        #         'T1104', 'T1105', 'T1106', 'T1110.003', 'T1124', 'T1132.001', 
+        #         'T1134.002', 'T1140', 'T1189', 'T1202', 'T1203', 'T1204.001', 
+        #         'T1204.002', 'T1218', 'T1218.005', 'T1218.010', 'T1218.011', 
+        #         'T1220', 'T1221', 'T1485', 'T1489', 'T1491.001', 'T1497.001', 
+        #         'T1497.003', 'T1505.004', 'T1529', 'T1534', 'T1542.003', 
+        #         'T1543.003', 'T1547.001', 'T1547.009', 'T1553.002', 'T1557.001', 
+        #         'T1560', 'T1560.001', 'T1560.002', 'T1560.003', 'T1561.001', 
+        #         'T1561.002', 'T1562.001', 'T1562.004', 'T1564.001', 'T1566.001', 
+        #         'T1566.002', 'T1566.003', 'T1567.002', 'T1571', 'T1573.001', 
+        #         'T1574.002', 'T1574.013', 'T1583.001', 'T1583.004', 'T1583.006', 
+        #         'T1584.001', 'T1584.004', 'T1585.001', 'T1585.002', 'T1587.001', 
+        #         'T1587.002', 'T1588.002', 'T1588.003', 'T1588.004', 'T1589.002', 
+        #         'T1591', 'T1591.004', 'T1593.001', 'T1608.001', 'T1608.002', 
+        #         'T1614.001', 'T1620', 'T1622', 'T1656'
+        #     ],
+        #     'software_str': [
+        #         'S0181', 'S0239', 'S0245', 'S0246', 'S0586', 'S0238', 'S0498', 
+        #         'S0520', 'S0567', 'S0665', 'S0694', 'S0376', 'S0431', 'S0180', 
+        #         'S0241', 'S0103', 'S0271', 'S0366', 'S0678', 'S0263', 'S0347', 
+        #         'S0497', 'S0584', 'S0593', 'S0364', 'S0174', 'S0108'
+        #     ],
+        #     'CAPEC_ID': [
+        #         'CAPEC-204', 'CAPEC-37', 'CAPEC-545', 'CAPEC-647', 'CAPEC-309', 
+        #         'CAPEC-561', 'CAPEC-577', 'CAPEC-165', 'CAPEC-504', 'CAPEC-543', 
+        #         'CAPEC-616', 'CAPEC-300', 'CAPEC-568', 'CAPEC-573', 'CAPEC-268', 
+        #         'CAPEC-560', 'CAPEC-70', 'CAPEC-312', 'CAPEC-313', 'CAPEC-580', 
+        #         'CAPEC-127', 'CAPEC-497', 'CAPEC-465', 'CAPEC-565', 'CAPEC-295', 
+        #         'CAPEC-196', 'CAPEC-698', 'CAPEC-163', 'CAPEC-552', 'CAPEC-478', 
+        #         'CAPEC-132', 'CAPEC-206', 'CAPEC-473', 'CAPEC-68', 'CAPEC-578', 
+        #         'CAPEC-641', 'CAPEC-640', 'CAPEC-542'
+        #     ],
+        #     'CWE_ID': [
+        #         'CWE-524', 'CWE-311', 'CWE-1258', 'CWE-226', 'CWE-312', 'CWE-318', 
+        #         'CWE-1278', 'CWE-285', 'CWE-200', 'CWE-522', 'CWE-294', 'CWE-521', 
+        #         'CWE-1021', 'CWE-117', 'CWE-307', 'CWE-798', 'CWE-204', 'CWE-208', 
+        #         'CWE-425', 'CWE-288', 'CWE-732', 'CWE-276', 'CWE-693', 'CWE-441', 
+        #         'CWE-384', 'CWE-664', 'CWE-829', 'CWE-451', 'CWE-284', 'CWE-59', 
+        #         'CWE-20', 'CWE-327', 'CWE-290', 'CWE-325', 'CWE-706', 'CWE-114'
+        #     ],
+        #     'CVE_ID': [],  # No CVE data provided in the original
+        #     'Pulse_ID': []  # No Pulse data provided in the original
+        # }
     except json.JSONDecodeError:
         print("Error: query_input.json contains invalid JSON")
         return   
@@ -504,7 +468,7 @@ def main():
     # Format and print results
     print("\nAPT Ranking using Jaccard Similarity:")
     print("="*110)
-    print(f"{'Rank':<5} | {'APT':<30} | {'Encoded ID':<10} | {'Score':<8} | {'Techniques':<10} | {'Software':<8} | {'CAPEC':<6} | {'CWE':<4} | {'CVE':<4} | {'Pulse':<5}")
+    print(f"{'Rank':<5} | {'APT':<30} | {'Encoded ID':<10} | {'Score':<8} | {'Techniques':<10} | {'Software':<8} | {'CVE':<4}")
     print("-"*110)
 
     for rank, (apt_name, score) in enumerate(ranked_results, 1):
@@ -512,15 +476,12 @@ def main():
         common_features = {
             'techniques': len(set(encoded_evidence.get('techniques', [])) & set(apt_data['techniques'])),
             'software': len(set(encoded_evidence.get('software', [])) & set(apt_data['software'])),
-            'capec': len(set(encoded_evidence.get('capec', [])) & set(apt_data['capec'])),
-            'cwe': len(set(encoded_evidence.get('cwe', [])) & set(apt_data['cwe'])),
-            'cve': len(set(encoded_evidence.get('cve', [])) & set(apt_data['cve'])),
-            'pulse': len(set(encoded_evidence.get('pulse', [])) & set(apt_data['pulse']))
+            'cve': len(set(encoded_evidence.get('cve', [])) & set(apt_data['cve']))
         }
         
         # Truncate long APT names to fit column width
         display_name = (apt_name[:27] + '..') if len(apt_name) > 29 else apt_name
-        print(f"{rank:<5} | {display_name:<30} | {apt_data['encoded_id']:<10} | {score:.4f} | {common_features['techniques']:<10} | {common_features['software']:<8} | {common_features['capec']:<6} | {common_features['cwe']:<4} | {common_features['cve']:<4} | {common_features['pulse']:<5}")
+        print(f"{rank:<5} | {display_name:<30} | {apt_data['encoded_id']:<10} | {score:.4f} | {common_features['techniques']:<10} | {common_features['software']:<8} | {common_features['cve']:<4} ")
 
 
     # Calculate the full similarity matrix

@@ -37,18 +37,9 @@ class EfficientXGBoostPredictor:
         # Software similarity  
         if features1[1] == features2[1] and features1[1] != -1:
             overlap_score += 0.5
-        # Capec similarity
-        if features1[2] == features2[2] and features1[2] != -1:
-            overlap_score += 0.4
-        # CWE similarity
-        if features1[3] == features2[3] and features1[3] != -1:
-            overlap_score += 0.3
         # CVE similarity
-        if features1[4] == features2[4] and features1[4] != -1:
+        if features1[2] == features2[2] and features1[2] != -1:
             overlap_score += 0.2
-        # Pulse similarity
-        if features1[5] == features2[5] and features1[5] != -1:
-            overlap_score += 0.1
         return overlap_score
     
     def find_similar_apts(self, features, top_k=5):
@@ -78,10 +69,7 @@ class EfficientQueryModel:
         """Convert evidence to binary vector using feature metadata"""
         techniques = evidence.get('techniques', [])
         software = evidence.get('software', [])
-        capec = evidence.get('capec', [])
-        cwe = evidence.get('cwe', [])
         cve = evidence.get('cve', [])
-        pulse = evidence.get('pulse', [])
         
         vector = np.zeros(feature_metadata['pulse_offset'] + 
                         len(feature_metadata['all_pulse']), dtype=np.float32)
@@ -97,24 +85,9 @@ class EfficientQueryModel:
                 idx = feature_metadata['all_software'].index(s) + feature_metadata['software_offset']
                 vector[idx] = 1.0
         
-        for c in capec:
-            if c in feature_metadata['all_capec']:
-                idx = feature_metadata['all_capec'].index(c) + feature_metadata['capec_offset']
-                vector[idx] = 1.0
-        
-        for w in cwe:
-            if w in feature_metadata['all_cwe']:
-                idx = feature_metadata['all_cwe'].index(w) + feature_metadata['cwe_offset']
-                vector[idx] = 1.0
-        
         for v in cve:
             if v in feature_metadata['all_cve']:
                 idx = feature_metadata['all_cve'].index(v) + feature_metadata['cve_offset']
-                vector[idx] = 1.0
-        
-        for p in pulse:
-            if p in feature_metadata['all_pulse']:
-                idx = feature_metadata['all_pulse'].index(p) + feature_metadata['pulse_offset']
                 vector[idx] = 1.0
         
         return vector
@@ -123,8 +96,7 @@ class EfficientQueryModel:
         """Get APT profile for similarity calculation"""
         if apt_id in self.apt_features:
             return self.apt_features[apt_id]
-        return {'common_techniques': [], 'common_software': [], 'common_capec': [],
-                'common_cwe': [], 'common_cve': [], 'common_pulse': [], 'count': 0}
+        return {'common_techniques': [], 'common_software': [], 'common_cve': [], 'count': 0}
 
 def convert_evidence_to_encoded(evidence, mapping_file):
     """Convert human-readable evidence to encoded IDs using the mapping file"""
@@ -133,11 +105,8 @@ def convert_evidence_to_encoded(evidence, mapping_file):
     
     # Create mapping dictionaries
     technique_mapping = {}
-    software_mapping = {} 
-    capec_mapping = {}
-    cwe_mapping = {}
+    software_mapping = {}
     cve_mapping = {}
-    pulse_mapping = {}
     
     for _, row in df_mapping.iterrows():
         # Technique mapping
@@ -148,34 +117,19 @@ def convert_evidence_to_encoded(evidence, mapping_file):
         if pd.notna(row['software_Origin']) and pd.notna(row['software_Encoded']):
             if row['software_Origin'] not in software_mapping:
                 software_mapping[row['software_Origin']] = row['software_Encoded']
-        # Capec mapping
-        if pd.notna(row['CAPEC_ID_Origin']) and pd.notna(row['CAPEC_ID_Encoded']):
-            if row['CAPEC_ID_Origin'] not in capec_mapping:
-                capec_mapping[row['CAPEC_ID_Origin']] = row['CAPEC_ID_Encoded']
-        # CWE mapping
-        if pd.notna(row['CWE_ID_Origin']) and pd.notna(row['CWE_ID_Encoded']):
-            if row['CWE_ID_Origin'] not in cwe_mapping:
-                cwe_mapping[row['CWE_ID_Origin']] = row['CWE_ID_Encoded']
         # CVE mapping
         if pd.notna(row['CVE_ID_Origin']) and pd.notna(row['CVE_ID_Encoded']):
             if row['CVE_ID_Origin'] not in cve_mapping:
                 cve_mapping[row['CVE_ID_Origin']] = row['CVE_ID_Encoded']
-        # Pulse mapping
-        if pd.notna(row['Pulse_ID_Origin']) and pd.notna(row['Pulse_ID_Encoded']):
-            if row['Pulse_ID_Origin'] not in pulse_mapping:
-                pulse_mapping[row['Pulse_ID_Origin']] = row['Pulse_ID_Encoded']
     
     print(f" Mappings loaded: {len(technique_mapping)} techniques, {len(software_mapping)} software, "
-          f"{len(capec_mapping)} capec, {len(cwe_mapping)} cwe, {len(cve_mapping)} cve, {len(pulse_mapping)} pulse")
+          f"{len(cve_mapping)} cve")
     
     # Convert evidence
     encoded_evidence = {
         'techniques': [],
         'software': [],
-        'capec': [],
-        'cwe': [],
-        'cve': [],
-        'pulse': []
+        'cve': []
     }
     
     for technique in evidence.get('techniques', []):
@@ -190,37 +144,16 @@ def convert_evidence_to_encoded(evidence, mapping_file):
         else:
             print(f"⚠  Warning: Software '{software}' not found in mapping")
     
-    for capec in evidence.get('capec', []):
-        if capec in capec_mapping:
-            encoded_evidence['capec'].append(capec_mapping[capec])
-        else:
-            print(f"⚠  Warning: CAPEC '{capec}' not found in mapping")
-    
-    for cwe in evidence.get('cwe', []):
-        if cwe in cwe_mapping:
-            encoded_evidence['cwe'].append(cwe_mapping[cwe])
-        else:
-            print(f"⚠  Warning: CWE '{cwe}' not found in mapping")
-    
     for cve in evidence.get('cve', []):
         if cve in cve_mapping:
             encoded_evidence['cve'].append(cve_mapping[cve])
         else:
             print(f"⚠  Warning: CVE '{cve}' not found in mapping")
     
-    for pulse in evidence.get('pulse', []):
-        if pulse in pulse_mapping:
-            encoded_evidence['pulse'].append(pulse_mapping[pulse])
-        else:
-            print(f"⚠  Warning: Pulse '{pulse}' not found in mapping")
-    
     print(f"\n CONVERSION RESULTS:")
     print(f"   Input techniques: {len(evidence.get('techniques', []))} items → Encoded: {len(encoded_evidence['techniques'])}")
     print(f"   Input software: {len(evidence.get('software', []))} items → Encoded: {len(encoded_evidence['software'])}")
-    print(f"   Input CAPEC: {len(evidence.get('capec', []))} items → Encoded: {len(encoded_evidence['capec'])}")
-    print(f"   Input CWE: {len(evidence.get('cwe', []))} items → Encoded: {len(encoded_evidence['cwe'])}")
     print(f"   Input CVE: {len(evidence.get('cve', []))} items → Encoded: {len(encoded_evidence['cve'])}")
-    print(f"   Input Pulse: {len(evidence.get('pulse', []))} items → Encoded: {len(encoded_evidence['pulse'])}")
     
     return encoded_evidence
 
@@ -234,10 +167,7 @@ def load_apt_profiles_from_data():
         profiles[apt_id] = {
             'techniques': set(apt_data['techniques_str'].unique()),
             'software': set(apt_data['software_str'].unique()),
-            'capec': set(apt_data['CAPEC_ID'].unique()),
-            'cwe': set(apt_data['CWE_ID'].unique()),
             'cve': set(apt_data['CVE_ID'].unique()),
-            'pulse': set(apt_data['Pulse_ID'].unique()),
             'total_features': len(apt_data)
         }
     print(f" Loaded profiles for {len(profiles)} APTs")
@@ -260,11 +190,8 @@ def normalize_similarities_by_profile(similarities, profiles, apt_ids, query_fea
         profile = profiles[apt_id]
         tech_matches = len(set(query_techniques) & profile['techniques'])
         soft_matches = len(set(query_software) & profile['software'])
-        capec_matches = len(set(query_capec) & profile['capec'])
-        cwe_matches = len(set(query_cwe) & profile['cwe'])
         cve_matches = len(set(query_cve) & profile['cve'])
-        pulse_matches = len(set(query_pulse) & profile['pulse'])
-        total_matches = tech_matches + soft_matches + capec_matches + cwe_matches + cve_matches + pulse_matches
+        total_matches = tech_matches + soft_matches + cve_matches
         
         if target_size > 0 and query_size > 0:
             size_ratio = min(query_size, target_size) / max(query_size, target_size)
@@ -326,19 +253,13 @@ def query_apt_similarity_efficient(evidence):
     # CREATE QUERY VECTOR
     techniques = evidence.get('techniques', [])
     software = evidence.get('software', [])
-    capec = evidence.get('capec', [])
-    cwe = evidence.get('cwe', [])
     cve = evidence.get('cve', [])
-    pulse = evidence.get('pulse', [])
     
     query_vector = EfficientQueryModel.create_query_vector_from_evidence(
         {
             'techniques': techniques,
             'software': software,
-            'capec': capec,
-            'cwe': cwe,
-            'cve': cve,
-            'pulse': pulse
+            'cve': cve
         },
         feature_metadata
     )

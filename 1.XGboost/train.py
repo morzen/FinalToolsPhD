@@ -26,7 +26,7 @@ class Config:
         'reg_lambda': 1.0,
         'reg_alpha': 0.1,
     }
-    FEATURE_COLUMNS = ['techniques_str', 'software_str', 'CAPEC_ID', 'CWE_ID', 'CVE_ID', 'Pulse_ID']
+    FEATURE_COLUMNS = ['techniques_str', 'software_str','CVE_ID']
     TARGET_COLUMN = 'APTname'
     TRAIN_TEST_SPLIT = 0.2
 
@@ -49,18 +49,12 @@ class XGBoostDataLoader:
         # Get all unique features (sorted for reproducibility)
         all_techniques = sorted(df['techniques_str'].unique())
         all_software = sorted(df['software_str'].unique())
-        all_capec = sorted(df['CAPEC_ID'].unique())
-        all_cwe = sorted(df['CWE_ID'].unique())
         all_cve = sorted(df['CVE_ID'].unique())
-        all_pulse = sorted(df['Pulse_ID'].unique())
 
         # Create feature-to-index mappings
         technique_to_idx = {t: i for i, t in enumerate(all_techniques)}
         software_to_idx = {s: i for i, s in enumerate(all_software)}
-        capec_to_idx = {c: i for i, c in enumerate(all_capec)}
-        cwe_to_idx = {w: i for i, w in enumerate(all_cwe)}
         cve_to_idx = {v: i for i, v in enumerate(all_cve)}
-        pulse_to_idx = {p: i for i, p in enumerate(all_pulse)}
 
         # Build a dictionary keyed by APT (using the original unique values, but later we will sort)
         apt_features = {}
@@ -69,29 +63,19 @@ class XGBoostDataLoader:
             apt_data = df[df['APTname'] == apt]
             apt_techniques = set(apt_data['techniques_str'].unique())
             apt_software = set(apt_data['software_str'].unique())
-            apt_capec = set(apt_data['CAPEC_ID'].unique())
-            apt_cwe = set(apt_data['CWE_ID'].unique())
             apt_cve = set(apt_data['CVE_ID'].unique())
-            apt_pulse = set(apt_data['Pulse_ID'].unique())
 
             techniques_vector = [1 if t in apt_techniques else 0 for t in all_techniques]
             software_vector = [1 if s in apt_software else 0 for s in all_software]
-            capec_vector = [1 if c in apt_capec else 0 for c in all_capec]
-            cwe_vector = [1 if w in apt_cwe else 0 for w in all_cwe]
             cve_vector = [1 if v in apt_cve else 0 for v in all_cve]
-            pulse_vector = [1 if p in apt_pulse else 0 for p in all_pulse]
 
-            combined_vector = (techniques_vector + software_vector +
-                               capec_vector + cwe_vector + cve_vector + pulse_vector)
+            combined_vector = (techniques_vector + software_vector + cve_vector )
 
             apt_features[apt] = {
                 'binary_vector': combined_vector,
                 'techniques': apt_techniques,
                 'software': apt_software,
-                'capec': apt_capec,
-                'cwe': apt_cwe,
                 'cve': apt_cve,
-                'pulse': apt_pulse,
                 'count': len(apt_data)
             }
 
@@ -113,40 +97,27 @@ class XGBoostDataLoader:
         techniques_offset = 0
         software_offset = len(all_techniques)
         capec_offset = software_offset + len(all_software)
-        cwe_offset = capec_offset + len(all_capec)
-        cve_offset = cwe_offset + len(all_cwe)
-        pulse_offset = cve_offset + len(all_cve)
+        pulse_offset =  len(all_cve)
 
         feature_metadata = {
             'all_techniques': all_techniques,
             'all_software': all_software,
-            'all_capec': all_capec,
-            'all_cwe': all_cwe,
             'all_cve': all_cve,
-            'all_pulse': all_pulse,
             'techniques_offset': techniques_offset,
             'software_offset': software_offset,
             'capec_offset': capec_offset,
-            'cwe_offset': cwe_offset,
-            'cve_offset': cve_offset,
             'pulse_offset': pulse_offset,
             'feature_mapping': {
                 'techniques': technique_to_idx,
                 'software': software_to_idx,
-                'capec': capec_to_idx,
-                'cwe': cwe_to_idx,
-                'cve': cve_to_idx,
-                'pulse': pulse_to_idx
+                'cve': cve_to_idx
             }
         }
 
         print(f"\nTotal features breakdown:")
         print(f"  Techniques: {len(all_techniques)}")
         print(f"  Software: {len(all_software)}")
-        print(f"  CAPEC: {len(all_capec)}")
-        print(f"  CWE: {len(all_cwe)}")
         print(f"  CVE: {len(all_cve)}")
-        print(f"  Pulse: {len(all_pulse)}")
 
         return X, y, apt_features, feature_metadata
 
@@ -222,29 +193,11 @@ class EfficientXGBoostModel:
                 if s in soft_map:
                     idx = soft_map[s] + self.feature_metadata['software_offset']
                     vector[idx] = 1.0
-        if 'capec' in feature_mapping:
-            capec_map = feature_mapping['capec']
-            for c in capec:
-                if c in capec_map:
-                    idx = capec_map[c] + self.feature_metadata['capec_offset']
-                    vector[idx] = 1.0
-        if 'cwe' in feature_mapping:
-            cwe_map = feature_mapping['cwe']
-            for w in cwe:
-                if w in cwe_map:
-                    idx = cwe_map[w] + self.feature_metadata['cwe_offset']
-                    vector[idx] = 1.0
         if 'cve' in feature_mapping:
             cve_map = feature_mapping['cve']
             for v in cve:
                 if v in cve_map:
                     idx = cve_map[v] + self.feature_metadata['cve_offset']
-                    vector[idx] = 1.0
-        if 'pulse' in feature_mapping:
-            pulse_map = feature_mapping['pulse']
-            for p in pulse:
-                if p in pulse_map:
-                    idx = pulse_map[p] + self.feature_metadata['pulse_offset']
                     vector[idx] = 1.0
 
         return vector
@@ -293,10 +246,7 @@ def save_xgboost_model(model, X, y, apt_features, feature_metadata, filename=Con
             'feature_counts': {
                 'techniques': len(feature_metadata['all_techniques']),
                 'software': len(feature_metadata['all_software']),
-                'capec': len(feature_metadata['all_capec']),
-                'cwe': len(feature_metadata['all_cwe']),
-                'cve': len(feature_metadata['all_cve']),
-                'pulse': len(feature_metadata['all_pulse'])
+                'cve': len(feature_metadata['all_cve'])
             }
         }
     }
