@@ -96,42 +96,101 @@ def load_model_and_data(status):
         raise
 
 def load_mapping_and_profiles():
-    """Load mapping and profiles with error handling"""
+    """Load mapping and profiles with error handling.
+    Returns:
+        df_mapping: DataFrame with mapping from original to encoded IDs.
+        profiles: dict mapping APT ID (original) to a dict containing sets of
+                  encoded integers for each feature type.
+        apt_name_mapping: dict mapping encoded APT ID to original APT name.
+    """
     try:
         mapping_path = "../BaseData/comparison_Encoded_df.csv"
         encoded_path = "../BaseData/EncodedData.csv"
-        
+
         if not os.path.exists(mapping_path):
             raise FileNotFoundError(f"Mapping file not found: {mapping_path}")
         if not os.path.exists(encoded_path):
             raise FileNotFoundError(f"Encoded data file not found: {encoded_path}")
-        
+
         df_mapping = pd.read_csv(mapping_path)
         df_encoded = pd.read_csv(encoded_path)
-        
-        # Build APT profiles (original IDs)
+
+        # Build encoders for each feature (original → encoded integer)
+        # Column names in mapping file
+        origin_cols = {
+            'techniques': 'techniques_Origin',
+            'software':   'software_Origin',
+            'capec':      'CAPEC_ID_Origin',
+            'cwe':        'CWE_ID_Origin',
+            'cve':        'CVE_ID_Origin',
+            'pulse':      'Pulse_ID_Origin'
+        }
+        encoded_cols = {
+            'techniques': 'techniques_Encoded',
+            'software':   'software_Encoded',
+            'capec':      'CAPEC_ID_Encoded',
+            'cwe':        'CWE_ID_Encoded',
+            'cve':        'CVE_ID_Encoded',
+            'pulse':      'Pulse_ID_Encoded'
+        }
+
+        encoders = {}
+        for feat, origin_col in origin_cols.items():
+            encoded_col = encoded_cols[feat]
+            if origin_col not in df_mapping.columns or encoded_col not in df_mapping.columns:
+                raise KeyError(f"Column {origin_col} or {encoded_col} not found in mapping file.")
+            # Build mapping from original string to encoded integer
+            origin_series = df_mapping[origin_col].astype(str)
+            encoded_series = df_mapping[encoded_col]
+            valid_mask = encoded_series.notna()
+            encoders[feat] = dict(zip(
+                origin_series[valid_mask],
+                encoded_series[valid_mask].astype(int)
+            ))
+
+        # Build APT profiles (using encoded integers)
         profiles = {}
         for apt_id in df_encoded['APTname'].unique():
             apt_data = df_encoded[df_encoded['APTname'] == apt_id]
             profiles[apt_id] = {
-                'techniques': set(apt_data['techniques_str'].dropna().unique()),
-                'software': set(apt_data['software_str'].dropna().unique()),
-                'capec': set(apt_data['CAPEC_ID'].dropna().unique()),
-                'cwe': set(apt_data['CWE_ID'].dropna().unique()),
-                'cve': set(apt_data['CVE_ID'].dropna().unique()),
-                'pulse': set(apt_data['Pulse_ID'].dropna().unique()),
+                'techniques': set(),
+                'software':   set(),
+                'capec':      set(),
+                'cwe':        set(),
+                'cve':        set(),
+                'pulse':      set(),
                 'total_features': len(apt_data)
             }
-        
+            # Fill each feature set using the corresponding encoder
+            for feat in ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']:
+                # Column name in encoded data
+                if feat == 'capec':
+                    src_col = 'CAPEC_ID'
+                elif feat == 'cwe':
+                    src_col = 'CWE_ID'
+                elif feat == 'cve':
+                    src_col = 'CVE_ID'
+                elif feat == 'pulse':
+                    src_col = 'Pulse_ID'
+                else:
+                    src_col = f'{feat}_str'   # techniques_str, software_str
+                values = apt_data[src_col].dropna().unique()
+                encoded_set = set()
+                for val in values:
+                    val_str = str(val).strip()
+                    if val_str and val_str in encoders[feat]:
+                        encoded_set.add(encoders[feat][val_str])
+                profiles[apt_id][feat] = encoded_set
+
         # APT name mapping
         apt_name_mapping = dict(zip(
             df_mapping['APTnameEncoded'],
             df_mapping['APTnameOrigin'].fillna(df_mapping['APTnameEncoded'])
         ))
-        
+
         print(f"✓ Loaded profiles for {len(profiles)} APTs")
         return df_mapping, profiles, apt_name_mapping
-    
+
     except Exception as e:
         print(f"✗ Error loading mapping/profiles: {e}")
         raise
