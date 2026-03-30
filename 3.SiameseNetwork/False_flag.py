@@ -159,7 +159,7 @@ def process_single_false_flag_siamese(args):
     """Process one attacker–mimicked pair."""
     (attacker_apt_id, mimicked_apt_id, model_state_dict, config,
      apt_embeddings, apt_ids, apt_name_mapping, profiles, 
-     apt_to_idx, partial, seed) = args
+     apt_to_idx, seed) = args
     
     rng = random.Random(seed)
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -181,21 +181,14 @@ def process_single_false_flag_siamese(args):
     attacker_profile = profiles[attacker_apt_id]
     mimicked_profile = profiles[mimicked_apt_id]
     
-    # Create false‑flag evidence (30/70 mix)
-    if partial:
-        full_mix = sample_mixed_features(attacker_profile, mimicked_profile, rng)
-        drop_idx = rng.randint(0, 5)
-        false_flag_features = full_mix.copy()
-        false_flag_features[drop_idx] = -1.0
-    else:
-        false_flag_features = sample_mixed_features(attacker_profile, mimicked_profile, rng)
+    # Create false‑flag evidence (30/70 mix) – NO feature dropping
+    false_flag_features = sample_mixed_features(attacker_profile, mimicked_profile, rng)
     
     # Generate query embedding
     query_emb = generate_query_embedding(model, false_flag_features, N_SAMPLES)
     
     # Compute cosine similarities with all APT embeddings
-    # apt_embeddings is already a torch tensor; move it to device
-    apt_emb_tensor = apt_embeddings.to(device)          # ← fixed line
+    apt_emb_tensor = apt_embeddings.to(device)
     similarities = torch.matmul(query_emb.unsqueeze(0), apt_emb_tensor.t()).squeeze().cpu().numpy()
     
     # Rank
@@ -209,7 +202,7 @@ def process_single_false_flag_siamese(args):
     
     attacker_name = apt_name_mapping.get(attacker_apt_id, f"APT{attacker_apt_id}")
     mimicked_name = apt_name_mapping.get(mimicked_apt_id, f"APT{mimicked_apt_id}")
-    key = f"{attacker_name}→{mimicked_name}" + ("_partial" if partial else "")
+    key = f"{attacker_name}→{mimicked_name}"
     
     return {
         'key': key,
@@ -223,12 +216,10 @@ def process_single_false_flag_siamese(args):
 # EVALUATION FUNCTION
 # ============================================================
 def evaluate_false_flag_attacks_siamese(model, apt_embeddings, apt_ids, apt_names,
-                                        apt_name_mapping, apt_to_idx, profiles,
-                                        partial=False):
-    """Run false‑flag evaluation for all attacker–mimicked pairs."""
-    scenario = "PARTIAL (drop one feature)" if partial else "FULL (30/70 mix)"
+                                        apt_name_mapping, apt_to_idx, profiles):
+    """Run false‑flag evaluation for all attacker–mimicked pairs (full 30/70 mix)."""
     print(f"\n{'='*80}")
-    print(f" SIAMESE FALSE-FLAG: {scenario}")
+    print(" SIAMESE FALSE-FLAG: FULL (30/70 mix)")
     print(f"{'='*80}")
     
     # Prepare arguments for each worker
@@ -254,7 +245,7 @@ def evaluate_false_flag_attacks_siamese(model, apt_embeddings, apt_ids, apt_name
         args_list.append((
             attacker_id, mimicked_id, model_state_dict, config,
             apt_embeddings, apt_ids, apt_name_mapping, profiles,
-            apt_to_idx, partial, i
+            apt_to_idx, i
         ))
     
     all_results = {}
@@ -280,9 +271,9 @@ def evaluate_false_flag_attacks_siamese(model, apt_embeddings, apt_ids, apt_name
     total_time = time.time() - start_time
     print(f"\n Completed {len(all_results):,} evals in {total_time/60:.1f} min")
     
-    # Print analysis (same format as XGBoost/GNN)
+    # Print analysis
     print("\n" + "=" * 80)
-    print(f"SIAMESE RESULTS - {scenario}")
+    print("SIAMESE RESULTS - FULL (30/70 mix)")
     print("=" * 80)
     
     for top_x in TOP_X_VALUES:
@@ -310,9 +301,9 @@ def evaluate_false_flag_attacks_siamese(model, apt_embeddings, apt_ids, apt_name
     return all_results
 
 # ============================================================
-# HEATMAP (identical to XGBoost/GNN)
+# HEATMAP
 # ============================================================
-def plot_false_flag_deception_siamese(results, apt_names, apt_ids, partial=False):
+def plot_false_flag_deception_siamese(results, apt_names, apt_ids):
     """Plot deception heatmap."""
     print("\n CREATING SIAMESE DECEPTION HEATMAP...")
     
@@ -321,11 +312,6 @@ def plot_false_flag_deception_siamese(results, apt_names, apt_ids, partial=False
     deception_matrix = np.zeros((n, n), dtype=float)
     
     for key, res in results.items():
-        if partial and "_partial" not in key:
-            continue
-        if not partial and "_partial" in key:
-            continue
-        
         try:
             attacker_name, mimicked_name = key.split("→")
             attacker_name = attacker_name.strip()
@@ -364,8 +350,7 @@ def plot_false_flag_deception_siamese(results, apt_names, apt_ids, partial=False
                 square=True,
                 cbar_kws={'label': 'Deception (Attacker Rank - Mimicked Rank)\nRed>0 Deception | Blue<0 Detection'})
     
-    scenario = "PARTIAL" if partial else "FULL"
-    plt.title(f'Siamese False-Flag Deception (30/70 Mix - {scenario})\nRows=Attacker | Columns=Mimicked', 
+    plt.title('Siamese False-Flag Deception (30/70 Mix)\nRows=Attacker | Columns=Mimicked', 
               fontsize=14, fontweight='bold', pad=20)
     plt.xlabel('Mimicked APT (70%)')
     plt.ylabel('Actual Attacker (30%)')
@@ -373,7 +358,7 @@ def plot_false_flag_deception_siamese(results, apt_names, apt_ids, partial=False
     plt.yticks(rotation=0, fontsize=8)
     plt.tight_layout()
     
-    output_path = f'false_flag_deception_matrix_siamese_30_70_{"partial" if partial else "full"}.png'
+    output_path = 'false_flag_deception_matrix_siamese_30_70_full.png'
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.show()
     print(f" Saved: {output_path}")
@@ -389,22 +374,13 @@ def main():
     model, apt_embeddings, apt_ids, apt_names, apt_name_mapping, apt_to_idx = load_model_and_embeddings()
     profiles = load_apt_profiles_from_data()
     
-    # FULL 30/70
+    # Run full evaluation (no partial)
     full_results = evaluate_false_flag_attacks_siamese(
-        model, apt_embeddings, apt_ids, apt_names, apt_name_mapping, apt_to_idx, profiles,
-        partial=False
+        model, apt_embeddings, apt_ids, apt_names, apt_name_mapping, apt_to_idx, profiles
     )
     
-    # PARTIAL (drop one feature)
-    partial_results = evaluate_false_flag_attacks_siamese(
-        model, apt_embeddings, apt_ids, apt_names, apt_name_mapping, apt_to_idx, profiles,
-        partial=True
-    )
-    
-    # Heatmap for full scenario
-    plot_false_flag_deception_siamese(full_results, apt_names, apt_ids, partial=False)
-    # Optional: heatmap for partial
-    # plot_false_flag_deception_siamese(partial_results, apt_names, apt_ids, partial=True)
+    # Plot heatmap
+    plot_false_flag_deception_siamese(full_results, apt_names, apt_ids)
     
     print("\n SIAMESE 30/70 FALSE-FLAG COMPLETE!")
     print(" Uses pre‑computed APT embeddings + model for query generation.")
