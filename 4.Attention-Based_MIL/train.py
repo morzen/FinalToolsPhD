@@ -78,10 +78,17 @@ class AttentionMILDataLoader:
         
         profiles = {}
         feature_types = ['technique', 'software', 'capec', 'cwe', 'cve', 'pulse']
+        missing_apts = []  # Collect missing encoded IDs
         
         for _, row in self.df_encoded.iterrows():
             apt_encoded = row['APTname']
-            apt_name = self.apt_name_dict.get(apt_encoded, f"Unknown_APT_{apt_encoded}")
+            
+            # Check if mapping exists
+            if apt_encoded not in self.apt_name_dict:
+                missing_apts.append(apt_encoded)
+                continue  # Skip this row for now; we'll raise error later
+            
+            apt_name = self.apt_name_dict[apt_encoded]
             
             if apt_name not in profiles:
                 profiles[apt_name] = {
@@ -102,6 +109,14 @@ class AttentionMILDataLoader:
             self._add_feature(profiles[apt_name], 'cve', row['CVE_ID'])
             self._add_feature(profiles[apt_name], 'pulse', row['Pulse_ID'])
         
+        # If any missing APTs were found, raise an error
+        if missing_apts:
+            print("\nERROR: The following encoded APT IDs are missing from the mapping dataframe:")
+            for apt_id in missing_apts:
+                print(f"  - {apt_id}")
+            print("\nPlease ensure the mapping file 'comparison_Encoded_df.csv' contains all APT IDs present in 'EncodedData.csv'.")
+            raise KeyError(f"Missing mapping for APT IDs: {missing_apts}")
+        
         # Convert sets to lists and add counts
         for apt_name in profiles:
             profile = profiles[apt_name]
@@ -112,7 +127,7 @@ class AttentionMILDataLoader:
         print(f"Created profiles for {len(profiles)} APTs")
         self._print_profile_statistics(profiles)
         
-        return profiles
+        return profiles 
     
     def _add_feature(self, profile, feature_name, value):
         """Add feature value if valid"""
