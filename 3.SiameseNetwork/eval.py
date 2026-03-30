@@ -13,30 +13,24 @@ from matplotlib.colors import LinearSegmentedColormap
 
 # ---------- FeatureEncoder (unchanged) ----------
 class FeatureEncoder(nn.Module):
-    def __init__(self, num_techniques, num_software, num_capec, num_cwe, num_cve, num_pulse, embed_dim=128):
+    def __init__(self, num_techniques, num_software, num_cve, embed_dim=128):
         super().__init__()
-        embed_per_feature = embed_dim // 6
+        embed_per_feature = embed_dim // 3
         self.tech_embed = nn.Embedding(num_techniques+1, embed_per_feature)
         self.soft_embed = nn.Embedding(num_software+1, embed_per_feature)
-        self.capec_embed = nn.Embedding(num_capec+1, embed_per_feature)
-        self.cwe_embed = nn.Embedding(num_cwe+1, embed_per_feature)
         self.cve_embed = nn.Embedding(num_cve+1, embed_per_feature)
-        self.pulse_embed = nn.Embedding(num_pulse+1, embed_per_feature)
-        total_embed_size = embed_per_feature * 6
+        total_embed_size = embed_per_feature * 3
         self.fc1 = nn.Linear(total_embed_size, 256)
         self.fc2 = nn.Linear(256, embed_dim)
         self.dropout = nn.Dropout(0.3)
         self.layer_norm = nn.LayerNorm(embed_dim)
         
     def forward(self, features):
-        tech, soft, capec, cwe, cve, pulse = features[:, 0], features[:, 1], features[:, 2], features[:, 3], features[:, 4], features[:, 5]
+        tech, soft, cve = features[:, 0], features[:, 1], features[:, 2]
         t_emb = self.tech_embed(tech.long() + 1)
         s_emb = self.soft_embed(soft.long() + 1)
-        ca_emb = self.capec_embed(capec.long() + 1)
-        cw_emb = self.cwe_embed(cwe.long() + 1)
         cv_emb = self.cve_embed(cve.long() + 1)
-        p_emb = self.pulse_embed(pulse.long() + 1)
-        x = torch.cat([t_emb, s_emb, ca_emb, cw_emb, cv_emb, p_emb], dim=-1)
+        x = torch.cat([t_emb, s_emb, cv_emb], dim=-1)
         x = F.relu(self.fc1(x))
         x = self.dropout(x)
         x = self.fc2(x)
@@ -55,10 +49,7 @@ def load_apt_profiles_from_data():
         profiles[int(apt_id)] = {
             'techniques': set(apt_data['techniques_str'].dropna().unique()),
             'software': set(apt_data['software_str'].dropna().unique()),
-            'capec': set(apt_data['CAPEC_ID'].dropna().unique()),
-            'cwe': set(apt_data['CWE_ID'].dropna().unique()),
             'cve': set(apt_data['CVE_ID'].dropna().unique()),
-            'pulse': set(apt_data['Pulse_ID'].dropna().unique()),
             'total_features': len(apt_data)
         }
     
@@ -68,17 +59,14 @@ def load_apt_profiles_from_data():
 def load_model_and_mapping():
     """Load Siamese model + name mapping + saved APT embeddings"""
     print(" LOADING SIAMESE MODEL...")
-    with open('6feat_apt_siamese_feature_model.pkl', 'rb') as f:
+    with open('3feat_apt_siamese_feature_model.pkl', 'rb') as f:
         data = pickle.load(f)
     
     config = data['model_config']
     model = FeatureEncoder(
         config['num_techniques'], 
-        config['num_software'], 
-        config['num_capec'],
-        config['num_cwe'],
+        config['num_software'],
         config['num_cve'],
-        config['num_pulse'],
         config['embedding_dim']
     )
     model.load_state_dict(data['model_state_dict'])
@@ -104,9 +92,9 @@ class SiameseSimilarityPredictor:
     
     def predict_similarity(self, features1, features2, n_samples=32):
         """Siamese cosine similarity - MODEL FORWARD PASS"""
-        if features1[0] == -1 and features1[1] == -1 and features1[2] == -1 and features1[3] == -1 and features1[4] == -1 and features1[5] == -1:
+        if features1[0] == -1 and features1[1] == -1 and features1[2] == -1 :
             return 0.0
-        if features2[0] == -1 and features2[1] == -1 and features2[2] == -1 and features2[3] == -1 and features2[4] == -1 and features2[5] == -1:
+        if features2[0] == -1 and features2[1] == -1 and features2[2] == -1 :
             return 0.0
         
         # Generate embeddings THROUGH MODEL
@@ -122,8 +110,8 @@ class SiameseSimilarityPredictor:
         vectors = []
         for _ in range(n_samples):
             # Sample single feature triplet
-            tech, soft, capec, cwe, cve, pulse = features
-            vectors.append([float(tech), float(soft), float(capec), float(cwe), float(cve), float(pulse)])
+            tech, soft, cve = features
+            vectors.append([float(tech), float(soft), float(cve)])
         
         vectors = torch.tensor(vectors, dtype=torch.float32)
         embeddings = self.model(vectors)
@@ -133,20 +121,14 @@ class SiameseSimilarityPredictor:
         """Generate embedding for a full APT profile by sampling multiple feature combinations."""
         techs = list(profile['techniques']) if profile['techniques'] else [-1]
         softs = list(profile['software']) if profile['software'] else [-1]
-        capecs = list(profile['capec']) if profile['capec'] else [-1]
-        cwes = list(profile['cwe']) if profile['cwe'] else [-1]
         cves = list(profile['cve']) if profile['cve'] else [-1]
-        pulses = list(profile['pulse']) if profile['pulse'] else [-1]
         
         vectors = []
         for _ in range(n_samples):
             tech = random.choice(techs)
             soft = random.choice(softs)
-            capec = random.choice(capecs)
-            cwe = random.choice(cwes)
             cve = random.choice(cves)
-            pulse = random.choice(pulses)
-            vectors.append([float(tech), float(soft), float(capec), float(cwe), float(cve), float(pulse)])
+            vectors.append([float(tech), float(soft), float(cve)])
         
         vectors = torch.tensor(vectors, dtype=torch.float32)
         embeddings = self.model(vectors)
@@ -168,11 +150,8 @@ def create_similarity_matrix_siamese(model, profiles, apt_name_mapping):
         profile = profiles[apt_id]
         tech = next(iter(profile['techniques'])) if profile['techniques'] else -1
         soft = next(iter(profile['software'])) if profile['software'] else -1
-        capec = next(iter(profile['capec'])) if profile['capec'] else -1
-        cwe = next(iter(profile['cwe'])) if profile['cwe'] else -1
         cve = next(iter(profile['cve'])) if profile['cve'] else -1
-        pulse = next(iter(profile['pulse'])) if profile['pulse'] else -1
-        X_apts.append([int(tech), int(soft), int(capec), int(cwe), int(cve), int(pulse)])
+        X_apts.append([int(tech), int(soft), int(cve)])
     
     # FULL similarity matrix
     n = len(apt_ids)
@@ -254,11 +233,8 @@ def evaluate_profile_division_siamese(model, divider=2):
         profile = profiles[apt_id]
         tech = next(iter(profile['techniques'])) if profile['techniques'] else -1
         soft = next(iter(profile['software'])) if profile['software'] else -1
-        capec = next(iter(profile['capec'])) if profile['capec'] else -1
-        cwe = next(iter(profile['cwe'])) if profile['cwe'] else -1
         cve = next(iter(profile['cve'])) if profile['cve'] else -1
-        pulse = next(iter(profile['pulse'])) if profile['pulse'] else -1
-        X_apts.append([int(tech), int(soft), int(capec), int(cwe), int(cve), int(pulse)])
+        X_apts.append([int(tech), int(soft), int(cve)])
     
     print(f"\n SIAMESE PROFILE DIVISION (divider={divider})")
     resultdict = {}
@@ -270,8 +246,8 @@ def evaluate_profile_division_siamese(model, divider=2):
         target_profile = profiles[target_apt_id]
         
         # EXACT SAME division logic as XGBoost (now includes all six features)
-        divided_evidence = {'techniques': [], 'software': [], 'capec': [], 'cwe': [], 'cve': [], 'pulse': []}
-        for feature_type, key in [('techniques', 'techniques'), ('software', 'software'), ('capec', 'capec'), ('cwe', 'cwe'), ('cve', 'cve'), ('pulse', 'pulse')]:
+        divided_evidence = {'techniques': [], 'software': [], 'cve': []}
+        for feature_type, key in [('techniques', 'techniques'), ('software', 'software'), ('cve', 'cve')]:
             features = list(target_profile[feature_type])
             if features:
                 random.shuffle(features)
@@ -281,11 +257,8 @@ def evaluate_profile_division_siamese(model, divider=2):
         # Query features (like XGBoost)
         tech = divided_evidence['techniques'][0] if divided_evidence['techniques'] else -1
         soft = divided_evidence['software'][0] if divided_evidence['software'] else -1
-        capec = divided_evidence['capec'][0] if divided_evidence['capec'] else -1
-        cwe = divided_evidence['cwe'][0] if divided_evidence['cwe'] else -1
         cve = divided_evidence['cve'][0] if divided_evidence['cve'] else -1
-        pulse = divided_evidence['pulse'][0] if divided_evidence['pulse'] else -1
-        query_features = [int(tech), int(soft), int(capec), int(cwe), int(cve), int(pulse)]
+        query_features = [int(tech), int(soft), int(cve)]
         
         # Rank all APTs
         similarities = [predictor.predict_similarity(query_features, apt_features) for apt_features in X_apts]
@@ -305,7 +278,7 @@ def load_encoded_data():
     """Load the original encoded features and labels from EncodedData.csv."""
     print(" LOADING ENCODED DATA FOR FULL PROFILE EVALUATION...")
     df = pd.read_csv("../BaseData/EncodedData.csv")
-    feature_columns = ['techniques_str', 'software_str', 'CAPEC_ID', 'CWE_ID', 'CVE_ID', 'Pulse_ID']
+    feature_columns = ['techniques_str', 'software_str', 'CVE_ID']
     X = df[feature_columns].values.astype(np.float32)
     y = df['APTname'].values.astype(int)
     print(f" Loaded {len(X)} rows, {len(np.unique(y))} APTs")
@@ -341,34 +314,25 @@ def evaluate_full_profile_queries_sampling(model, X, y, profiles, apt_name_mappi
         target_id = apt_ids_sorted[i]
         # Get all rows of this APT
         mask = (y_np == target_id)
-        apt_rows = X[mask]  # shape [num_rows, 6]
+        apt_rows = X[mask]  # shape [num_rows, 3]
 
         # Collect sets of non‑-1 values for each feature type
         tech_set = set(apt_rows[:, 0][apt_rows[:, 0] != -1])
         soft_set = set(apt_rows[:, 1][apt_rows[:, 1] != -1])
-        capec_set = set(apt_rows[:, 2][apt_rows[:, 2] != -1])
-        cwe_set   = set(apt_rows[:, 3][apt_rows[:, 3] != -1])
-        cve_set   = set(apt_rows[:, 4][apt_rows[:, 4] != -1])
-        pulse_set = set(apt_rows[:, 5][apt_rows[:, 5] != -1])
+        cve_set   = set(apt_rows[:, 2][apt_rows[:, 2] != -1])
 
         # If any set is empty, use [-1] (but this shouldn't happen for a full profile)
         techs = list(tech_set) if tech_set else [-1]
         softs = list(soft_set) if soft_set else [-1]
-        capecs = list(capec_set) if capec_set else [-1]
-        cwes   = list(cwe_set)   if cwe_set   else [-1]
         cves   = list(cve_set)   if cve_set   else [-1]
-        pulses = list(pulse_set) if pulse_set else [-1]
 
         # Generate n_samples random combinations and average their embeddings
         vectors = []
         for _ in range(n_samples):
             tech = random.choice(techs)
             soft = random.choice(softs)
-            capec = random.choice(capecs)
-            cwe = random.choice(cwes)
             cve = random.choice(cves)
-            pulse = random.choice(pulses)
-            vectors.append([tech, soft, capec, cwe, cve, pulse])
+            vectors.append([tech, soft, cve])
         vec_tensor = torch.FloatTensor(vectors).to(device)
         with torch.no_grad():
             embs = model(vec_tensor)  # [n_samples, embed_dim]

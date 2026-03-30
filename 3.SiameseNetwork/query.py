@@ -87,13 +87,7 @@ def load_model_and_data(status):
         raise
 
 def load_mapping_and_profiles():
-    """Load mapping and profiles with error handling.
-    Returns:
-        df_mapping: DataFrame with mapping from original to encoded IDs.
-        profiles: dict mapping APT ID (original) to a dict containing sets of
-                  encoded integers for each feature type.
-        apt_name_mapping: dict mapping encoded APT ID to original APT name.
-    """
+    """Load mapping and profiles with error handling (3‑feature version)."""
     try:
         mapping_path = "../BaseData/comparison_Encoded_df.csv"
         encoded_path = "../BaseData/EncodedData.csv"
@@ -106,23 +100,16 @@ def load_mapping_and_profiles():
         df_mapping = pd.read_csv(mapping_path)
         df_encoded = pd.read_csv(encoded_path)
 
-        # Build encoders for each feature (original → encoded integer)
-        # Column names in mapping file
+        # Define columns for 3 features
         origin_cols = {
             'techniques': 'techniques_Origin',
             'software':   'software_Origin',
-            'capec':      'CAPEC_ID_Origin',
-            'cwe':        'CWE_ID_Origin',
-            'cve':        'CVE_ID_Origin',
-            'pulse':      'Pulse_ID_Origin'
+            'cve':        'CVE_ID_Origin'
         }
         encoded_cols = {
             'techniques': 'techniques_Encoded',
             'software':   'software_Encoded',
-            'capec':      'CAPEC_ID_Encoded',
-            'cwe':        'CWE_ID_Encoded',
-            'cve':        'CVE_ID_Encoded',
-            'pulse':      'Pulse_ID_Encoded'
+            'cve':        'CVE_ID_Encoded'
         }
 
         encoders = {}
@@ -130,7 +117,6 @@ def load_mapping_and_profiles():
             encoded_col = encoded_cols[feat]
             if origin_col not in df_mapping.columns or encoded_col not in df_mapping.columns:
                 raise KeyError(f"Column {origin_col} or {encoded_col} not found in mapping file.")
-            # Build mapping from original string to encoded integer
             origin_series = df_mapping[origin_col].astype(str)
             encoded_series = df_mapping[encoded_col]
             valid_mask = encoded_series.notna()
@@ -139,30 +125,20 @@ def load_mapping_and_profiles():
                 encoded_series[valid_mask].astype(int)
             ))
 
-        # Build APT profiles (using encoded integers)
+        # Build APT profiles (encoded sets)
         profiles = {}
         for apt_id in df_encoded['APTname'].unique():
             apt_data = df_encoded[df_encoded['APTname'] == apt_id]
             profiles[apt_id] = {
                 'techniques': set(),
                 'software':   set(),
-                'capec':      set(),
-                'cwe':        set(),
                 'cve':        set(),
-                'pulse':      set(),
                 'total_features': len(apt_data)
             }
-            # Fill each feature set using the corresponding encoder
-            for feat in ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']:
-                # Column name in encoded data
-                if feat == 'capec':
-                    src_col = 'CAPEC_ID'
-                elif feat == 'cwe':
-                    src_col = 'CWE_ID'
-                elif feat == 'cve':
+            # Fill sets using encoders
+            for feat in ['techniques', 'software', 'cve']:
+                if feat == 'cve':
                     src_col = 'CVE_ID'
-                elif feat == 'pulse':
-                    src_col = 'Pulse_ID'
                 else:
                     src_col = f'{feat}_str'   # techniques_str, software_str
                 values = apt_data[src_col].dropna().unique()
