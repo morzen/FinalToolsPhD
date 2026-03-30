@@ -18,7 +18,7 @@ class AttentionMILConfig:
     """Configuration for Attention-based MIL"""
     #variable shared by all models:
     DATA_PATH = "../BaseData/EncodedData.csv"
-    MODEL_PATH = "6feat_apt_similarity_model_complete.pth"
+    MODEL_PATH = "3feat_apt_similarity_model_complete.pth"
 
     #variables share by some models:
     MAPPING_PATH = "../BaseData/comparison_Encoded_df.csv"
@@ -26,10 +26,7 @@ class AttentionMILConfig:
     FEATURE_WEIGHTS = {
         'technique': 0.8,
         'software': 0.7,
-        'capec': 0.6,
-        'cwe': 0.5,
-        'cve': 0.4,
-        'pulse': 0.3
+        'cve': 0.4
     }
 
     #variables unique to this model:
@@ -77,30 +74,31 @@ class AttentionMILDataLoader:
         print("\nCreating APT profiles...")
         
         profiles = {}
-        feature_types = ['technique', 'software', 'capec', 'cwe', 'cve', 'pulse']
-        
+        feature_types = ['technique', 'software', 'cve']
+        missing_apts = []  # Collect missing encoded IDs
+    
         for _, row in self.df_encoded.iterrows():
             apt_encoded = row['APTname']
-            apt_name = self.apt_name_dict.get(apt_encoded, f"Unknown_APT_{apt_encoded}")
+            
+            # Check if mapping exists
+            if apt_encoded not in self.apt_name_dict:
+                missing_apts.append(apt_encoded)
+                continue  # Skip this row for now; we'll raise error later
+            
+            apt_name = self.apt_name_dict[apt_encoded]
             
             if apt_name not in profiles:
                 profiles[apt_name] = {
                     'encoded_id': apt_encoded,
                     'technique': set(),
                     'software': set(),
-                    'capec': set(),
-                    'cwe': set(),
-                    'cve': set(),
-                    'pulse': set()
+                    'cve': set()
                 }
             
             # Add features if present
             self._add_feature(profiles[apt_name], 'technique', row['techniques_str'])
             self._add_feature(profiles[apt_name], 'software', row['software_str'])
-            self._add_feature(profiles[apt_name], 'capec', row['CAPEC_ID'])
-            self._add_feature(profiles[apt_name], 'cwe', row['CWE_ID'])
             self._add_feature(profiles[apt_name], 'cve', row['CVE_ID'])
-            self._add_feature(profiles[apt_name], 'pulse', row['Pulse_ID'])
         
         # Convert sets to lists and add counts
         for apt_name in profiles:
