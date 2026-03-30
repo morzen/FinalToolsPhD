@@ -13,7 +13,6 @@ import torch.nn.functional as F
 from torch_geometric.data import Data
 from torch_geometric.nn import GCNConv
 import warnings
-import matplotlib.colors as mcolors
 
 warnings.filterwarnings('ignore')
 
@@ -29,7 +28,7 @@ class APTGNN(torch.nn.Module):
         x = self.conv2(x, edge_index, edge_weight=edge_weight)
         return F.normalize(x, p=2, dim=-1)
 
-def load_trained_gnn_model(path="6feat_trained_apt_gnn_model.pkl"):
+def load_trained_gnn_model(path="3feat_trained_apt_gnn_model.pkl"):
     print(" LOADING ENHANCED TRAINED GNN MODEL...")
     with open(path, 'rb') as f:
         saved = pickle.load(f)
@@ -42,8 +41,7 @@ def load_trained_gnn_model(path="6feat_trained_apt_gnn_model.pkl"):
     print(f" GNN model loaded successfully!")
     print(f"   APTs: {len(saved['apt_ids'])}")
     print(f"   Embedding dimension: {saved['apt_embeddings'].shape[1]}")
-    print(f"   Feature weights: TTP×{saved['feature_weights']['techniques']:.1f}, "
-          f"SW×{saved['feature_weights']['software']:.1f}, CAPEC×{saved['feature_weights']['capec']:.1f}, CWE×{saved['feature_weights']['cwe']:.1f}, CVE×{saved['feature_weights']['cve']:.1f}, Pulse×{saved['feature_weights']['pulse']:.1f}")
+    print(f"   Feature weights: TTP×{saved['feature_weights']['techniques']:.1f}, SW×{saved['feature_weights']['software']:.1f}, CVE×{saved['feature_weights']['cve']:.1f}")
     print(f"   Available CPU cores: {mp.cpu_count()}")
     print("   Model uses: Pure GNN cosine similarity on 30/70 mixed evidence")
     return model, saved
@@ -56,11 +54,8 @@ def load_apt_profiles_from_data():
         apt_data = df[df['APTname'] == apt_id]
         profiles[apt_id] = {
             'techniques': set(apt_data['techniques_str'].dropna().unique()),
-            'software': set(apt_data['software_str'].dropna().unique()), 
-            'capec': set(apt_data['CAPEC_ID'].dropna().unique()),
-            'cwe': set(apt_data['CWE_ID'].dropna().unique()),
+            'software': set(apt_data['software_str'].dropna().unique()),
             'cve': set(apt_data['CVE_ID'].dropna().unique()),
-            'pulse': set(apt_data['Pulse_ID'].dropna().unique()),
         }
     print(f" Loaded profiles for {len(profiles)} APTs")
     return profiles
@@ -111,10 +106,7 @@ def sample_mixed_evidence(attacker_profile, mimicked_profile, rng=None, attacker
     return {
         'techniques': sample_mixed_features(attacker_profile['techniques'], mimicked_profile['techniques'], max_count),
         'software': sample_mixed_features(attacker_profile['software'], mimicked_profile['software'], max_count),
-        'capec': sample_mixed_features(attacker_profile['capec'], mimicked_profile['capec'], max_count),
-        'cwe': sample_mixed_features(attacker_profile['cwe'], mimicked_profile['cwe'], max_count),
         'cve': sample_mixed_features(attacker_profile['cve'], mimicked_profile['cve'], max_count),
-        'pulse': sample_mixed_features(attacker_profile['pulse'], mimicked_profile['pulse'], max_count),
     }
 
 def create_partial_mixed_evidence(attacker_profile, mimicked_profile, rng=None):
@@ -137,13 +129,10 @@ def create_partial_mixed_evidence(attacker_profile, mimicked_profile, rng=None):
 def build_temp_graph_for_evidence(evidence, graph_info):
     num_apts = graph_info['num_apts']
     technique_offset = graph_info['technique_offset']
-    software_offset = graph_info['software_offset'] 
-    capec_offset = graph_info['capec_offset']
-    cwe_offset = graph_info['cwe_offset']
+    software_offset = graph_info['software_offset']
     cve_offset = graph_info['cve_offset']
-    pulse_offset = graph_info['pulse_offset']
     
-    total_nodes = num_apts + graph_info['num_techniques'] + graph_info['num_software'] + graph_info['num_capec'] + graph_info['num_cwe'] + graph_info['num_cve'] + graph_info['num_pulse']
+    total_nodes = num_apts + graph_info['num_techniques'] + graph_info['num_software'] + graph_info['num_cve']
     
     edge_list = []
     edge_weights = []
@@ -162,30 +151,12 @@ def build_temp_graph_for_evidence(evidence, graph_info):
             soft_idx = graph_info['software_to_idx'][software] + software_offset
             edge_list.extend([[temp_apt_idx, soft_idx], [soft_idx, temp_apt_idx]])
             edge_weights.extend([fw['software'], fw['software']])
-    
-    for capec in evidence['capec']:
-        if capec in graph_info['capec_to_idx']:
-            capec_idx = graph_info['capec_to_idx'][capec] + capec_offset
-            edge_list.extend([[temp_apt_idx, capec_idx], [capec_idx, temp_apt_idx]])
-            edge_weights.extend([fw['capec'], fw['capec']])
-
-    for cwe in evidence['cwe']:
-        if cwe in graph_info['cwe_to_idx']:
-            cwe_idx = graph_info['cwe_to_idx'][cwe] + cwe_offset
-            edge_list.extend([[temp_apt_idx, cwe_idx], [cwe_idx, temp_apt_idx]])
-            edge_weights.extend([fw['cwe'], fw['cwe']])
 
     for cve in evidence['cve']:
         if cve in graph_info['cve_to_idx']:
             cve_idx = graph_info['cve_to_idx'][cve] + cve_offset
             edge_list.extend([[temp_apt_idx, cve_idx], [cve_idx, temp_apt_idx]])
             edge_weights.extend([fw['cve'], fw['cve']])
-
-    for pulse in evidence['pulse']:
-        if pulse in graph_info['pulse_to_idx']:
-            pulse_idx = graph_info['pulse_to_idx'][pulse] + pulse_offset
-            edge_list.extend([[temp_apt_idx, pulse_idx], [pulse_idx, temp_apt_idx]])
-            edge_weights.extend([fw['pulse'], fw['pulse']])
     
     if edge_list:
         edge_index = torch.tensor(edge_list, dtype=torch.long).t().contiguous()
@@ -239,7 +210,7 @@ def process_single_false_flag_gnn(args):
 def evaluate_false_flag_attacks_gnn_parallel(model, saved_data, profiles, partial=False):
     print("=" * 80)
     scenario = "PARTIAL (50% volume from 30/70 mix)" if partial else "FULL (30/70 mixed evidence)"
-    print(f" FALSE-FLAG: 30% Attacker + 70% Mimicked features across ALL categories")
+    print(f" FALSE-FLAG: 30% Attacker + 70% Mimicked features across techniques, software, and CVE")
     print(f"({scenario})")
     print("=" * 80)
     
@@ -416,7 +387,7 @@ if __name__ == "__main__":
     print(" GNN FALSE-FLAG EVALUATION: 30/70 MIXED EVIDENCE")
     print("=" * 70)
     print("Pure GNN embeddings + cosine similarity")
-    print("30% attacker + 70% mimicked features ACROSS ALL CATEGORIES")
+    print("30% attacker + 70% mimicked features across techniques, software, and CVE")
     print("=" * 70)
     
     model, saved_data = load_trained_gnn_model()

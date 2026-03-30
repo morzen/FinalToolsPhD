@@ -30,18 +30,16 @@ class EfficientXGBoostPredictorBinary:
         """Create binary vector from evidence dictionary (no PCA)"""
         techniques = evidence.get('techniques', [])
         software = evidence.get('software', [])
-        capec = evidence.get('capec', [])
-        cwe = evidence.get('cwe', [])
         cve = evidence.get('cve', [])
-        pulse = evidence.get('pulse', [])
         
         # Use feature mappings for consistent indexing
         feature_mapping = self.feature_metadata.get('feature_mapping', {})
         
         # Create binary vector
-        total_length = (self.feature_metadata['pulse_offset'] + 
-                        len(self.feature_metadata['all_pulse']))
-        vector = np.zeros(total_length, dtype=np.float64)
+        total_len = (len(self.feature_metadata['all_techniques']) +
+                    len(self.feature_metadata['all_software']) +
+                    len(self.feature_metadata['all_cve']))
+        vector = np.zeros(total_len, dtype=np.float32)
         
         if feature_mapping:
             # Techniques
@@ -57,33 +55,12 @@ class EfficientXGBoostPredictorBinary:
                     if s in soft_map:
                         idx = soft_map[s] + self.feature_metadata['software_offset']
                         vector[idx] = 1.0
-            # CAPEC
-            if 'capec' in feature_mapping:
-                capec_map = feature_mapping['capec']
-                for c in capec:
-                    if c in capec_map:
-                        idx = capec_map[c] + self.feature_metadata['capec_offset']
-                        vector[idx] = 1.0
-            # CWE
-            if 'cwe' in feature_mapping:
-                cwe_map = feature_mapping['cwe']
-                for w in cwe:
-                    if w in cwe_map:
-                        idx = cwe_map[w] + self.feature_metadata['cwe_offset']
-                        vector[idx] = 1.0
             # CVE
             if 'cve' in feature_mapping:
                 cve_map = feature_mapping['cve']
                 for v in cve:
                     if v in cve_map:
                         idx = cve_map[v] + self.feature_metadata['cve_offset']
-                        vector[idx] = 1.0
-            # Pulse
-            if 'pulse' in feature_mapping:
-                pulse_map = feature_mapping['pulse']
-                for p in pulse:
-                    if p in pulse_map:
-                        idx = pulse_map[p] + self.feature_metadata['pulse_offset']
                         vector[idx] = 1.0
         else:
             # Fallback to index lookup (slower, less reliable)
@@ -95,21 +72,9 @@ class EfficientXGBoostPredictorBinary:
                 if s in self.feature_metadata['all_software']:
                     idx = self.feature_metadata['all_software'].index(s) + self.feature_metadata['software_offset']
                     vector[idx] = 1.0
-            for c in capec:
-                if c in self.feature_metadata['all_capec']:
-                    idx = self.feature_metadata['all_capec'].index(c) + self.feature_metadata['capec_offset']
-                    vector[idx] = 1.0
-            for w in cwe:
-                if w in self.feature_metadata['all_cwe']:
-                    idx = self.feature_metadata['all_cwe'].index(w) + self.feature_metadata['cwe_offset']
-                    vector[idx] = 1.0
             for v in cve:
                 if v in self.feature_metadata['all_cve']:
                     idx = self.feature_metadata['all_cve'].index(v) + self.feature_metadata['cve_offset']
-                    vector[idx] = 1.0
-            for p in pulse:
-                if p in self.feature_metadata['all_pulse']:
-                    idx = self.feature_metadata['all_pulse'].index(p) + self.feature_metadata['pulse_offset']
                     vector[idx] = 1.0
         
         return vector  # No PCA transformation
@@ -131,7 +96,7 @@ def load_efficient_xgboost_model_nopca():
     """Load the efficient XGBoost no-PCA model (binary vectors)"""
     print(" LOADING EFFICIENT XGBOOST NO-PCA MODEL...")
     try:
-        with open('6feat_efficient_apt_similarity_nopca.pkl', 'rb') as f:
+        with open('3feat_efficient_apt_similarity_nopca.pkl', 'rb') as f:
             saved_data = pickle.load(f)
         print(" Loaded efficient_apt_similarity_nopca.pkl")
         return saved_data
@@ -151,10 +116,7 @@ def load_apt_profiles_from_data():
         profiles[apt_id] = {
             'techniques': set(apt_data['techniques_str'].unique()),
             'software': set(apt_data['software_str'].unique()),
-            'capec': set(apt_data['CAPEC_ID'].unique()),
-            'cwe': set(apt_data['CWE_ID'].unique()),
             'cve': set(apt_data['CVE_ID'].unique()),
-            'pulse': set(apt_data['Pulse_ID'].unique()),
             'total_features': len(apt_data)
         }
     
@@ -167,11 +129,8 @@ def load_mappings():
     df_mapping = pd.read_csv("../BaseData/comparison_Encoded_df.csv")
     
     technique_mapping = {}
-    software_mapping = {} 
-    capec_mapping = {}
-    cwe_mapping = {}
+    software_mapping = {}
     cve_mapping = {}
-    pulse_mapping = {}
     
     for _, row in df_mapping.iterrows():
         # Technique mapping
@@ -184,25 +143,11 @@ def load_mappings():
             if row['software_Origin'] not in software_mapping:
                 software_mapping[row['software_Origin']] = row['software_Encoded']
         
-        # Capec mapping
-        if pd.notna(row['CAPEC_ID_Origin']) and pd.notna(row['CAPEC_ID_Encoded']):
-            if row['CAPEC_ID_Origin'] not in capec_mapping:
-                capec_mapping[row['CAPEC_ID_Origin']] = row['CAPEC_ID_Encoded']
-
-        # CWE mapping
-        if pd.notna(row['CWE_ID_Origin']) and pd.notna(row['CWE_ID_Encoded']):
-            if row['CWE_ID_Origin'] not in cwe_mapping:
-                cwe_mapping[row['CWE_ID_Origin']] = row['CWE_ID_Encoded']
-
         # CVE mapping
         if pd.notna(row['CVE_ID_Origin']) and pd.notna(row['CVE_ID_Encoded']):
             if row['CVE_ID_Origin'] not in cve_mapping:
                 cve_mapping[row['CVE_ID_Origin']] = row['CVE_ID_Encoded']
 
-        # Pulse mapping
-        if pd.notna(row['Pulse_ID_Origin']) and pd.notna(row['Pulse_ID_Encoded']):
-            if row['Pulse_ID_Origin'] not in pulse_mapping:
-                pulse_mapping[row['Pulse_ID_Origin']] = row['Pulse_ID_Encoded']
     
     apt_name_mapping = {}
     for _, row in df_mapping.iterrows():
@@ -211,11 +156,11 @@ def load_mappings():
         if encoded_id not in apt_name_mapping:
             apt_name_mapping[encoded_id] = original_name
     
-    return technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping
+    return technique_mapping, software_mapping, cve_mapping, apt_name_mapping
 
 
 def create_binary_vector_matrix(saved_data, profiles, apt_ids):
-    """Create binary vector matrix for all APTs (no PCA)"""
+    """Create binary vector matrix for all APTs"""
     print(" Creating binary vectors for all APTs...")
     
     # Create predictor for vector creation
@@ -240,10 +185,7 @@ def create_binary_vector_matrix(saved_data, profiles, apt_ids):
             evidence = {
                 'techniques': list(profile['techniques']),
                 'software': list(profile['software']),
-                'capec': list(profile['capec']),
-                'cwe': list(profile['cwe']),
-                'cve': list(profile['cve']),
-                'pulse': list(profile['pulse'])
+                'cve': list(profile['cve'])
             }
             vector = predictor.create_vector_from_evidence(evidence)
             apt_vectors.append(vector)
@@ -261,17 +203,11 @@ def sample_mixed_features(attacker_profile, mimicked_profile, rng=None, attacker
 
     atk_tech = list(attacker_profile['techniques'])
     atk_soft = list(attacker_profile['software'])
-    atk_capec  = list(attacker_profile['capec'])
-    atk_cwe  = list(attacker_profile['cwe'])
     atk_cve  = list(attacker_profile['cve'])
-    atk_pulse  = list(attacker_profile['pulse'])
 
     mim_tech = list(mimicked_profile['techniques'])
     mim_soft = list(mimicked_profile['software'])
-    mim_capec  = list(mimicked_profile['capec'])
-    mim_cwe  = list(mimicked_profile['cwe'])
     mim_cve  = list(mimicked_profile['cve'])
-    mim_pulse  = list(mimicked_profile['pulse'])
 
     def pick_feature(atk_list, mim_list):
         if not atk_list and not mim_list:
@@ -292,24 +228,18 @@ def sample_mixed_features(attacker_profile, mimicked_profile, rng=None, attacker
     # Collect all features for each category
     techniques = pick_feature(atk_tech, mim_tech)
     software  = pick_feature(atk_soft, mim_soft)
-    capec     = pick_feature(atk_capec,  mim_capec)
-    cwe       = pick_feature(atk_cwe,  mim_cwe)
     cve       = pick_feature(atk_cve,  mim_cve)
-    pulse     = pick_feature(atk_pulse,  mim_pulse)
 
     return {
         'techniques': techniques,
         'software': software,
-        'capec': capec,
-        'cwe': cwe,
-        'cve': cve,
-        'pulse': pulse
+        'cve': cve
     }
 
 
 def process_single_false_flag_binary(args):
     """Process single false-flag with 30/70 mixed evidence using binary vectors (no PCA)"""
-    attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping, profiles, apt_vectors, apt_ids, seed = args
+    attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, software_mapping, cve_mapping, apt_name_mapping, profiles, apt_vectors, apt_ids, seed = args
     
     rng = random.Random(seed)  # Reproducible randomness
     
@@ -365,7 +295,7 @@ def process_single_false_flag_binary(args):
 
 def process_single_false_flag_partial_binary(args):
     """Process single false-flag with 30/70 mixed evidence (HALVED after mixing) using binary vectors (no PCA)"""
-    attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping, profiles, apt_vectors, apt_ids, seed = args
+    attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, software_mapping, cve_mapping, apt_name_mapping, profiles, apt_vectors, apt_ids, seed = args
     
     rng = random.Random(seed)
     
@@ -414,26 +344,11 @@ def process_single_false_flag_partial_binary(args):
             mimicked_profile['software'],
             'software'
         ),
-        'capec': process_feature_category(
-            attacker_profile['capec'], 
-            mimicked_profile['capec'],
-            'capec'
-        ),
-        'cwe': process_feature_category(
-            attacker_profile['cwe'], 
-            mimicked_profile['cwe'],
-            'cwe'
-        ),
         'cve': process_feature_category(
             attacker_profile['cve'], 
             mimicked_profile['cve'],
             'cve'
         ),
-        'pulse': process_feature_category(
-            attacker_profile['pulse'], 
-            mimicked_profile['pulse'],
-            'pulse'
-        )
     }
     
     # Create predictor
@@ -444,7 +359,7 @@ def process_single_false_flag_partial_binary(args):
         saved_data['feature_metadata']
     )
     
-    # Create binary vector from partial evidence (no PCA)
+    # Create binary vector from partial evidence
     false_flag_vector = predictor.create_vector_from_evidence(partial_evidence)
     
     # Calculate similarities
@@ -489,7 +404,7 @@ def evaluate_false_flag_attacks_binary_parallel(saved_data, top_x_values=[1, 5, 
     # Create binary vectors for all APTs
     apt_vectors = create_binary_vector_matrix(saved_data, profiles, apt_ids)
     
-    technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping = load_mappings()
+    technique_mapping, software_mapping, cve_mapping, apt_name_mapping = load_mappings()
     
     all_combinations = [(a, m) for a in apt_ids for m in apt_ids if a != m]
     total_combinations = len(all_combinations)
@@ -501,7 +416,7 @@ def evaluate_false_flag_attacks_binary_parallel(saved_data, top_x_values=[1, 5, 
     args_list = []
     for i, (attacker_apt_id, mimicked_apt_id) in enumerate(all_combinations):
         args = (attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, 
-                software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping,
+                software_mapping, cve_mapping,
                 apt_name_mapping, profiles, apt_vectors, apt_ids, i)
         args_list.append(args)
     
@@ -580,7 +495,7 @@ def evaluate_false_flag_attacks_partial_binary(saved_data, top_x_values=[1, 5, 1
     # Create binary vectors for all APTs
     apt_vectors = create_binary_vector_matrix(saved_data, profiles, apt_ids)
     
-    technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping = load_mappings()
+    technique_mapping, software_mapping, cve_mapping, apt_name_mapping = load_mappings()
     
     all_combinations = [(a, m) for a in apt_ids for m in apt_ids if a != m]
     total_combinations = len(all_combinations)
@@ -591,7 +506,7 @@ def evaluate_false_flag_attacks_partial_binary(saved_data, top_x_values=[1, 5, 1
     args_list = []
     for i, (attacker_apt_id, mimicked_apt_id) in enumerate(all_combinations):
         args = (attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, 
-                software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping,
+                software_mapping, cve_mapping,
                 apt_name_mapping, profiles, apt_vectors, apt_ids, i)
         args_list.append(args)
     

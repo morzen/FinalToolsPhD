@@ -31,7 +31,7 @@ class APTGNN(nn.Module):
 
 def load_trained_model():
     print(" LOADING TRAINED MODEL...")
-    with open('6feat_trained_apt_gnn_model.pkl', 'rb') as f:
+    with open('3_trained_apt_gnn_model.pkl', 'rb') as f:
         saved_data = pickle.load(f)
     return saved_data
 
@@ -40,33 +40,21 @@ def convert_evidence_to_encoded(evidence, mapping_file="../BaseData/comparison_E
     df_mapping = pd.read_csv(mapping_file)
 
     technique_mapping = {}
-    software_mapping = {} 
-    capec_mapping = {}
-    cwe_mapping = {}
+    software_mapping = {}
     cve_mapping = {}
-    pulse_mapping = {}
 
     for _, row in df_mapping.iterrows():
         if pd.notna(row['techniques_Origin']) and pd.notna(row['techniques_Encoded']):
             technique_mapping[row['techniques_Origin']] = int(row['techniques_Encoded'])
         if pd.notna(row['software_Origin']) and pd.notna(row['software_Encoded']):
             software_mapping[row['software_Origin']] = int(row['software_Encoded'])
-        if pd.notna(row['CAPEC_ID_Origin']) and pd.notna(row['CAPEC_ID_Encoded']):
-            capec_mapping[row['CAPEC_ID_Origin']] = int(row['CAPEC_ID_Encoded'])
-        if pd.notna(row['CWE_ID_Origin']) and pd.notna(row['CWE_ID_Encoded']):
-            cwe_mapping[row['CWE_ID_Origin']] = int(row['CWE_ID_Encoded'])
         if pd.notna(row['CVE_ID_Origin']) and pd.notna(row['CVE_ID_Encoded']):
             cve_mapping[row['CVE_ID_Origin']] = int(row['CVE_ID_Encoded'])
-        if pd.notna(row['Pulse_ID_Origin']) and pd.notna(row['Pulse_ID_Encoded']):
-            pulse_mapping[row['Pulse_ID_Origin']] = int(row['Pulse_ID_Encoded'])
 
     encoded_evidence = {
         'techniques': [technique_mapping.get(t) for t in evidence.get('techniques', []) if t in technique_mapping],
         'software': [software_mapping.get(s) for s in evidence.get('software', []) if s in software_mapping],
-        'capec': [capec_mapping.get(c) for c in evidence.get('capec', []) if c in capec_mapping],
-        'cwe': [cwe_mapping.get(c) for c in evidence.get('cwe', []) if c in cwe_mapping],
         'cve': [cve_mapping.get(c) for c in evidence.get('cve', []) if c in cve_mapping],
-        'pulse': [pulse_mapping.get(c) for c in evidence.get('pulse', []) if c in pulse_mapping],
     }
 
     return encoded_evidence
@@ -87,36 +75,24 @@ def query_apt_similarity(evidence, saved_data):
     
     technique_to_idx = graph_info['technique_to_idx']
     software_to_idx = graph_info['software_to_idx']
-    capec_to_idx = graph_info['capec_to_idx']
-    cwe_to_idx = graph_info['cwe_to_idx']
     cve_to_idx = graph_info['cve_to_idx']
-    pulse_to_idx = graph_info['pulse_to_idx']
 
     num_apts = graph_info['num_apts']
 
     technique_offset = graph_info['technique_offset']
     software_offset = graph_info['software_offset']
-    capec_offset = graph_info['capec_offset']
-    cwe_offset = graph_info['cwe_offset']
     cve_offset = graph_info['cve_offset']
-    pulse_offset = graph_info['pulse_offset']
     
     feature_weights = graph_info['feature_weights']
 
     techniques = evidence.get('techniques', [])
     software = evidence.get('software', [])
-    capec = evidence.get('capec', [])
-    cwe = evidence.get('cwe', [])
     cve = evidence.get('cve', [])
-    pulse = evidence.get('pulse', [])
 
     # Get valid indices (filter out None or 0)
     tech_indices = [technique_to_idx.get(t) for t in techniques if t in technique_to_idx]
     soft_indices = [software_to_idx.get(s) for s in software if s in software_to_idx]
-    capec_indices = [capec_to_idx.get(c) for c in capec if c in capec_to_idx]
-    cwe_indices = [cwe_to_idx.get(c) for c in cwe if c in cwe_to_idx]
     cve_indices = [cve_to_idx.get(c) for c in cve if c in cve_to_idx]
-    pulse_indices = [pulse_to_idx.get(c) for c in pulse if c in pulse_to_idx]
 
     # Add one new node for the query
     total_nodes = x.shape[0] + 1
@@ -147,10 +123,7 @@ def query_apt_similarity(evidence, saved_data):
     # Add edges for each feature type
     add_feature_edges(tech_indices, technique_offset, feature_weights["techniques"])
     add_feature_edges(soft_indices, software_offset, feature_weights["software"])
-    add_feature_edges(capec_indices, capec_offset, feature_weights["capec"])
-    add_feature_edges(cwe_indices, cwe_offset, feature_weights["cwe"])
     add_feature_edges(cve_indices, cve_offset, feature_weights["cve"])
-    add_feature_edges(pulse_indices, pulse_offset, feature_weights["pulse"])
 
     if new_edges:
         new_edges_tensor = torch.tensor(new_edges, dtype=torch.long).t().contiguous().to(device)
@@ -269,7 +242,7 @@ def evaluate_profile_division(saved_data, divider=2, top_x_values=[1, 5, 10, 20]
         target_apt_id = apt_ids[i]
         target_profile = profiles[target_apt_id]
 
-        divided_evidence = {'techniques': [], 'software': [], 'capec': [], 'cwe': [], 'cve': [], 'pulse': []}
+        divided_evidence = {'techniques': [], 'software': [], 'cve': []}
 
         if target_profile['techniques']:
             techniques_list = list(target_profile['techniques'])
@@ -283,29 +256,11 @@ def evaluate_profile_division(saved_data, divider=2, top_x_values=[1, 5, 10, 20]
             division_size = max(1, len(software_list) // divider)
             divided_evidence['software'] = software_list[:division_size]
 
-        if target_profile['capec']:
-            capec_list = list(target_profile['capec'])
-            random.shuffle(capec_list)
-            division_size = max(1, len(capec_list) // divider)
-            divided_evidence['capec'] = capec_list[:division_size]
-
-        if target_profile['cwe']:
-            cwe_list = list(target_profile['cwe'])
-            random.shuffle(cwe_list)
-            division_size = max(1, len(cwe_list) // divider)
-            divided_evidence['cwe'] = cwe_list[:division_size]
-
         if target_profile['cve']:
             cve_list = list(target_profile['cve'])
             random.shuffle(cve_list)
             division_size = max(1, len(cve_list) // divider)
             divided_evidence['cve'] = cve_list[:division_size]
-
-        if target_profile['pulse']:
-            pulse_list = list(target_profile['pulse'])
-            random.shuffle(pulse_list)
-            division_size = max(1, len(pulse_list) // divider)
-            divided_evidence['pulse'] = pulse_list[:division_size]
 
         similarities, query_apt_ids = query_apt_similarity(divided_evidence, saved_data)
 
@@ -347,19 +302,13 @@ def test_sample_queries(saved_data):
     test_evidence =  {
         'techniques': ['faketest', 'T1001.002', 'T1003.002'],
         'software': ['faketest','S0002', 'S0029', 'S0037'],
-        'capec': ['faketest','CAPEC-127', 'CAPEC-150'],
-        'cwe': ['faketest','CWE-1021', 'CWE-113'],
-        'cve': ['faketest','CVE-2012-0433', 'CVE-2013-10007'],
-        'pulse': ['faketest','5c88e255d5fbbe1cb7c54534', '5cb741fb29d3ac01c1ac01ea']
+        'cve': ['faketest','CVE-2012-0433', 'CVE-2013-10007']
     }
 
     print("Testing with evidence:")
     print(f"  Techniques: {test_evidence['techniques']}")
     print(f"  Software: {test_evidence['software']}")
-    print(f"  CAPEC: {test_evidence['capec']}")
-    print(f"  cwe: {test_evidence['cwe']}")
     print(f"  cve: {test_evidence['cve']}")
-    print(f"  Pulse: {test_evidence['pulse']}")
 
     encoded_evidence = convert_evidence_to_encoded(test_evidence)
     similarities, apt_ids = query_apt_similarity(encoded_evidence, saved_data)
@@ -399,7 +348,7 @@ def evaluate_full_profile_queries(saved_data, top_x_values=[1, 5, 10, 20]):
         failure = 0
         for i, apt_id in enumerate(apt_ids):
             target_name = apt_names[i]
-            full_profile = profiles[apt_id]   # dict with keys: techniques, software, capec, cwe, cve, pulse
+            full_profile = profiles[apt_id]   # dict with keys: techniques, software, cve
 
             # Query with the full profile (original string IDs)
             similarities, result_apt_ids = query_apt_similarity(full_profile, saved_data)

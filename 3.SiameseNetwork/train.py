@@ -18,12 +18,12 @@ warnings.filterwarnings('ignore')
 # ============================
 class SiameseConfig:
     DATA_PATH = "../BaseData/EncodedData.csv"
-    MODEL_PATH = "6feat_apt_siamese_feature_model.pkl"
+    MODEL_PATH = "3feat_apt_siamese_feature_model.pkl"
     HIDDEN_DIM = 256
     LEARNING_RATE = 0.001
     RANDOM_STATE = 42
     EPOCHS = 200
-    NUM_FEATURES = 6
+    NUM_FEATURES = 3
     EMBEDDING_DIM = 256
     TEMP_MODEL_PATH = "best_siamese.tmp"
     BATCH_SIZE = 256          # not used in APT-level training, kept for compatibility
@@ -45,8 +45,7 @@ class SiameseDataLoader:
     
     @staticmethod
     def prepare_features(df):
-        feature_columns = ['techniques_str', 'software_str', 'CAPEC_ID', 
-                          'CWE_ID', 'CVE_ID', 'Pulse_ID']
+        feature_columns = ['techniques_str', 'software_str', 'CVE_ID']
         X = df[feature_columns].values
         y = df['APTname'].values
         return X, y
@@ -54,7 +53,7 @@ class SiameseDataLoader:
     @staticmethod
     def get_vocabulary_sizes(X):
         vocab_sizes = {}
-        feature_names = ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']
+        feature_names = ['techniques', 'software', 'cve']
         for i, name in enumerate(feature_names):
             vocab_sizes[name] = int(X[:, i].max()) + 1
         return vocab_sizes
@@ -111,10 +110,7 @@ class SiameseFeatureEncoder(nn.Module):
         embed_per_feature = embed_dim // SiameseConfig.NUM_FEATURES
         self.tech_embed = nn.Embedding(vocab_sizes['techniques'] + 1, embed_per_feature)
         self.soft_embed = nn.Embedding(vocab_sizes['software'] + 1, embed_per_feature)
-        self.capec_embed = nn.Embedding(vocab_sizes['capec'] + 1, embed_per_feature)
-        self.cwe_embed = nn.Embedding(vocab_sizes['cwe'] + 1, embed_per_feature)
         self.cve_embed = nn.Embedding(vocab_sizes['cve'] + 1, embed_per_feature)
-        self.pulse_embed = nn.Embedding(vocab_sizes['pulse'] + 1, embed_per_feature)
         total_embed_size = embed_per_feature * SiameseConfig.NUM_FEATURES
         self.fc1 = nn.Linear(total_embed_size, SiameseConfig.HIDDEN_DIM)
         self.fc2 = nn.Linear(SiameseConfig.HIDDEN_DIM, embed_dim)
@@ -124,17 +120,11 @@ class SiameseFeatureEncoder(nn.Module):
     def forward(self, features):
         tech = features[:, 0].long() + 1
         soft = features[:, 1].long() + 1
-        capec = features[:, 2].long() + 1
-        cwe = features[:, 3].long() + 1
-        cve = features[:, 4].long() + 1
-        pulse = features[:, 5].long() + 1
+        cve = features[:, 2].long() + 1
         t_emb = self.tech_embed(tech)
         s_emb = self.soft_embed(soft)
-        ca_emb = self.capec_embed(capec)
-        cw_emb = self.cwe_embed(cwe)
         cv_emb = self.cve_embed(cve)
-        p_emb = self.pulse_embed(pulse)
-        x = torch.cat([t_emb, s_emb, ca_emb, cw_emb, cv_emb, p_emb], dim=-1)
+        x = torch.cat([t_emb, s_emb, cv_emb], dim=-1)
         x = F.relu(self.fc1(x))
         x = self.dropout(x)
         x = self.fc2(x)
@@ -318,10 +308,7 @@ class ModelSaver:
             'model_config': {
                 'num_techniques': vocab_sizes['techniques'],
                 'num_software': vocab_sizes['software'],
-                'num_capec': vocab_sizes['capec'],
-                'num_cwe': vocab_sizes['cwe'],
                 'num_cve': vocab_sizes['cve'],
-                'num_pulse': vocab_sizes['pulse'],
                 'embedding_dim': SiameseConfig.EMBEDDING_DIM,
                 'hidden_dim': SiameseConfig.HIDDEN_DIM,
                 'dropout_rate': SiameseConfig.DROPOUT_RATE

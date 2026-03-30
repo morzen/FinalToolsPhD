@@ -34,15 +34,13 @@ class EfficientXGBoostPredictor:
         """Build binary vector from evidence using feature mappings (no PCA)."""
         techniques = evidence.get('techniques', [])
         software = evidence.get('software', [])
-        capec = evidence.get('capec', [])
-        cwe = evidence.get('cwe', [])
         cve = evidence.get('cve', [])
-        pulse = evidence.get('pulse', [])
 
         dtype = np.float64
-        total_length = (self.feature_metadata['pulse_offset'] +
-                        len(self.feature_metadata['all_pulse']))
-        vector = np.zeros(total_length, dtype=dtype)
+        total_len = (len(self.feature_metadata['all_techniques']) +
+                    len(self.feature_metadata['all_software']) +
+                    len(self.feature_metadata['all_cve']))
+        vector = np.zeros(total_len, dtype=np.float32)
 
         feature_mapping = self.feature_metadata.get('feature_mapping', {})
 
@@ -60,20 +58,6 @@ class EfficientXGBoostPredictor:
                     if s in soft_map:
                         idx = soft_map[s] + self.feature_metadata['software_offset']
                         vector[idx] = 1.0
-            # CAPEC
-            if 'capec' in feature_mapping:
-                capec_map = feature_mapping['capec']
-                for c in capec:
-                    if c in capec_map:
-                        idx = capec_map[c] + self.feature_metadata['capec_offset']
-                        vector[idx] = 1.0
-            # CWE
-            if 'cwe' in feature_mapping:
-                cwe_map = feature_mapping['cwe']
-                for w in cwe:
-                    if w in cwe_map:
-                        idx = cwe_map[w] + self.feature_metadata['cwe_offset']
-                        vector[idx] = 1.0
             # CVE
             if 'cve' in feature_mapping:
                 cve_map = feature_mapping['cve']
@@ -81,13 +65,7 @@ class EfficientXGBoostPredictor:
                     if v in cve_map:
                         idx = cve_map[v] + self.feature_metadata['cve_offset']
                         vector[idx] = 1.0
-            # Pulse
-            if 'pulse' in feature_mapping:
-                pulse_map = feature_mapping['pulse']
-                for p in pulse:
-                    if p in pulse_map:
-                        idx = pulse_map[p] + self.feature_metadata['pulse_offset']
-                        vector[idx] = 1.0
+
         else:
             # Fallback to index lookup (less reliable)
             for t in techniques:
@@ -98,21 +76,9 @@ class EfficientXGBoostPredictor:
                 if s in self.feature_metadata['all_software']:
                     idx = self.feature_metadata['all_software'].index(s) + self.feature_metadata['software_offset']
                     vector[idx] = 1.0
-            for c in capec:
-                if c in self.feature_metadata['all_capec']:
-                    idx = self.feature_metadata['all_capec'].index(c) + self.feature_metadata['capec_offset']
-                    vector[idx] = 1.0
-            for w in cwe:
-                if w in self.feature_metadata['all_cwe']:
-                    idx = self.feature_metadata['all_cwe'].index(w) + self.feature_metadata['cwe_offset']
-                    vector[idx] = 1.0
             for v in cve:
                 if v in self.feature_metadata['all_cve']:
                     idx = self.feature_metadata['all_cve'].index(v) + self.feature_metadata['cve_offset']
-                    vector[idx] = 1.0
-            for p in pulse:
-                if p in self.feature_metadata['all_pulse']:
-                    idx = self.feature_metadata['all_pulse'].index(p) + self.feature_metadata['pulse_offset']
                     vector[idx] = 1.0
 
         self.last_binary_vector = vector.copy()
@@ -122,7 +88,7 @@ def load_efficient_xgboost_model():
     """Load the model (expects 'all_binary_vectors' in saved data)."""
     print(" LOADING EFFICIENT XGBOOST MODEL...")
     try:
-        with open('6feat_efficient_apt_similarity_nopca.pkl', 'rb') as f:
+        with open('3feat_efficient_apt_similarity_nopca.pkl', 'rb') as f:
             saved_data = pickle.load(f)
         print(" Loaded model (no PCA).")
         return saved_data
@@ -140,10 +106,7 @@ def load_apt_profiles_from_data():
         profiles[apt_id] = {
             'techniques': set(apt_data['techniques_str'].unique()),
             'software': set(apt_data['software_str'].unique()),
-            'capec': set(apt_data['CAPEC_ID'].unique()),
-            'cwe': set(apt_data['CWE_ID'].unique()),
             'cve': set(apt_data['CVE_ID'].unique()),
-            'pulse': set(apt_data['Pulse_ID'].unique()),
             'total_features': len(apt_data)
         }
     print(f" Loaded profiles for {len(profiles)} APTs")
@@ -162,17 +125,11 @@ def verify_feature_ordering(saved_data):
     print(f"\nFeature counts:")
     print(f"  Techniques: {len(fm['all_techniques'])}")
     print(f"  Software: {len(fm['all_software'])}")
-    print(f"  CAPEC: {len(fm['all_capec'])}")
-    print(f"  CWE: {len(fm['all_cwe'])}")
     print(f"  CVE: {len(fm['all_cve'])}")
-    print(f"  Pulse: {len(fm['all_pulse'])}")
     print(f"\nOffsets:")
     print(f"  techniques_offset: {fm['techniques_offset']}")
     print(f"  software_offset: {fm['software_offset']}")
-    print(f"  capec_offset: {fm['capec_offset']}")
-    print(f"  cwe_offset: {fm['cwe_offset']}")
     print(f"  cve_offset: {fm['cve_offset']}")
-    print(f"  pulse_offset: {fm['pulse_offset']}")
     if 'feature_mapping' in fm:
         print("\n✅ Feature mappings found – will use for consistent indexing.")
     else:
@@ -221,10 +178,7 @@ def test_vector_consistency(saved_data):
         evidence = {
             'techniques': list(profile.get('techniques', [])),
             'software': list(profile.get('software', [])),
-            'capec': list(profile.get('capec', [])),
-            'cwe': list(profile.get('cwe', [])),
-            'cve': list(profile.get('cve', [])),
-            'pulse': list(profile.get('pulse', []))
+            'cve': list(profile.get('cve', []))
         }
         v1 = predictor.create_vector_from_evidence(evidence)
         v2 = predictor.create_vector_from_evidence(evidence)
@@ -278,10 +232,7 @@ def create_similarity_matrix_efficient(saved_data):
             ev = {
                 'techniques': list(profile['techniques']),
                 'software': list(profile['software']),
-                'capec': list(profile['capec']),
-                'cwe': list(profile['cwe']),
-                'cve': list(profile['cve']),
-                'pulse': list(profile['pulse'])
+                'cve': list(profile['cve'])
             }
             vecs.append(predictor.create_vector_from_evidence(ev))
 
@@ -346,10 +297,7 @@ def evaluate_full_data_query(saved_data):
             ev = {
                 'techniques': list(p['techniques']),
                 'software': list(p['software']),
-                'capec': list(p['capec']),
-                'cwe': list(p['cwe']),
-                'cve': list(p['cve']),
-                'pulse': list(p['pulse'])
+                'cve': list(p['cve'])
             }
             target_vecs.append(predictor.create_vector_from_evidence(ev))
 
@@ -365,10 +313,7 @@ def evaluate_full_data_query(saved_data):
         evidence = {
             'techniques': list(prof['techniques']),
             'software': list(prof['software']),
-            'capec': list(prof['capec']),
-            'cwe': list(prof['cwe']),
-            'cve': list(prof['cve']),
-            'pulse': list(prof['pulse'])
+            'cve': list(prof['cve'])
         }
         qvec = predictor.create_vector_from_evidence(evidence)
         sims = []
@@ -427,10 +372,7 @@ def evaluate_profile_division_efficient(saved_data, divider=2, top_x_values=[1,5
             ev = {
                 'techniques': list(p['techniques']),
                 'software': list(p['software']),
-                'capec': list(p['capec']),
-                'cwe': list(p['cwe']),
-                'cve': list(p['cve']),
-                'pulse': list(p['pulse'])
+                'cve': list(p['cve'])
             }
             target_vecs.append(predictor.create_vector_from_evidence(ev))
 
@@ -444,10 +386,7 @@ def evaluate_profile_division_efficient(saved_data, divider=2, top_x_values=[1,5
         div_ev = {
             'techniques': [],
             'software': [],
-            'capec': [],
-            'cwe': [],
-            'cve': [],
-            'pulse': []
+            'cve': []
         }
         # techniques
         if prof['techniques']:
@@ -461,30 +400,12 @@ def evaluate_profile_division_efficient(saved_data, divider=2, top_x_values=[1,5
             random.shuffle(lst)
             sz = max(1, len(lst) // divider)
             div_ev['software'] = lst[:sz]
-        # capec
-        if prof['capec']:
-            lst = list(prof['capec'])
-            random.shuffle(lst)
-            sz = max(1, len(lst) // divider)
-            div_ev['capec'] = lst[:sz]
-        # cwe
-        if prof['cwe']:
-            lst = list(prof['cwe'])
-            random.shuffle(lst)
-            sz = max(1, len(lst) // divider)
-            div_ev['cwe'] = lst[:sz]
         # cve
         if prof['cve']:
             lst = list(prof['cve'])
             random.shuffle(lst)
             sz = max(1, len(lst) // divider)
             div_ev['cve'] = lst[:sz]
-        # pulse
-        if prof['pulse']:
-            lst = list(prof['pulse'])
-            random.shuffle(lst)
-            sz = max(1, len(lst) // divider)
-            div_ev['pulse'] = lst[:sz]
 
         qvec = predictor.create_vector_from_evidence(div_ev)
         sims = []
@@ -518,7 +439,7 @@ def plot_similarity_heatmap(sim_df):
     sns.heatmap(sim_df, cmap=cmap, center=0.5, square=True,
                 xticklabels=True, yticklabels=True,
                 cbar_kws={'shrink':0.8, 'label':'Similarity'})
-    plt.title("APT Similarity Matrix (Binary Vectors, No PCA)")
+    plt.title("APT Similarity Matrix (3-Feature Binary Vectors)")
     plt.xticks(rotation=90, fontsize=8)
     plt.yticks(rotation=0, fontsize=8)
     plt.tight_layout()

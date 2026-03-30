@@ -14,7 +14,7 @@ warnings.filterwarnings('ignore')
 # ============================
 class Config:
     DATA_PATH = "../BaseData/EncodedData.csv"
-    MODEL_PATH = "6feat_efficient_apt_similarity_nopca.pkl"
+    MODEL_PATH = "3feat_efficient_apt_similarity_nopca.pkl"
     MODEL_PARAMS = {
         'objective': 'multi:softprob',
         'n_estimators': 200,
@@ -96,8 +96,7 @@ class XGBoostDataLoader:
         # Offsets (useful for reconstruction)
         techniques_offset = 0
         software_offset = len(all_techniques)
-        capec_offset = software_offset + len(all_software)
-        pulse_offset =  len(all_cve)
+        cve_offset = software_offset + len(all_software)
 
         feature_metadata = {
             'all_techniques': all_techniques,
@@ -105,8 +104,7 @@ class XGBoostDataLoader:
             'all_cve': all_cve,
             'techniques_offset': techniques_offset,
             'software_offset': software_offset,
-            'capec_offset': capec_offset,
-            'pulse_offset': pulse_offset,
+            'cve_offset': cve_offset,
             'feature_mapping': {
                 'techniques': technique_to_idx,
                 'software': software_to_idx,
@@ -175,24 +173,25 @@ class EfficientXGBoostModel:
         similarities.sort(key=lambda x: x[1], reverse=True)
         return similarities[:top_k]
 
-    def create_query_vector(self, techniques, software, capec, cwe, cve, pulse):
+    def create_query_vector(self, techniques, software, cve):
         """Build binary vector from evidence using feature mappings."""
-        # This method is provided for completeness (used by query scripts)
         feature_mapping = self.feature_metadata.get('feature_mapping', {})
-        vector = np.zeros(self.feature_metadata['pulse_offset'] +
-                          len(self.feature_metadata['all_pulse']), dtype=np.float64)
+        total_len = self.feature_metadata['cve_offset'] + len(self.feature_metadata['all_cve'])
+        vector = np.zeros(total_len, dtype=np.float64)
 
         if 'techniques' in feature_mapping:
             tech_map = feature_mapping['techniques']
             for t in techniques:
                 if t in tech_map:
                     vector[tech_map[t]] = 1.0
+
         if 'software' in feature_mapping:
             soft_map = feature_mapping['software']
             for s in software:
                 if s in soft_map:
                     idx = soft_map[s] + self.feature_metadata['software_offset']
                     vector[idx] = 1.0
+
         if 'cve' in feature_mapping:
             cve_map = feature_mapping['cve']
             for v in cve:

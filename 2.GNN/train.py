@@ -19,17 +19,14 @@ class GNNConfig:
     """Configuration for GNN model"""
 #variable shared by all models:
     DATA_PATH = "../BaseData/EncodedData.csv"
-    MODEL_PATH = "6feat_trained_apt_gnn_model.pkl"
+    MODEL_PATH = "3feat_trained_apt_gnn_model.pkl"
     
 #variables share by some models:
     MAPPING_PATH = "../BaseData/comparison_Encoded_df.csv"
     FEATURE_WEIGHTS = {
         "techniques": 80.0,
         "software": 70.0,
-        "capec": 60.0,
-        "cwe": 50.0,
-        "cve": 40.0,
-        "pulse": 30.0
+        "cve": 40.0
     }
     HIDDEN_DIM = 256
     LEARNING_RATE = 0.1
@@ -73,19 +70,13 @@ class GNNDataProcessor:
                 "encoded_id": apt_id,
                 "techniques": set(),
                 "software": set(),
-                "capec": set(),
-                "cwe": set(),
                 "cve": set(),
-                "pulse": set(),
             }
             
             for _, row in apt_records.iterrows():
                 self._add_feature(profiles[apt_id], "techniques", row["techniques_str"])
                 self._add_feature(profiles[apt_id], "software", row["software_str"])
-                self._add_feature(profiles[apt_id], "capec", row["CAPEC_ID"])
-                self._add_feature(profiles[apt_id], "cwe", row["CWE_ID"])
                 self._add_feature(profiles[apt_id], "cve", row["CVE_ID"])
-                self._add_feature(profiles[apt_id], "pulse", row["Pulse_ID"])
         
         self.profiles = profiles
         self._print_statistics()
@@ -104,10 +95,7 @@ class GNNDataProcessor:
         stats = {
             'techniques': sum(len(p["techniques"]) for p in self.profiles.values()),
             'software': sum(len(p["software"]) for p in self.profiles.values()),
-            'capec': sum(len(p["capec"]) for p in self.profiles.values()),
-            'cwe': sum(len(p["cwe"]) for p in self.profiles.values()),
             'cve': sum(len(p["cve"]) for p in self.profiles.values()),
-            'pulse': sum(len(p["pulse"]) for p in self.profiles.values()),
         }
         
         print(f"Total APTs: {len(self.profiles)}")
@@ -123,51 +111,33 @@ class GNNDataProcessor:
 
         all_techniques = set()
         all_software = set()
-        all_capec = set()
-        all_cwe = set()
         all_cve = set()
-        all_pulse = set()
 
         for profile in profiles.values():
             all_techniques.update(profile["techniques"])
             all_software.update(profile["software"])
-            all_capec.update(profile["capec"])
-            all_cwe.update(profile["cwe"])
             all_cve.update(profile["cve"])
-            all_pulse.update(profile["pulse"])
 
         technique_to_idx = {tech: i for i, tech in enumerate(all_techniques)}
         software_to_idx = {soft: i for i, soft in enumerate(all_software)}
-        capec_to_idx = {capec: i for i, capec in enumerate(all_capec)}
-        cwe_to_idx = {cwe: i for i, cwe in enumerate(all_cwe)}
         cve_to_idx = {cve: i for i, cve in enumerate(all_cve)}
-        pulse_to_idx = {pulse: i for i, pulse in enumerate(all_pulse)}
 
         num_apts = len(apt_ids)
         num_techniques = len(all_techniques)
         num_software = len(all_software)
-        num_capec = len(all_capec)
-        num_cwe = len(all_cwe)
         num_cve = len(all_cve)
-        num_pulse = len(all_pulse)
 
         technique_offset = num_apts
         software_offset = technique_offset + num_techniques
-        capec_offset = software_offset + num_software
-        cwe_offset = capec_offset + num_capec
-        cve_offset = cwe_offset + num_cwe
-        pulse_offset = cve_offset + num_cve
+        cve_offset = software_offset + num_software   # define cve_offset properly
 
-        total_nodes = num_apts + num_techniques + num_software + num_capec + num_cwe + num_cve + num_pulse
+        total_nodes = num_apts + num_techniques + num_software + num_cve 
 
         print("Graph Structure:")
         print(f"  APT nodes: {num_apts}")
         print(f"  Technique nodes: {num_techniques}")
         print(f"  Software nodes: {num_software}")
-        print(f"  CAPEC nodes: {num_capec}")
-        print(f"  CWE nodes: {num_cwe}")
         print(f"  CVE nodes: {num_cve}")
-        print(f"  Pulse nodes: {num_pulse}")
         print(f"  TOTAL NODES: {total_nodes}")
 
         edge_list = []
@@ -189,29 +159,12 @@ class GNNDataProcessor:
                 edge_list.append([soft_idx, apt_idx])
                 edge_weights.extend([fw["software"], fw["software"]])
 
-            for capec in profile["capec"]:
-                capec_idx = capec_to_idx[capec] + capec_offset
-                edge_list.append([apt_idx, capec_idx])
-                edge_list.append([capec_idx, apt_idx])
-                edge_weights.extend([fw["capec"], fw["capec"]])
-
-            for cwe in profile["cwe"]:
-                cwe_idx = cwe_to_idx[cwe] + cwe_offset
-                edge_list.append([apt_idx, cwe_idx])
-                edge_list.append([cwe_idx, apt_idx])
-                edge_weights.extend([fw["cwe"], fw["cwe"]])
-
             for cve in profile["cve"]:
                 cve_idx = cve_to_idx[cve] + cve_offset
                 edge_list.append([apt_idx, cve_idx])
                 edge_list.append([cve_idx, apt_idx])
                 edge_weights.extend([fw["cve"], fw["cve"]])
 
-            for pulse in profile["pulse"]:
-                pulse_idx = pulse_to_idx[pulse] + pulse_offset
-                edge_list.append([apt_idx, pulse_idx])
-                edge_list.append([pulse_idx, apt_idx])
-                edge_weights.extend([fw["pulse"], fw["pulse"]])
 
         if edge_list:
             edge_index = torch.tensor(edge_list, dtype=torch.long).t().contiguous()
@@ -230,26 +183,18 @@ class GNNDataProcessor:
             "num_apts": num_apts,
             "apt_to_idx": apt_to_idx,
 
+
             "technique_to_idx": technique_to_idx,
             "software_to_idx": software_to_idx,
-            "capec_to_idx": capec_to_idx,
-            "cwe_to_idx": cwe_to_idx,
             "cve_to_idx": cve_to_idx,
-            "pulse_to_idx": pulse_to_idx,
 
             "technique_offset": technique_offset,
             "software_offset": software_offset,
-            "capec_offset": capec_offset,
-            "cwe_offset": cwe_offset,
             "cve_offset": cve_offset,
-            "pulse_offset": pulse_offset,
 
             "num_techniques": num_techniques,
             "num_software": num_software,
-            "num_capec": num_capec,
-            "num_cwe": num_cwe,
             "num_cve": num_cve,
-            "num_pulse": num_pulse,
 
             "feature_weights": GNNConfig.FEATURE_WEIGHTS.copy(),
         }
@@ -290,25 +235,19 @@ class GNNTrainer:
         fw = GNNConfig.FEATURE_WEIGHTS
         TECHNIQUE_WEIGHT = fw["techniques"]
         SOFTWARE_WEIGHT = fw["software"]
-        CAPEC_WEIGHT = fw["capec"]
-        CWE_WEIGHT = fw["cwe"]
         CVE_WEIGHT = fw["cve"]
-        PULSE_WEIGHT = fw["pulse"]
 
         num_apts = len(apt_ids)
         gt = torch.zeros((num_apts, num_apts), dtype=torch.float32)
 
         for i, apt_i in enumerate(apt_ids):
             prof_i = profiles[apt_i]
-            T_i, S_i, Ca_i, Cw_i, Cv_i, P_i = prof_i["techniques"], prof_i["software"], prof_i["capec"], prof_i["cwe"], prof_i["cve"], prof_i["pulse"]
+            T_i, S_i,Cv_i = prof_i["techniques"], prof_i["software"], prof_i["cve"]
 
             max_i = (
                 len(T_i) * TECHNIQUE_WEIGHT +
                 len(S_i) * SOFTWARE_WEIGHT +
-                len(Ca_i) * CAPEC_WEIGHT +
-                len(Cw_i) * CWE_WEIGHT +
-                len(Cv_i) * CVE_WEIGHT +
-                len(P_i) * PULSE_WEIGHT
+                len(Cv_i) * CVE_WEIGHT
             )
 
             for j, apt_j in enumerate(apt_ids):
@@ -316,31 +255,24 @@ class GNNTrainer:
                     continue
 
                 prof_j = profiles[apt_j]
-                T_j, S_j, Ca_j, Cw_j, Cv_j, P_j = prof_j["techniques"], prof_j["software"], prof_j["capec"], prof_j["cwe"], prof_j["cve"], prof_j["pulse"]
+                T_j = prof_j["techniques"]
+                S_j = prof_j["software"]
+                Cv_j = prof_j["cve"]
 
                 tech_overlap = len(T_i & T_j)
                 soft_overlap = len(S_i & S_j)
-                capec_overlap = len(Ca_i & Ca_j)
-                cwe_overlap = len(Cw_i & Cw_j)
                 cve_overlap = len(Cv_i & Cv_j)
-                pulse_overlap = len(P_i & P_j)
 
                 raw = (
                     tech_overlap * TECHNIQUE_WEIGHT +
                     soft_overlap * SOFTWARE_WEIGHT +
-                    capec_overlap * CAPEC_WEIGHT +
-                    cwe_overlap * CWE_WEIGHT +
-                    cve_overlap * CVE_WEIGHT +
-                    pulse_overlap * PULSE_WEIGHT
+                    cve_overlap * CVE_WEIGHT
                 )
 
                 max_j = (
                     len(T_j) * TECHNIQUE_WEIGHT +
                     len(S_j) * SOFTWARE_WEIGHT +
-                    len(Ca_j) * CAPEC_WEIGHT +
-                    len(Cw_j) * CWE_WEIGHT +
-                    len(Cv_j) * CVE_WEIGHT +
-                    len(P_j) * PULSE_WEIGHT
+                    len(Cv_j) * CVE_WEIGHT
                 )
 
                 max_possible = min(max_i, max_j)
@@ -455,28 +387,22 @@ class GNNUtils:
                 'embedding_norm': embedding.norm().item(),
                 'techniques': len(profile['techniques']),
                 'software': len(profile['software']),
-                'capec': len(profile['capec']),
-                'cwe': len(profile['cwe']),
                 'cve': len(profile['cve']),
-                'pulse': len(profile['pulse']),
                 'profile_size': len(profile['techniques']) +
                                 len(profile['software']) +
-                                len(profile['capec']) +
-                                len(profile['cwe']) +
-                                len(profile['cve']) +
-                                len(profile['pulse'])
+                                len(profile['cve'])
             })
 
         embedding_norms.sort(key=lambda x: x['embedding_norm'], reverse=True)
 
         print("Top 10 APTs by Embedding Norm:")
-        print(f"{'APT Name':<30} {'Embed Norm':<10} {'Techniques':<10} {'Software':<8} {'CAPEC':<8} {'CWE':<8} {'CVE':<8} {'Pulse':<8} {'Total':<6}")
+        print(f"{'APT Name':<30} {'Embed Norm':<10} {'Techniques':<10} {'Software':<8} {'CVE':<8} {'Total':<6}")
         print("-" * 80)
         for item in embedding_norms[:10]:
             print(f"{item['apt_name']:<30} {item['embedding_norm']:<10.4f} "
                   f"{item['techniques']:<10} {item['software']:<8} "
-                  f"{item['capec']:<8} {item['cwe']:<8} {item['cve']:<8} "
-                  f"{item['pulse']:<8} {item['profile_size']:<6}")
+                  f"{item['cve']:<8} "
+                  f"{item['profile_size']:<6}")
 
 # ============================
 # 7. MODEL SAVING
