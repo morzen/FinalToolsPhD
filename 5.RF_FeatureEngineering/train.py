@@ -15,7 +15,7 @@ class RandomForestConfig:
     """Configuration for Random Forest model"""
 #variable shared by all models:
     DATA_PATH = "../BaseData/EncodedData.csv"
-    MODEL_PATH = "6feat_apt_similarity_model.joblib"
+    MODEL_PATH = "3feat_apt_similarity_model.joblib"
 
 
 #variables share by some models:
@@ -27,7 +27,7 @@ class RandomForestConfig:
     N_ESTIMATORS = 100
     N_JOBS = -1  # Use all available cores
     # Feature types
-    FEATURE_TYPES = ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']
+    FEATURE_TYPES = ['techniques', 'software', 'cve']
 
 
 # ============================
@@ -86,19 +86,13 @@ class APTProfileCreator:
                     'encoded_id': apt_encoded,
                     'techniques': set(),
                     'software': set(),
-                    'capec': set(),
-                    'cwe': set(),
-                    'cve': set(),
-                    'pulse': set()
+                    'cve': set()
                 }
             
             # Add features if present
             self._add_feature_to_profile(self.profiles[apt_name], 'techniques', row['techniques_str'])
             self._add_feature_to_profile(self.profiles[apt_name], 'software', row['software_str'])
-            self._add_feature_to_profile(self.profiles[apt_name], 'capec', row['CAPEC_ID'])
-            self._add_feature_to_profile(self.profiles[apt_name], 'cwe', row['CWE_ID'])
             self._add_feature_to_profile(self.profiles[apt_name], 'cve', row['CVE_ID'])
-            self._add_feature_to_profile(self.profiles[apt_name], 'pulse', row['Pulse_ID'])
         
         self._finalize_profiles()
         self._print_profile_statistics()

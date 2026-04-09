@@ -8,7 +8,7 @@ import random
 
 def load_model():
     """Load the pre-trained model and all necessary data"""
-    model_data = joblib.load('6feat_apt_similarity_model.joblib')
+    model_data = joblib.load('3feat_apt_similarity_model.joblib')
     print("Model loaded successfully")
     return model_data
 
@@ -139,10 +139,7 @@ def evaluate_full_data_query(model_data, top_x_values=[1,5,10,20]):
         evidence = {}
         for feature_type, evidence_key in [('techniques', 'techniques_str'),
                                           ('software', 'software_str'),
-                                          ('capec', 'CAPEC_ID'),
-                                          ('cwe', 'CWE_ID'),
-                                          ('cve', 'CVE_ID'),
-                                          ('pulse', 'Pulse_ID')]:
+                                          ('cve', 'CVE_ID')]:
             if feature_type in profile:
                 # Convert encoded IDs back to originals for sanitization
                 if feature_type == 'techniques':
@@ -151,17 +148,8 @@ def evaluate_full_data_query(model_data, top_x_values=[1,5,10,20]):
                 elif feature_type == 'software':
                     mapping = dict(zip(df_mapping['software_Encoded'], df_mapping['software_Origin']))
                     evidence[evidence_key] = [mapping.get(f, f) for f in profile[feature_type] if f in mapping]
-                elif feature_type == 'capec':
-                    mapping = dict(zip(df_mapping['CAPEC_ID_Encoded'], df_mapping['CAPEC_ID_Origin']))
-                    evidence[evidence_key] = [mapping.get(f, f) for f in profile[feature_type] if f in mapping]
-                elif feature_type == 'cwe':
-                    mapping = dict(zip(df_mapping['CWE_ID_Encoded'], df_mapping['CWE_ID_Origin']))
-                    evidence[evidence_key] = [mapping.get(f, f) for f in profile[feature_type] if f in mapping]
                 elif feature_type == 'cve':
                     mapping = dict(zip(df_mapping['CVE_ID_Encoded'], df_mapping['CVE_ID_Origin']))
-                    evidence[evidence_key] = [mapping.get(f, f) for f in profile[feature_type] if f in mapping]
-                elif feature_type == 'pulse':
-                    mapping = dict(zip(df_mapping['Pulse_ID_Encoded'], df_mapping['Pulse_ID_Origin']))
                     evidence[evidence_key] = [mapping.get(f, f) for f in profile[feature_type] if f in mapping]
         
         # Process evidence
@@ -223,10 +211,7 @@ def evaluate_profile_division(model_data, divider=2, top_x_values=[1, 5, 10, 20]
         
         for feature_type, evidence_key in [('techniques', 'techniques_str'),
                                          ('software', 'software_str'),
-                                         ('capec', 'CAPEC_ID'),
-                                         ('cwe', 'CWE_ID'),
-                                         ('cve', 'CVE_ID'),
-                                         ('pulse', 'Pulse_ID'),]:
+                                         ('cve', 'CVE_ID'),]:
             
             if feature_type in target_data and target_data[feature_type]:
                 feature_list = target_data[feature_type].copy()
@@ -241,17 +226,8 @@ def evaluate_profile_division(model_data, divider=2, top_x_values=[1, 5, 10, 20]
                 elif feature_type == 'software':
                     mapping = dict(zip(df_mapping['software_Encoded'], df_mapping['software_Origin']))
                     divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
-                elif feature_type == 'capec':
-                    mapping = dict(zip(df_mapping['CAPEC_ID_Encoded'], df_mapping['CAPEC_ID_Origin']))
-                    divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
-                elif feature_type == 'cwe':
-                    mapping = dict(zip(df_mapping['CWE_ID_Encoded'], df_mapping['CWE_ID_Origin']))
-                    divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
                 elif feature_type == 'cve':
                     mapping = dict(zip(df_mapping['CVE_ID_Encoded'], df_mapping['CVE_ID_Origin']))
-                    divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
-                elif feature_type == 'pulse':
-                    mapping = dict(zip(df_mapping['Pulse_ID_Encoded'], df_mapping['Pulse_ID_Origin']))
                     divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
         
         # Process the divided evidence
@@ -302,10 +278,7 @@ def sanitize_evidence(evidence, df_mapping):
     column_mapping = {
         'techniques_str': ('techniques_Origin', 'techniques_Encoded'),
         'software_str': ('software_Origin', 'software_Encoded'),
-        'CAPEC_ID': ('CAPEC_ID_Origin', 'CAPEC_ID_Encoded'),
-        'CWE_ID': ('CWE_ID_Origin', 'CWE_ID_Encoded'),
-        'CVE_ID': ('CVE_ID_Origin', 'CVE_ID_Encoded'),
-        'Pulse_ID': ('Pulse_ID_Origin', 'Pulse_ID_Encoded')
+        'CVE_ID': ('CVE_ID_Origin', 'CVE_ID_Encoded')
     }
     
     for evidence_key, (origin_col, _) in column_mapping.items():
@@ -344,11 +317,8 @@ def translate_to_encoded(evidence, df_mapping):
     
     column_mapping = {
         'techniques_str': ('techniques_Encoded', 'techniques'),
-        'software_str': ('software_Encoded', 'software'), 
-        'CAPEC_ID': ('CAPEC_ID_Encoded', 'capec'),
-        'CWE_ID': ('CWE_ID_Encoded', 'cwe'),
+        'software_str': ('software_Encoded', 'software'),
         'CVE_ID': ('CVE_ID_Encoded', 'cve'),
-        'Pulse_ID': ('Pulse_ID_Encoded', 'pulse'),
     }
     
     for evidence_key, (encoded_col, output_key) in column_mapping.items():

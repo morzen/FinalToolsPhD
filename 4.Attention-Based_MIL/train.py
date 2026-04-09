@@ -76,7 +76,7 @@ class AttentionMILDataLoader:
         profiles = {}
         feature_types = ['technique', 'software', 'cve']
         missing_apts = []  # Collect missing encoded IDs
-    
+        
         for _, row in self.df_encoded.iterrows():
             apt_encoded = row['APTname']
             
@@ -100,6 +100,14 @@ class AttentionMILDataLoader:
             self._add_feature(profiles[apt_name], 'software', row['software_str'])
             self._add_feature(profiles[apt_name], 'cve', row['CVE_ID'])
         
+        # If any missing APTs were found, raise an error
+        if missing_apts:
+            print("\nERROR: The following encoded APT IDs are missing from the mapping dataframe:")
+            for apt_id in missing_apts:
+                print(f"  - {apt_id}")
+            print("\nPlease ensure the mapping file 'comparison_Encoded_df.csv' contains all APT IDs present in 'EncodedData.csv'.")
+            raise KeyError(f"Missing mapping for APT IDs: {missing_apts}")
+        
         # Convert sets to lists and add counts
         for apt_name in profiles:
             profile = profiles[apt_name]
@@ -122,7 +130,7 @@ class AttentionMILDataLoader:
         print("\nProfile Statistics:")
         print("=" * 50)
         
-        feature_types = ['technique', 'software', 'capec', 'cwe', 'cve', 'pulse']
+        feature_types = ['technique', 'software', 'cve']
         stats = {ft: 0 for ft in feature_types}
         
         for profile in profiles.values():
@@ -156,35 +164,29 @@ class OptimizedAttentionMILSimilarity(nn.Module):  # KEEP THE ORIGINAL NAME
         # Feature embedding layers
         self.technique_embed = nn.Embedding(AttentionMILConfig.EMBEDDING_VOCAB_SIZE, hidden_dim)
         self.software_embed = nn.Embedding(AttentionMILConfig.EMBEDDING_VOCAB_SIZE, hidden_dim)
-        self.capec_embed = nn.Embedding(AttentionMILConfig.EMBEDDING_VOCAB_SIZE, hidden_dim)
-        self.cwe_embed = nn.Embedding(AttentionMILConfig.EMBEDDING_VOCAB_SIZE, hidden_dim)
         self.cve_embed = nn.Embedding(AttentionMILConfig.EMBEDDING_VOCAB_SIZE, hidden_dim)
-        self.pulse_embed = nn.Embedding(AttentionMILConfig.EMBEDDING_VOCAB_SIZE, hidden_dim)
         
         # Attention networks
         self.attention_nets = nn.ModuleDict({
             'technique': self._build_attention(),
             'software': self._build_attention(),
-            'capec': self._build_attention(),
-            'cwe': self._build_attention(),
             'cve': self._build_attention(),
-            'pulse': self._build_attention(),
         })
         
         # Similarity network
         self.similarity_net = nn.Sequential(
-            nn.Linear(hidden_dim * 6 * 2 + 6, hidden_dim*4),
+            nn.Linear(hidden_dim * 3 * 2 + 3, hidden_dim*4),
             nn.LayerNorm(hidden_dim*4),
             nn.ReLU(),
             nn.Linear(hidden_dim*4, hidden_dim*2),
             nn.LayerNorm(hidden_dim*2),
             nn.ReLU(),
-            nn.Linear(hidden_dim*2, 6),
+            nn.Linear(hidden_dim*2, 3),
             nn.Sigmoid()
         )
         
         # Initialize weights with higher technique importance
-        self.feature_weights = nn.Parameter(torch.tensor([0.8, 0.7, 0.6, 0.5, 0.4, 0.3]))
+        self.feature_weights = nn.Parameter(torch.tensor([0.8, 0.7, 0.4]))
         self.perfect_match_boost = 2.0  # Direct score multiplier for perfect matches
         
         self.init_weights()
@@ -202,8 +204,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):  # KEEP THE ORIGINAL NAME
         print("\nInitializing model weights...")
         
         # Initialize embedding layers
-        for embed in [self.technique_embed, self.software_embed, self.capec_embed, 
-                      self.cwe_embed, self.cve_embed, self.pulse_embed]:
+        for embed in [self.technique_embed, self.software_embed, self.cve_embed]:
             nn.init.xavier_uniform_(embed.weight)
         
         # Initialize attention networks
@@ -225,7 +226,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):  # KEEP THE ORIGINAL NAME
         """Calculate match ratios between APT and evidence features"""
         ratios = []
         perfect_matches = []
-        feature_types = ['technique', 'software', 'capec', 'cwe', 'cve', 'pulse']
+        feature_types = ['technique', 'software', 'cve']
         
         for feat_type in feature_types:
             dict_key = feat_type
@@ -264,15 +265,14 @@ class OptimizedAttentionMILSimilarity(nn.Module):  # KEEP THE ORIGINAL NAME
     def _forward_single(self, x_dict, match_ratios):
         """Forward pass for a single APT profile"""
         features = []
-        feature_types = ['technique', 'software', 'capec', 'cwe', 'cve', 'pulse']
+        feature_types = ['technique', 'software', 'cve']
         
         for i, feat_type in enumerate(feature_types):
             dict_key = feat_type 
             feat = x_dict.get(dict_key, [])
             
             if len(feat) > 0:
-                embedded = getattr(self, f'{feat_type}_embed')(
-                    torch.tensor(feat, dtype=torch.long))
+                embedded = getattr(self, f'{feat_type}_embed')(torch.tensor(feat, dtype=torch.long))
                 
                 # Enhanced attention with sigmoid gate
                 attn_weights = F.softmax(

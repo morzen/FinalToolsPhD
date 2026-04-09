@@ -17,35 +17,29 @@ class OptimizedAttentionMILSimilarity(nn.Module):
         # Feature embedding layers
         self.technique_embed = nn.Embedding(10000, hidden_dim)
         self.software_embed = nn.Embedding(10000, hidden_dim)
-        self.capec_embed = nn.Embedding(10000, hidden_dim)
-        self.cwe_embed = nn.Embedding(10000, hidden_dim)
         self.cve_embed = nn.Embedding(10000, hidden_dim)
-        self.pulse_embed = nn.Embedding(10000, hidden_dim)
         
         # Attention networks
         self.attention_nets = nn.ModuleDict({
             'technique': self._build_attention(),
             'software': self._build_attention(),
-            'capec': self._build_attention(),
-            'cwe': self._build_attention(),
             'cve': self._build_attention(),
-            'pulse': self._build_attention(),
         })
         
         # Similarity network
         self.similarity_net = nn.Sequential(
-            nn.Linear(hidden_dim * 6 * 2 + 6, hidden_dim*4),
+            nn.Linear(hidden_dim * 3 * 2 + 3, hidden_dim*4),
             nn.LayerNorm(hidden_dim*4),
             nn.ReLU(),
             nn.Linear(hidden_dim*4, hidden_dim*2),
             nn.LayerNorm(hidden_dim*2),
             nn.ReLU(),
-            nn.Linear(hidden_dim*2, 6),
+            nn.Linear(hidden_dim*2, 3),
             nn.Sigmoid()
         )
         
         # Initialize weights with higher technique importance
-        self.feature_weights = nn.Parameter(torch.tensor([0.8, 0.7, 0.6, 0.5, 0.4, 0.3]))
+        self.feature_weights = nn.Parameter(torch.tensor([0.8, 0.7, 0.4]))
         self.perfect_match_boost = 2.0  # Direct score multiplier for perfect matches
         
         self.init_weights()
@@ -59,7 +53,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
 
     def init_weights(self):
         """Initialize weights for embeddings and linear layers"""
-        for embed in [self.technique_embed, self.software_embed, self.capec_embed, self.cwe_embed, self.cve_embed, self.pulse_embed]:
+        for embed in [self.technique_embed, self.software_embed, self.cve_embed]:
             nn.init.xavier_uniform_(embed.weight)
         
         for net in self.attention_nets.values():
@@ -76,7 +70,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
     def _calculate_match_ratios(self, apt_dict, evidence_dict):
         ratios = []
         perfect_matches = []
-        feature_types = ['technique', 'software', 'capec', 'cwe', 'cve', 'pulse']
+        feature_types = ['technique', 'software', 'cve']
         
         for feat_type in feature_types:
             dict_key = feat_type
@@ -116,7 +110,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
 
     def _forward_single(self, x_dict, match_ratios):
         features = []
-        feature_types = ['technique', 'software', 'capec', 'cwe', 'cve', 'pulse']
+        feature_types = ['technique', 'software', 'cve']
         
         for i, feat_type in enumerate(feature_types):
             dict_key = feat_type
@@ -145,7 +139,7 @@ def load_complete_model():
     
     try:
         # Load with pickle (since the model was saved with pickle)
-        with open('6feat_apt_similarity_model_complete.pth', 'rb') as f:
+        with open('3feat_apt_similarity_model_complete.pth', 'rb') as f:
             save_data = pickle.load(f)
         
         print("✓ Model loaded successfully with pickle")
@@ -156,7 +150,7 @@ def load_complete_model():
         
         # Fallback to torch.load if it's actually a torch file
         import torch
-        save_data = torch.load('6feat_apt_similarity_model_complete.pth', 
+        save_data = torch.load('3feat_apt_similarity_model_complete.pth', 
                               weights_only=False, 
                               map_location='cpu')
     
@@ -182,10 +176,7 @@ def calculate_similarities(model, apt_profiles, evidence_features, apt_ids):
             apt_features = {
                 'technique': apt_profiles[apt_name]['technique'],
                 'software': apt_profiles[apt_name]['software'],
-                'capec': apt_profiles[apt_name]['capec'],
-                'cwe': apt_profiles[apt_name]['cwe'],
-                'cve': apt_profiles[apt_name]['cve'],
-                'pulse': apt_profiles[apt_name]['pulse']
+                'cve': apt_profiles[apt_name]['cve']
             }
             
             similarity = model(apt_features, evidence_features)
@@ -207,10 +198,7 @@ def generate_cross_similarity_matrix(model, apt_profiles, apt_ids):
             apt1_features = {
                 'technique': apt_profiles[apt1_name]['technique'],
                 'software': apt_profiles[apt1_name]['software'],
-                'capec': apt_profiles[apt1_name]['capec'],
-                'cwe': apt_profiles[apt1_name]['cwe'],
-                'cve': apt_profiles[apt1_name]['cve'],
-                'pulse': apt_profiles[apt1_name]['pulse']
+                'cve': apt_profiles[apt1_name]['cve']
             }
             
             for j in range(i, num_apts):  # Only compute upper triangle to save computation
@@ -218,10 +206,7 @@ def generate_cross_similarity_matrix(model, apt_profiles, apt_ids):
                 apt2_features = {
                     'technique': apt_profiles[apt2_name]['technique'],
                     'software': apt_profiles[apt2_name]['software'],
-                    'capec': apt_profiles[apt2_name]['capec'],
-                    'cwe': apt_profiles[apt2_name]['cwe'],
-                    'cve': apt_profiles[apt2_name]['cve'],
-                    'pulse': apt_profiles[apt2_name]['pulse']
+                    'cve': apt_profiles[apt2_name]['cve']
                 }
                 
                 similarity = model(apt1_features, apt2_features)
@@ -364,10 +349,7 @@ def evaluate_full_data_query(model, apt_profiles, apt_name_dict, df_mapping, apt
         evidence_features = {
             'technique': profile.get('technique', []),
             'software': profile.get('software', []),
-            'capec': profile.get('capec', []),
-            'cwe': profile.get('cwe', []),
-            'cve': profile.get('cve', []),
-            'pulse': profile.get('pulse', [])
+            'cve': profile.get('cve', [])
         }
         
         # Calculate similarities with all APTs
@@ -411,9 +393,7 @@ def evaluate_profile_division(model, apt_profiles, apt_name_dict, df_mapping, ap
         # Create evidence with divided data for each feature type
         divided_evidence = {}
         
-        for feature_type, evidence_key in [('technique', 'techniques_str'),
-                                         ('software', 'software_str'), ('capec', 'CAPEC_ID'),
-                                         ('cwe', 'CWE_ID'), ('cve', 'CVE_ID'), ('pulse', 'Pulse_ID'),]:
+        for feature_type, evidence_key in [('technique', 'techniques_str'), ('software', 'software_str'), ('cve', 'CVE_ID'),]:
             
             if feature_type in target_data and target_data[feature_type]:
                 feature_list = target_data[feature_type].copy()
@@ -428,17 +408,8 @@ def evaluate_profile_division(model, apt_profiles, apt_name_dict, df_mapping, ap
                 elif feature_type == 'software':
                     mapping = dict(zip(df_mapping['software_Encoded'], df_mapping['software_Origin']))
                     divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
-                elif feature_type == 'capec':
-                    mapping = dict(zip(df_mapping['CAPEC_ID_Encoded'], df_mapping['CAPEC_ID_Origin']))
-                    divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
-                elif feature_type == 'cwe':
-                    mapping = dict(zip(df_mapping['CWE_ID_Encoded'], df_mapping['CWE_ID_Origin']))
-                    divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
                 elif feature_type == 'cve':
                     mapping = dict(zip(df_mapping['CVE_ID_Encoded'], df_mapping['CVE_ID_Origin']))
-                    divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
-                elif feature_type == 'pulse':
-                    mapping = dict(zip(df_mapping['Pulse_ID_Encoded'], df_mapping['Pulse_ID_Origin']))
                     divided_evidence[evidence_key] = [mapping.get(f, f) for f in divided_features if f in mapping]
         
         # Process the divided evidence
@@ -450,10 +421,7 @@ def evaluate_profile_division(model, apt_profiles, apt_name_dict, df_mapping, ap
         evidence_features = {
             'technique': encoded_evidence.get('technique', []),
             'software': encoded_evidence.get('software', []),
-            'capec': encoded_evidence.get('capec', []),
-            'cwe': encoded_evidence.get('cwe', []),
-            'cve': encoded_evidence.get('cve', []),
-            'pulse': encoded_evidence.get('pulse', [])
+            'cve': encoded_evidence.get('cve', [])
         }
         
         # Calculate similarities with divided data

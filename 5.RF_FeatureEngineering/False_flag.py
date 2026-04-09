@@ -16,7 +16,7 @@ from sklearn.ensemble import RandomForestClassifier
 # CONFIG
 # ============================================================
 
-MODEL_PATH = "6feat_apt_similarity_model.joblib"
+MODEL_PATH = "3feat_apt_similarity_model.joblib"
 TOP_X_VALUES = [1, 5, 10, 20]
 MAX_WORKERS = min(mp.cpu_count(), 8)
 
@@ -143,13 +143,7 @@ def create_false_flag_features_full(attacker_profile, mimicked_profile, model_da
 def create_false_flag_features_partial(attacker_profile, mimicked_profile, model_data,
                                        rng=None, attacker_fraction=0.3, max_count=10,
                                        volume_fraction=0.5):
-    """
-    PARTIAL evidence:
-      1) Build FULL 30/70 mixed evidence per feature type (as above, list form).
-      2) Shuffle and keep ~50% per feature type.
-      3) Binarize with the same binarizers.
-    Matches GNN's create_partial_mixed_evidence semantics.
-    """
+
     if rng is None:
         rng = random
     

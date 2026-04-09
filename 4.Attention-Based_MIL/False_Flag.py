@@ -16,7 +16,7 @@ import seaborn as sns
 # CONFIG
 # ============================================================
 
-MODEL_PATH = "6feat_apt_similarity_model_complete.pth"
+MODEL_PATH = "3feat_apt_similarity_model_complete.pth"
 TOP_X_VALUES = [1, 5, 10, 20]
 MAX_WORKERS = min(mp.cpu_count(), 8)
 DEVICE = torch.device("cpu")
@@ -38,35 +38,29 @@ class OptimizedAttentionMILSimilarity(nn.Module):
         # Feature embedding layers
         self.technique_embed = nn.Embedding(10000, hidden_dim)
         self.software_embed = nn.Embedding(10000, hidden_dim)
-        self.capec_embed = nn.Embedding(10000, hidden_dim)
-        self.cwe_embed = nn.Embedding(10000, hidden_dim)
         self.cve_embed = nn.Embedding(10000, hidden_dim)
-        self.pulse_embed = nn.Embedding(10000, hidden_dim)
         
         # Attention networks
         self.attention_nets = nn.ModuleDict({
             'technique': self._build_attention(),
             'software': self._build_attention(),
-            'capec': self._build_attention(),
-            'cwe': self._build_attention(),
-            'cve': self._build_attention(),
-            'pulse': self._build_attention()
+            'cve': self._build_attention()
         })
         
         # Similarity network
         self.similarity_net = nn.Sequential(
-            nn.Linear(hidden_dim * 6 * 2 + 6, hidden_dim*4),
+            nn.Linear(hidden_dim * 3 * 2 + 3, hidden_dim*4),
             nn.LayerNorm(hidden_dim*4),
             nn.ReLU(),
             nn.Linear(hidden_dim*4, hidden_dim*2),
             nn.LayerNorm(hidden_dim*2),
             nn.ReLU(),
-            nn.Linear(hidden_dim*2, 6),
+            nn.Linear(hidden_dim*2, 3),
             nn.Sigmoid()
         )
         
         # Initialize weights with higher technique importance
-        self.feature_weights = nn.Parameter(torch.tensor([0.8, 0.7, 0.6, 0.5, 0.4, 0.3]))
+        self.feature_weights = nn.Parameter(torch.tensor([0.8, 0.7, 0.4]))
         self.perfect_match_boost = 2.0
         
         self.init_weights()
@@ -79,7 +73,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
         )
 
     def init_weights(self):
-        for embed in [self.technique_embed, self.software_embed, self.capec_embed, self.cwe_embed, self.cve_embed, self.pulse_embed]:
+        for embed in [self.technique_embed, self.software_embed, self.cve_embed]:
             nn.init.xavier_uniform_(embed.weight)
         
         for net in self.attention_nets.values():
@@ -96,7 +90,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
     def _calculate_match_ratios(self, apt_dict, evidence_dict):
         ratios = []
         perfect_matches = []
-        feature_types = ['technique', 'software', 'capec', 'cwe', 'cve', 'pulse']
+        feature_types = ['technique', 'software', 'cve']
         
         for feat_type in feature_types:
             dict_key = feat_type
@@ -129,7 +123,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
 
     def _forward_single(self, x_dict, match_ratios):
         features = []
-        feature_types = ['technique', 'software', 'capec', 'cwe', 'cve', 'pulse']
+        feature_types = ['technique', 'software', 'cve']
         
         for i, feat_type in enumerate(feature_types):
             dict_key = feat_type
@@ -194,17 +188,11 @@ def load_mil_model_and_data(model_path=MODEL_PATH):
 # ============================================================
 
 def build_apt_evidence_dict_from_profile(profile):
-    """
-    Build x_dict expected by MIL model:
-      {'technique': [...], 'software': [...], 'cve': [...]}
-    """
+
     return {
         "technique": profile.get("technique", []),
         "software":   profile.get("software", []),
-        "capec":        profile.get("capec", []),
-        "cwe":        profile.get("cwe", []),
         "cve":        profile.get("cve", []),
-        "pulse":        profile.get("pulse", []),
     }
 
 def build_false_flag_evidence_full(attacker_profile, mimicked_profile, rng=None,
@@ -249,17 +237,8 @@ def build_false_flag_evidence_full(attacker_profile, mimicked_profile, rng=None,
         "software":   sample_mixed_features(attacker_profile.get("software", []),
                                             mimicked_profile.get("software", []),
                                             max_count),
-        "capec":        sample_mixed_features(attacker_profile.get("capec", []),
-                                            mimicked_profile.get("capec", []),
-                                            max_count),
-        "cwe":        sample_mixed_features(attacker_profile.get("cwe", []),
-                                            mimicked_profile.get("cwe", []),
-                                            max_count),
         "cve":        sample_mixed_features(attacker_profile.get("cve", []),
                                             mimicked_profile.get("cve", []),
-                                            max_count),
-        "pulse":        sample_mixed_features(attacker_profile.get("pulse", []),
-                                            mimicked_profile.get("pulse", []),
                                             max_count),
     }
     return evidence
