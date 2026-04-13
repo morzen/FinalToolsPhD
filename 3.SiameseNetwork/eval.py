@@ -92,9 +92,9 @@ class SiameseSimilarityPredictor:
     
     def predict_similarity(self, features1, features2, n_samples=32):
         """Siamese cosine similarity - MODEL FORWARD PASS"""
-        if features1[0] == -1 and features1[1] == -1 and features1[2] == -1 :
+        if features1[0] == -1 and features1[1] == -1 and features1[2] == -1:
             return 0.0
-        if features2[0] == -1 and features2[1] == -1 and features2[2] == -1 :
+        if features2[0] == -1 and features2[1] == -1 and features2[2] == -1:
             return 0.0
         
         # Generate embeddings THROUGH MODEL
@@ -314,7 +314,7 @@ def evaluate_full_profile_queries_sampling(model, X, y, profiles, apt_name_mappi
         target_id = apt_ids_sorted[i]
         # Get all rows of this APT
         mask = (y_np == target_id)
-        apt_rows = X[mask]  # shape [num_rows, 3]
+        apt_rows = X[mask]  # shape [num_rows, 6]
 
         # Collect sets of non‑-1 values for each feature type
         tech_set = set(apt_rows[:, 0][apt_rows[:, 0] != -1])

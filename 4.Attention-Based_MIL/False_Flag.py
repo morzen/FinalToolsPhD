@@ -188,7 +188,10 @@ def load_mil_model_and_data(model_path=MODEL_PATH):
 # ============================================================
 
 def build_apt_evidence_dict_from_profile(profile):
-
+    """
+    Build x_dict expected by MIL model:
+      {'technique': [...], 'software': [...], 'cve': [...]}
+    """
     return {
         "technique": profile.get("technique", []),
         "software":   profile.get("software", []),

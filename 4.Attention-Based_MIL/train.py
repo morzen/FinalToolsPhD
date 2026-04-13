@@ -118,7 +118,7 @@ class AttentionMILDataLoader:
         print(f"Created profiles for {len(profiles)} APTs")
         self._print_profile_statistics(profiles)
         
-        return profiles
+        return profiles 
     
     def _add_feature(self, profile, feature_name, value):
         """Add feature value if valid"""
@@ -272,7 +272,8 @@ class OptimizedAttentionMILSimilarity(nn.Module):  # KEEP THE ORIGINAL NAME
             feat = x_dict.get(dict_key, [])
             
             if len(feat) > 0:
-                embedded = getattr(self, f'{feat_type}_embed')(torch.tensor(feat, dtype=torch.long))
+                embedded = getattr(self, f'{feat_type}_embed')(
+                    torch.tensor(feat, dtype=torch.long))
                 
                 # Enhanced attention with sigmoid gate
                 attn_weights = F.softmax(

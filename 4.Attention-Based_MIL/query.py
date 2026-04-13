@@ -345,7 +345,7 @@ def print_mil_results_table(results, encoded_evidence, apt_profiles, apt_name_di
             apt_name = apt_name[:31] + "..."
         
         # Get profile information
-        total_matches = result['technique'] + result['software'] + result['cve']
+        total_matches = result['technique'] + result['software'] + result['cve'] 
         
         # Find profile for this APT
         profile_info = ""
@@ -373,8 +373,8 @@ def load_complete_model(status):
     
     if status == "hybrid":
         # Try the fixed version first, then original
-        fixed_path = '../4.Attention-Based_MIL/3feat_apt_similarity_model_fixed.pth'
-        original_path = '../4.Attention-Based_MIL/3feat_apt_similarity_model_complete.pth'
+        fixed_path = '../4.Attention-Based_MIL/6feat_apt_similarity_model_fixed.pth'
+        original_path = '../4.Attention-Based_MIL/6feat_apt_similarity_model_complete.pth'
         
         # Check which file exists
         import os
@@ -483,7 +483,7 @@ def translate_to_encoded(evidence, df_mapping):
     column_mapping = {
         'techniques': ('techniques_Encoded', 'technique'),
         'software': ('software_Encoded', 'software'),
-        'cve': ('CVE_ID_Encoded', 'cve')
+        'cve': ('CVE_ID_Encoded', 'cve'),
     }
     
     for evidence_key, (encoded_col, output_key) in column_mapping.items():
