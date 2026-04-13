@@ -96,13 +96,7 @@ def load_model_and_data(status):
         raise
 
 def load_mapping_and_profiles():
-    """Load mapping and profiles with error handling.
-    Returns:
-        df_mapping: DataFrame with mapping from original to encoded IDs.
-        profiles: dict mapping APT ID (original) to a dict containing sets of
-                  encoded integers for each feature type.
-        apt_name_mapping: dict mapping encoded APT ID to original APT name.
-    """
+    """Load df_mapping (for evidence encoding) and build profiles directly from EncodedData.csv."""
     try:
         mapping_path = "../BaseData/comparison_Encoded_df.csv"
         encoded_path = "../BaseData/EncodedData.csv"
@@ -112,83 +106,38 @@ def load_mapping_and_profiles():
         if not os.path.exists(encoded_path):
             raise FileNotFoundError(f"Encoded data file not found: {encoded_path}")
 
+        # 1. Load mapping for evidence conversion (original → encoded)
         df_mapping = pd.read_csv(mapping_path)
+
+        # 2. Load encoded data (already integer IDs)
         df_encoded = pd.read_csv(encoded_path)
 
-        # Build encoders for each feature (original → encoded integer)
-        # Column names in mapping file
-        origin_cols = {
-            'techniques': 'techniques_Origin',
-            'software':   'software_Origin',
-            'capec':      'CAPEC_ID_Origin',
-            'cwe':        'CWE_ID_Origin',
-            'cve':        'CVE_ID_Origin',
-            'pulse':      'Pulse_ID_Origin'
-        }
-        encoded_cols = {
-            'techniques': 'techniques_Encoded',
-            'software':   'software_Encoded',
-            'capec':      'CAPEC_ID_Encoded',
-            'cwe':        'CWE_ID_Encoded',
-            'cve':        'CVE_ID_Encoded',
-            'pulse':      'Pulse_ID_Encoded'
-        }
-
-        encoders = {}
-        for feat, origin_col in origin_cols.items():
-            encoded_col = encoded_cols[feat]
-            if origin_col not in df_mapping.columns or encoded_col not in df_mapping.columns:
-                raise KeyError(f"Column {origin_col} or {encoded_col} not found in mapping file.")
-            # Build mapping from original string to encoded integer
-            origin_series = df_mapping[origin_col].astype(str)
-            encoded_series = df_mapping[encoded_col]
-            valid_mask = encoded_series.notna()
-            encoders[feat] = dict(zip(
-                origin_series[valid_mask],
-                encoded_series[valid_mask].astype(int)
-            ))
-
-        # Build APT profiles (using encoded integers)
+        # 3. Build profiles directly from encoded data
         profiles = {}
-        for apt_id in df_encoded['APTname'].unique():
-            apt_data = df_encoded[df_encoded['APTname'] == apt_id]
+        # Group by APTname (which is already the encoded APT ID)
+        for apt_id, group in df_encoded.groupby('APTname'):
             profiles[apt_id] = {
-                'techniques': set(),
-                'software':   set(),
-                'capec':      set(),
-                'cwe':        set(),
-                'cve':        set(),
-                'pulse':      set(),
-                'total_features': len(apt_data)
+                'techniques': set(group['techniques_str'].dropna().astype(int).unique()),
+                'software':   set(group['software_str'].dropna().astype(int).unique()),
+                'capec':      set(group['CAPEC_ID'].dropna().astype(int).unique()),
+                'cwe':        set(group['CWE_ID'].dropna().astype(int).unique()),
+                'cve':        set(group['CVE_ID'].dropna().astype(int).unique()),
+                'pulse':      set(group['Pulse_ID'].dropna().astype(int).unique()),
+                'total_features': len(group)
             }
-            # Fill each feature set using the corresponding encoder
-            for feat in ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']:
-                # Column name in encoded data
-                if feat == 'capec':
-                    src_col = 'CAPEC_ID'
-                elif feat == 'cwe':
-                    src_col = 'CWE_ID'
-                elif feat == 'cve':
-                    src_col = 'CVE_ID'
-                elif feat == 'pulse':
-                    src_col = 'Pulse_ID'
-                else:
-                    src_col = f'{feat}_str'   # techniques_str, software_str
-                values = apt_data[src_col].dropna().unique()
-                encoded_set = set()
-                for val in values:
-                    val_str = str(val).strip()
-                    if val_str and val_str in encoders[feat]:
-                        encoded_set.add(encoders[feat][val_str])
-                profiles[apt_id][feat] = encoded_set
 
-        # APT name mapping
+        # 4. APT name mapping (from comparison file)
         apt_name_mapping = dict(zip(
             df_mapping['APTnameEncoded'],
             df_mapping['APTnameOrigin'].fillna(df_mapping['APTnameEncoded'])
         ))
 
         print(f"✓ Loaded profiles for {len(profiles)} APTs")
+        # Optional: print a sample to verify
+        sample_apt = next(iter(profiles.keys()))
+        print(f"  Sample APT {sample_apt}: {len(profiles[sample_apt]['techniques'])} techniques, "
+              f"{len(profiles[sample_apt]['software'])} software, ...")
+
         return df_mapping, profiles, apt_name_mapping
 
     except Exception as e:
@@ -528,12 +477,40 @@ def analyze_feature_matching(results, encoded_evidence, profiles):
                 return 0.0
             return 2 * a * b / (a + b)
         
-        tech_score = harmonic_safe(tech_matches, tech_len) if tech_len > 0 else 0.0
-        soft_score = harmonic_safe(soft_matches, soft_len) if soft_len > 0 else 0.0
-        capec_score = harmonic_safe(capec_matches, capec_len) if capec_len > 0 else 0.0
-        cwe_score = harmonic_safe(cwe_matches, cwe_len) if cwe_len > 0 else 0.0
-        cve_score = harmonic_safe(cve_matches, cve_len) if cve_len > 0 else 0.0
-        pulse_score = harmonic_safe(pulse_matches, pulse_len) if pulse_len > 0 else 0.0
+        # Inside the loop, after getting profile totals:
+        tech_total = len(profile.get('techniques', []))
+        soft_total = len(profile.get('software', []))
+        capec_total = len(profile.get('capec', []))
+        cwe_total = len(profile.get('cwe', []))
+        cve_total = len(profile.get('cve', []))
+        pulse_total = len(profile.get('pulse', []))
+
+        # Compute coverages (as floats between 0 and 1)
+        tech_evid_cov = tech_matches / tech_len if tech_len > 0 else 0.0
+        tech_prof_cov = tech_matches / tech_total if tech_total > 0 else 0.0
+
+        soft_evid_cov = soft_matches / soft_len if soft_len > 0 else 0.0
+        soft_prof_cov = soft_matches / soft_total if soft_total > 0 else 0.0
+
+        capec_evid_cov = capec_matches / capec_len if capec_len > 0 else 0.0
+        capec_prof_cov = capec_matches / capec_total if capec_total > 0 else 0.0
+
+        cwe_evid_cov = cwe_matches / cwe_len if cwe_len > 0 else 0.0
+        cwe_prof_cov = cwe_matches / cwe_total if cwe_total > 0 else 0.0
+
+        cve_evid_cov = cve_matches / cve_len if cve_len > 0 else 0.0
+        cve_prof_cov = cve_matches / cve_total if cve_total > 0 else 0.0
+
+        pulse_evid_cov = pulse_matches / pulse_len if pulse_len > 0 else 0.0
+        pulse_prof_cov = pulse_matches / pulse_total if pulse_total > 0 else 0.0
+
+        # Now call harmonic_safe with the two coverage ratios
+        tech_score = harmonic_safe(tech_evid_cov, tech_prof_cov)
+        soft_score = harmonic_safe(soft_evid_cov, soft_prof_cov)
+        capec_score = harmonic_safe(capec_evid_cov, capec_prof_cov)
+        cwe_score = harmonic_safe(cwe_evid_cov, cwe_prof_cov)
+        cve_score = harmonic_safe(cve_evid_cov, cve_prof_cov)
+        pulse_score = harmonic_safe(pulse_evid_cov, pulse_prof_cov)
         
         all_feature_scores.append({
             'apt_name': result['apt_name'],
@@ -543,24 +520,34 @@ def analyze_feature_matching(results, encoded_evidence, profiles):
             'cwe_score': cwe_score,
             'cve_score': cve_score,
             'pulse_score': pulse_score,
+
             'tech_matches': tech_matches,
             'soft_matches': soft_matches,
             'capec_matches': capec_matches,
             'cwe_matches': cwe_matches,
             'cve_matches': cve_matches,
             'pulse_matches': pulse_matches,
+
             'tech_evid_cov': tech_matches / max(1, tech_len),
             'soft_evid_cov': soft_matches / max(1, soft_len),
             'capec_evid_cov': capec_matches / max(1, capec_len),
             'cwe_evid_cov': cwe_matches / max(1, cwe_len),
             'cve_evid_cov': cve_matches / max(1, cve_len),
             'pulse_evid_cov': pulse_matches / max(1, pulse_len),
+
             'tech_prof_cov': tech_matches / max(1, len(profile.get('techniques', []))),
             'soft_prof_cov': soft_matches / max(1, len(profile.get('software', []))),
             'capec_prof_cov': capec_matches / max(1, len(profile.get('capec', []))),
             'cwe_prof_cov': cwe_matches / max(1, len(profile.get('cwe', []))),
             'cve_prof_cov': cve_matches / max(1, len(profile.get('cve', []))),
-            'pulse_prof_cov': pulse_matches / max(1, len(profile.get('pulse', [])))
+            'pulse_prof_cov': pulse_matches / max(1, len(profile.get('pulse', []))),
+
+            'tech_total': len(profile.get('techniques', [])),
+            'soft_total': len(profile.get('software', [])),
+            'capec_total': len(profile.get('capec', [])),
+            'cwe_total': len(profile.get('cwe', [])),
+            'cve_total': len(profile.get('cve', [])),
+            'pulse_total': len(profile.get('pulse', []))
         })
     
     # Only show categories that have evidence
@@ -584,6 +571,16 @@ def analyze_feature_matching(results, encoded_evidence, profiles):
     
     any_category_shown = False
     
+    # Map category names to the total key in all_feature_scores
+    total_key_map = {
+        'TTP': 'tech_total',
+        'Software': 'soft_total',
+        'CAPEC': 'capec_total',
+        'CWE': 'cwe_total',
+        'CVE': 'cve_total',
+        'Pulse': 'pulse_total'
+    }
+    
     for cat_name, score_key, matches_key, evid_key, prof_key in categories:
         # Skip categories with no evidence
         if evidence_lengths[score_key] == 0:
@@ -598,14 +595,12 @@ def analyze_feature_matching(results, encoded_evidence, profiles):
         
         # Get top 5 for this category
         top5 = sorted(all_feature_scores, key=lambda x: x[score_key], reverse=True)[:5]
+        total_key = total_key_map[cat_name]   # get the correct total key
         
         for i, score in enumerate(top5, 1):
             apt_name = score['apt_name'][:29] + "..." if len(score['apt_name']) > 29 else score['apt_name']
-            
-            # Format coverage strings
             evid_cov = f"{score[matches_key]}/{evidence_lengths[score_key]} ({score[evid_key]:.3f})"
-            prof_cov = f"{score[matches_key]}/? ({score[prof_key]:.3f})"  # We don't have profile total here
-            
+            prof_cov = f"{score[matches_key]}/{score[total_key]} ({score[prof_key]:.3f})"
             print(f"{i:<4} {apt_name:<30} {score[score_key]:<10.4f} {evid_cov:<20} {prof_cov:<20}")
     
     if not any_category_shown:

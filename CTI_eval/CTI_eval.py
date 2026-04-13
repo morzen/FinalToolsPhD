@@ -478,6 +478,7 @@ def combine_and_evaluate_evidence(apt_name, evidence_list, modules):
 # Main execution
 # ======================
 if __name__ == "__main__":
+    print("the code is running")
     # Load JSON
     json_file = 'CTI_Eval.json'
     if not os.path.exists(json_file):

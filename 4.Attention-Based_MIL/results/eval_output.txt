@@ -1,0 +1,95 @@
+✓ Model loaded successfully with pickle
+Model loaded successfully!
+Number of APTs: 181
+
+================================================================================
+GENERATING CROSS-SIMILARITY MATRIX
+================================================================================
+Computing cross-similarity matrix for all APT pairs...
+Cross-similarity matrix computation completed!
+Similarity DataFrame sample (first 5x5):
+             Axiom    Moafee   Cleaver  Ke3chang     APT12
+Axiom     0.999916  0.990104  0.500782  0.501393  0.500691
+Moafee    0.990104  0.997140  0.500378  0.500503  0.500421
+Cleaver   0.500782  0.500378  0.999923  0.704736  0.500852
+Ke3chang  0.501393  0.500503  0.704736  0.999919  0.500813
+APT12     0.500691  0.500421  0.500852  0.500813  0.999911
+
+Matrix shape: (181, 181)
+
+================================================================================
+EVALUATION 1: STORED CROSS-SIMILARITY MATRIX
+================================================================================
+
+Evaluating similarity matrix for top X matches:
+==================================================
+Top 1: 173/181 (95.58%)
+Top 5: 178/181 (98.34%)
+Top 10: 181/181 (100.00%)
+Top 20: 181/181 (100.00%)
+
+================================================================================
+EVALUATION: FULL DATA QUERY (complete profile)
+================================================================================
+  Processing 0/181...
+  Processing 20/181...
+  Processing 40/181...
+  Processing 60/181...
+  Processing 80/181...
+  Processing 100/181...
+  Processing 120/181...
+  Processing 140/181...
+  Processing 160/181...
+  Processing 180/181...
+
+Results Summary:
+  Top 1: 170/181 (93.92%)
+  Top 5: 177/181 (97.79%)
+  Top 10: 177/181 (97.79%)
+  Top 20: 179/181 (98.90%)
+  Average self‑rank: 1.49
+
+================================================================================
+EVALUATION 2: DIVIDED PROFILE DATA
+================================================================================
+
+Evaluating with divider: 2 (using 50.0% of profile data)
+
+Settings: TopX: 1 Divider: 2
+Attention MIL Model for this set had a success/failure rate of:
+1/180 Total: 181
+Success rate: 0.5524861878453038%
+
+Settings: TopX: 5 Divider: 2
+Attention MIL Model for this set had a success/failure rate of:
+5/176 Total: 181
+Success rate: 2.7624309392265194%
+
+Settings: TopX: 10 Divider: 2
+Attention MIL Model for this set had a success/failure rate of:
+10/171 Total: 181
+Success rate: 5.524861878453039%
+
+Settings: TopX: 20 Divider: 2
+Attention MIL Model for this set had a success/failure rate of:
+20/161 Total: 181
+Success rate: 11.049723756906078%
+
+Plotting similarity heatmap...
+Data statistics:
+Min: 0.500343
+Max: 0.999926
+Range: 0.499583
+Mean: 0.531348
+Std: 0.106492
+Using full color scale
+Color scale limits: 0.500343 to 0.999926
+
+==================================================
+RESOURCE USAGE REPORT../4.Attention-Based_MIL/eval.py
+==================================================
+Execution Time: 275.06 seconds
+Memory Usage: 0.00 MB
+Current Memory: 40.98 MB
+CPU Usage: 0.1%
+System CPU: 35.8%

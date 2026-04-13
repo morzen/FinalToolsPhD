@@ -270,6 +270,19 @@ def remotequery(evidence_first_batch):
     #         weight_tvd=1
     #     )
 
+    #weight based only on self evaluation
+    result = hybrid_rank_aggregate(
+            all_lists,
+            weight_jaccard=5,
+            weight_xgboost=4,
+            weight_featureMatching=4,
+            weight_mil=3,
+            weight_rf=3,
+            weight_tvd=2.5,
+            weight_siamese=1,
+            weight_gnn=1
+        )
+
     #weight determined on precision evaluation through dataset and CTI eval testing
     # result = hybrid_rank_aggregate(
     #         all_lists,
