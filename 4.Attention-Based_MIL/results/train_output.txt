@@ -55,13 +55,12 @@ Weights initialized successfully
 
 Model Architecture:
   Hidden dimension: 256
-  Embedding vocabulary size: 10000
+  Embedding vocabulary size: 100000
   Feature weights: {'technique': 0.8, 'software': 0.7, 'capec': 0.6, 'cwe': 0.5, 'cve': 0.4, 'pulse': 0.3}
-  Perfect match boost: 2.0
 
 Parameter Count:
-  Total parameters: 19,440,146
-  Trainable parameters: 19,440,146
+  Total parameters: 157,686,290
+  Trainable parameters: 157,686,290
 
 3. MODEL TRAINING
 
@@ -72,15 +71,15 @@ TRAINING THE MODEL
 Starting training for 50 epochs...
 Training on 359 pairs
 Using device: cpu
-Epoch   1/50 | Loss: 2.484649 | Avg Similarity: 0.9936
-Epoch  10/50 | Loss: 0.532811 | Avg Similarity: 0.6134
-Epoch  20/50 | Loss: 0.448628 | Avg Similarity: 0.6673
-Epoch  30/50 | Loss: 0.411222 | Avg Similarity: 0.7088
-Epoch  40/50 | Loss: 0.358291 | Avg Similarity: 0.7408
-Epoch  50/50 | Loss: 0.349736 | Avg Similarity: 0.7471
+Epoch   1/50 | Loss: 0.696052 | Avg Similarity: 0.5170
+Epoch  10/50 | Loss: 0.026135 | Avg Similarity: 0.5015
+Epoch  20/50 | Loss: 0.001534 | Avg Similarity: 0.5039
+Epoch  30/50 | Loss: 0.000517 | Avg Similarity: 0.5041
+Epoch  40/50 | Loss: 0.000306 | Avg Similarity: 0.5041
+Epoch  50/50 | Loss: 0.000220 | Avg Similarity: 0.5042
 
 Training completed!
-Final loss: 0.349736
+Final loss: 0.000220
 
 4. MODEL SAVING
 
@@ -88,7 +87,7 @@ Saving model and data...
 Model saved to '6feat_apt_similarity_model_complete.pth'
   APT profiles: 181
   APT IDs: 181
-  File size: 192.10 MB
+  File size: 1005.41 MB
 
 TRAINING SUMMARY
 ============================================================
@@ -105,8 +104,8 @@ Model is ready for similarity calculations!
 ==================================================
 RESOURCE USAGE REPORT../4.Attention-Based_MIL/train.py
 ==================================================
-Execution Time: 330.07 seconds
-Memory Usage: -22.97 MB
-Current Memory: 18.02 MB
+Execution Time: 742.48 seconds
+Memory Usage: 0.00 MB
+Current Memory: 41.27 MB
 CPU Usage: 0.1%
-System CPU: 15.7%
+System CPU: 20.2%

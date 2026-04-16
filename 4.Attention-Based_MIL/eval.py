@@ -15,12 +15,12 @@ class OptimizedAttentionMILSimilarity(nn.Module):
         self.hidden_dim = hidden_dim
         
         # Feature embedding layers
-        self.technique_embed = nn.Embedding(10000, hidden_dim)
-        self.software_embed = nn.Embedding(10000, hidden_dim)
-        self.capec_embed = nn.Embedding(10000, hidden_dim)
-        self.cwe_embed = nn.Embedding(10000, hidden_dim)
-        self.cve_embed = nn.Embedding(10000, hidden_dim)
-        self.pulse_embed = nn.Embedding(10000, hidden_dim)
+        self.technique_embed = nn.Embedding(100000, hidden_dim)
+        self.software_embed = nn.Embedding(100000, hidden_dim)
+        self.capec_embed = nn.Embedding(100000, hidden_dim)
+        self.cwe_embed = nn.Embedding(100000, hidden_dim)
+        self.cve_embed = nn.Embedding(100000, hidden_dim)
+        self.pulse_embed = nn.Embedding(100000, hidden_dim)
         
         # Attention networks
         self.attention_nets = nn.ModuleDict({
@@ -34,7 +34,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
         
         # Similarity network
         self.similarity_net = nn.Sequential(
-            nn.Linear(hidden_dim * 6 * 2 + 6, hidden_dim*4),
+            nn.Linear(hidden_dim * 6 * 2 + 12, hidden_dim*4),
             nn.LayerNorm(hidden_dim*4),
             nn.ReLU(),
             nn.Linear(hidden_dim*4, hidden_dim*2),
@@ -43,6 +43,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
             nn.Linear(hidden_dim*2, 6),
             nn.Sigmoid()
         )
+        
         
         # Initialize weights with higher technique importance
         self.feature_weights = nn.Parameter(torch.tensor([0.8, 0.7, 0.6, 0.5, 0.4, 0.3]))
@@ -97,22 +98,20 @@ class OptimizedAttentionMILSimilarity(nn.Module):
         return torch.tensor(ratios), torch.tensor(perfect_matches)
 
     def forward(self, x1_dict, x2_dict):
-        match_ratios, perfect_matches = self._calculate_match_ratios(x1_dict, x2_dict)
-        emb1 = self._forward_single(x1_dict, match_ratios)
-        emb2 = self._forward_single(x2_dict, match_ratios)
-        
-        combined = torch.cat([emb1, emb2, match_ratios.unsqueeze(0)], dim=-1)
+        ratios_12, _ = self._calculate_match_ratios(x1_dict, x2_dict)
+        ratios_21, _ = self._calculate_match_ratios(x2_dict, x1_dict)
+        emb1 = self._forward_single(x1_dict, ratios_12)
+        emb2 = self._forward_single(x2_dict, ratios_21)
+        both_ratios = torch.cat([ratios_12, ratios_21])   # length 12
+        combined = torch.cat([emb1, emb2, both_ratios.unsqueeze(0)], dim=-1)
         feature_similarities = self.similarity_net(combined)
-        
-        # Apply perfect match boost directly to scores
-        boosted_similarities = feature_similarities * (1 + perfect_matches * (self.perfect_match_boost - 1))
         
         # Use softmax weights
         weights = F.softmax(self.feature_weights, dim=0)
         
         # Final score
-        similarity = (boosted_similarities * weights).sum(dim=-1, keepdim=True)
-        return torch.sigmoid(similarity * 10)
+        similarity = (feature_similarities * weights).sum(dim=-1, keepdim=True)
+        return similarity
 
     def _forward_single(self, x_dict, match_ratios):
         features = []

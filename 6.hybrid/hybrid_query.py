@@ -271,30 +271,30 @@ def remotequery(evidence_first_batch):
     #     )
 
     #weight based only on self evaluation
-    result = hybrid_rank_aggregate(
-            all_lists,
-            weight_jaccard=5,
-            weight_xgboost=4,
-            weight_featureMatching=4,
-            weight_mil=3,
-            weight_rf=3,
-            weight_tvd=2.5,
-            weight_siamese=1,
-            weight_gnn=1
-        )
-
-    #weight determined on precision evaluation through dataset and CTI eval testing
     # result = hybrid_rank_aggregate(
     #         all_lists,
+    #         weight_jaccard=5,
+    #         weight_xgboost=5,
     #         weight_featureMatching=5,
-    #         weight_jaccard=4,
-    #         weight_xgboost=3,
-    #         weight_mil=2.5,
-    #         weight_gnn=2,
-    #         weight_tvd=1.8,
-    #         weight_siamese=1.5,
-    #         weight_rf=1
+    #         weight_siamese=1,
+    #         weight_tvd=2,
+    #         weight_rf=1,
+    #         weight_gnn=1,
+    #         weight_mil=1
     #     )
+
+    #weight determined on precision evaluation through dataset and CTI eval testing
+    result = hybrid_rank_aggregate(
+            all_lists,
+            weight_featureMatching=5,
+            weight_jaccard=4,
+            weight_xgboost=4,
+            weight_mil=4,
+            weight_gnn=1,
+            weight_tvd=2,
+            weight_siamese=1,
+            weight_rf=2
+        )
 
 
     # Transform to match first list format (only rank and apt_name)
