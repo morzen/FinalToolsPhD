@@ -411,7 +411,7 @@ def process_element(apt_name, idx, element):
     if matching_hybrid:
         updated_element['results_ranks']['hybrid'] = int(matching_hybrid[0]['rank'])
     if matching_Jaccards:
-        updated_element['results_ranks']['Jacccards'] = int(matching_Jaccards[0]['rank'])
+        updated_element['results_ranks']['Jaccards'] = int(matching_Jaccards[0]['rank'])
     if matching_TVD:
         updated_element['results_ranks']['TVD'] = int(matching_TVD[0]['rank'])
     if matching_featureMatching:
@@ -425,7 +425,7 @@ def process_element(apt_name, idx, element):
 def combine_and_evaluate_evidence(apt_name, evidence_list, modules):
     """Combine all evidence for an APT and evaluate (without printing)."""
     combined_evidence = {
-        "techniques": [], "software": [], "capec": [], "cwe": [], "cve": [], "pulse": []
+        "techniques": [], "software": [], "cve": []
     }
     for element in evidence_list:
         evidence = element['Data']
@@ -467,7 +467,7 @@ def combine_and_evaluate_evidence(apt_name, evidence_list, modules):
             "MIL": int(matching_mil[0]['rank']) if matching_mil else None,
             "RF": int(matching_rf[0]['rank']) if matching_rf else None,
             "hybrid": int(matching_hybrid[0]['rank']) if matching_hybrid else None,
-            "Jacccards": int(matching_Jaccards[0]['rank']) if matching_Jaccards else None,
+            "Jaccards": int(matching_Jaccards[0]['rank']) if matching_Jaccards else None,
             "TVD": int(matching_TVD[0]['rank']) if matching_TVD else None,
             "featureMatching": int(matching_featureMatching[0]['rank']) if matching_featureMatching else None
         }
@@ -479,7 +479,7 @@ def combine_and_evaluate_evidence(apt_name, evidence_list, modules):
 # ======================
 if __name__ == "__main__":
     # Load JSON
-    json_file = 'CTI_Eval.json'
+    json_file = '3_feature_CTI_Eval.json'
     if not os.path.exists(json_file):
         with open(json_file, 'w') as f:
             json.dump({}, f)  # adjust initial structure as needed
@@ -575,7 +575,7 @@ if __name__ == "__main__":
             'MIL': combined_entry['results_ranks']['MIL'],
             'RF': combined_entry['results_ranks']['RF'],
             'hybrid': combined_entry['results_ranks']['hybrid'],
-            'Jaccards': combined_entry['results_ranks']['Jacccards'],
+            'Jaccards': combined_entry['results_ranks']['Jaccards'],
             'TVD': combined_entry['results_ranks']['TVD'],
             'Feature Matching': combined_entry['results_ranks']['featureMatching']
         }

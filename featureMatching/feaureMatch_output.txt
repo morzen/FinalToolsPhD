@@ -1,0 +1,254 @@
+Successfully loaded evidence from query_input.json
+Found: 114 techniques, 48 software, 1060 cve
+
+APT Ranking using Basic Feature Matching:
+==============================================================================================================
+Rank  | APT                            | Encoded ID | Score    | Techniques | Software | CVE  
+--------------------------------------------------------------------------------------------------------------
+1     | APT29                          | 22         | 1.0000 | 114        | 48       | 1060 
+2     | Sandworm Team                  | 139        | 0.4169 | 42         | 6        | 1041 
+3     | APT41                          | 30         | 0.3911 | 37         | 5        | 1041 
+4     | Kimsuky                        | 95         | 0.3846 | 43         | 2        | 1013 
+5     | APT28                          | 21         | 0.3696 | 44         | 3        | 888  
+6     | Lazarus Group                  | 97         | 0.3411 | 44         | 0        | 860  
+7     | APT32                          | 25         | 0.3221 | 32         | 4        | 835  
+8     | Ke3chang                       | 94         | 0.3172 | 24         | 5        | 915  
+9     | Magic Hound                    | 105        | 0.3161 | 43         | 6        | 543  
+10    | Wizard Spider                  | 180        | 0.3124 | 30         | 6        | 752  
+11    | FIN13                          | 72         | 0.2961 | 27         | 2        | 870  
+12    | Volt Typhoon                   | 173        | 0.2893 | 32         | 7        | 571  
+13    | GALLIUM                        | 79         | 0.2847 | 17         | 4        | 918  
+14    | FIN7                           | 76         | 0.2838 | 30         | 3        | 723  
+15    | FIN6                           | 75         | 0.2835 | 22         | 4        | 825  
+16    | menuPass                       | 108        | 0.2804 | 26         | 6        | 669  
+17    | Gamaredon Group                | 81         | 0.2772 | 26         | 0        | 869  
+18    | APT3                           | 23         | 0.2753 | 23         | 0        | 912  
+19    | Mustang Panda                  | 118        | 0.2719 | 23         | 1        | 860  
+20    | Scattered Spider               | 141        | 0.2691 | 23         | 2        | 811  
+21    | OilRig                         | 123        | 0.2683 | 24         | 6        | 646  
+22    | BRONZE BUTLER                  | 40         | 0.2670 | 25         | 2        | 766  
+23    | RedCurl                        | 135        | 0.2668 | 22         | 0        | 889  
+24    | Threat Group-3390              | 164        | 0.2570 | 29         | 7        | 469  
+25    | Turla                          | 170        | 0.2549 | 31         | 5        | 496  
+26    | APT38                          | 28         | 0.2541 | 19         | 2        | 809  
+27    | Earth Lusca                    | 62         | 0.2501 | 22         | 3        | 702  
+28    | Ember Bear                     | 65         | 0.2468 | 17         | 3        | 773  
+29    | Dragonfly                      | 60         | 0.2461 | 28         | 4        | 542  
+30    | TA505                          | 155        | 0.2452 | 19         | 5        | 659  
+31    | TeamTNT                        | 159        | 0.2398 | 20         | 0        | 795  
+32    | HEXANE                         | 88         | 0.2369 | 28         | 3        | 534  
+33    | APT37                          | 27         | 0.2330 | 17         | 1        | 779  
+34    | Rocke                          | 136        | 0.2290 | 17         | 0        | 796  
+35    | Leviathan                      | 100        | 0.2274 | 25         | 3        | 541  
+36    | MuddyWater                     | 117        | 0.2244 | 33         | 1        | 459  
+37    | APT39                          | 29         | 0.2222 | 28         | 2        | 500  
+38    | Patchwork                      | 126        | 0.2147 | 23         | 0        | 623  
+39    | Chimera                        | 43         | 0.2109 | 27         | 5        | 356  
+40    | Agrius                         | 5          | 0.2084 | 12         | 1        | 749  
+41    | Aquatic Panda                  | 32         | 0.2040 | 17         | 1        | 641  
+42    | Play                           | 129        | 0.2005 | 18         | 5        | 463  
+43    | Windshift                      | 176        | 0.1986 | 12         | 0        | 738  
+44    | Moonstone Sleet                | 114        | 0.1966 | 13         | 0        | 711  
+45    | Darkhotel                      | 56         | 0.1954 | 12         | 0        | 723  
+46    | Fox Kitten                     | 78         | 0.1916 | 18         | 1        | 564  
+47    | BackdoorDiplomacy              | 34         | 0.1902 | 6          | 1        | 767  
+48    | Moses Staff                    | 115        | 0.1891 | 9          | 1        | 709  
+49    | LuminousMoth                   | 103        | 0.1840 | 13         | 1        | 615  
+50    | Winter Vivern                  | 178        | 0.1801 | 14         | 0        | 615  
+51    | Silence                        | 144        | 0.1788 | 16         | 1        | 538  
+52    | ToddyCat                       | 166        | 0.1786 | 19         | 2        | 449  
+53    | FIN8                           | 77         | 0.1714 | 23         | 3        | 309  
+54    | Tropic Trooper                 | 169        | 0.1680 | 17         | 0        | 505  
+55    | Winnti Group                   | 177        | 0.1671 | 5          | 0        | 710  
+56    | ZIRCONIUM                      | 181        | 0.1639 | 16         | 0        | 503  
+57    | Star Blizzard                  | 148        | 0.1600 | 10         | 0        | 589  
+58    | PROMETHIUM                     | 132        | 0.1554 | 7          | 0        | 619  
+59    | Cobalt Group                   | 46         | 0.1550 | 18         | 4        | 282  
+60    | HAFNIUM                        | 86         | 0.1515 | 16         | 2        | 372  
+61    | Indrik Spider                  | 93         | 0.1510 | 13         | 3        | 386  
+62    | Blue Mockingbird               | 38         | 0.1510 | 12         | 1        | 475  
+63    | Molerats                       | 113        | 0.1498 | 13         | 0        | 488  
+64    | Daggerfly                      | 54         | 0.1477 | 10         | 0        | 530  
+65    | INC Ransom                     | 90         | 0.1464 | 13         | 4        | 328  
+66    | APT5                           | 31         | 0.1456 | 14         | 3        | 343  
+67    | APT-C-36                       | 14         | 0.1436 | 7          | 0        | 563  
+68    | LazyScripter                   | 98         | 0.1433 | 13         | 0        | 457  
+69    | Saint Bear                     | 138        | 0.1357 | 10         | 0        | 473  
+70    | TA2541                         | 153        | 0.1337 | 20         | 0        | 289  
+71    | APT1                           | 15         | 0.1322 | 12         | 5        | 242  
+72    | Gallmaker                      | 80         | 0.1314 | 4          | 0        | 557  
+73    | Suckfly                        | 152        | 0.1267 | 3          | 0        | 552  
+74    | TA551                          | 156        | 0.1250 | 8          | 0        | 457  
+75    | APT33                          | 26         | 0.1236 | 20         | 2        | 169  
+76    | LAPSUS$                        | 96         | 0.1212 | 17         | 1        | 246  
+77    | Inception                      | 91         | 0.1205 | 16         | 0        | 296  
+78    | Sidewinder                     | 143        | 0.1196 | 15         | 0        | 309  
+79    | Confucius                      | 47         | 0.1196 | 15         | 0        | 309  
+80    | Deep Panda                     | 59         | 0.1169 | 7          | 2        | 364  
+81    | BlackOasis                     | 36         | 0.1157 | 0          | 0        | 552  
+82    | Nomadic Octopus                | 122        | 0.1141 | 5          | 0        | 457  
+83    | TEMP.Veles                     | 160        | 0.1138 | 12         | 2        | 262  
+84    | Leafminer                      | 99         | 0.1134 | 7          | 2        | 347  
+85    | PLATINUM                       | 128        | 0.1111 | 4          | 0        | 460  
+86    | Carbanak                       | 42         | 0.1096 | 7          | 2        | 329  
+87    | admin@338                      | 4          | 0.1083 | 7          | 3        | 287  
+88    | APT18                          | 19         | 0.1027 | 9          | 0        | 333  
+89    | APT19                          | 20         | 0.1008 | 9          | 1        | 288  
+90    | Cinnamon Tempest               | 44         | 0.1007 | 11         | 3        | 181  
+91    | DarkVishnya                    | 58         | 0.0989 | 2          | 1        | 401  
+92    | CopyKittens                    | 48         | 0.0967 | 5          | 1        | 338  
+93    | Naikon                         | 120        | 0.0957 | 9          | 4        | 156  
+94    | Evilnum                        | 67         | 0.0940 | 6          | 0        | 344  
+95    | CURIUM                         | 49         | 0.0934 | 10         | 0        | 271  
+96    | Tonto Team                     | 167        | 0.0903 | 9          | 1        | 238  
+97    | Dark Caracal                   | 55         | 0.0896 | 8          | 0        | 288  
+98    | Higaisa                        | 89         | 0.0858 | 14         | 0        | 165  
+99    | FIN5                           | 74         | 0.0839 | 6          | 2        | 224  
+100   | Aoqin Dragon                   | 11         | 0.0830 | 7          | 0        | 274  
+101   | Sowbug                         | 147        | 0.0820 | 5          | 0        | 304  
+102   | Akira                          | 7          | 0.0819 | 5          | 3        | 196  
+103   | Axiom                          | 33         | 0.0786 | 7          | 0        | 253  
+104   | Gorgon Group                   | 84         | 0.0772 | 10         | 0        | 194  
+105   | Stealth Falcon                 | 149        | 0.0758 | 8          | 0        | 222  
+106   | FIN10                          | 71         | 0.0734 | 9          | 0        | 193  
+107   | TA577                          | 157        | 0.0727 | 4          | 0        | 277  
+108   | Windigo                        | 175        | 0.0720 | 3          | 0        | 291  
+109   | Transparent Tribe              | 168        | 0.0717 | 11         | 0        | 150  
+110   | "No Problems" - OTX 2096       | 1          | 0.0704 | 9          | 0        | 179  
+111   | Andariel                       | 10         | 0.0686 | 7          | 0        | 205  
+112   | BlackTech                      | 37         | 0.0646 | 7          | 1        | 150  
+113   | WIRTE                          | 179        | 0.0643 | 9          | 0        | 150  
+114   | Machete                        | 104        | 0.0643 | 9          | 0        | 150  
+115   | Mustard Tempest                | 119        | 0.0626 | 6          | 1        | 158  
+116   | SideCopy                       | 142        | 0.0624 | 8          | 0        | 158  
+117   | Malteiro                       | 106        | 0.0597 | 6          | 0        | 180  
+118   | Whitefly                       | 174        | 0.0562 | 5          | 1        | 145  
+119   | The White Company              | 162        | 0.0497 | 5          | 0        | 150  
+120   | Ferocious Kitten               | 70         | 0.0497 | 5          | 0        | 150  
+121   | Poseidon Group                 | 131        | 0.0496 | 4          | 0        | 167  
+122   | BITTER                         | 35         | 0.0462 | 12         | 0        | 11   
+123   | 2MISP                          | 2          | 0.0451 | 12         | 0        | 6    
+124   | FIN4                           | 73         | 0.0446 | 9          | 0        | 56   
+125   | aavega                         | 3          | 0.0441 | 12         | 0        | 1    
+126   | CyberThreats to Caribbean      | 52         | 0.0365 | 10         | 0        | 0    
+127   | Open-source Threat Intellig..  | 124        | 0.0356 | 9          | 0        | 13   
+128   | Orangeworm                     | 125        | 0.0347 | 2          | 3        | 23   
+129   | Putter Panda                   | 133        | 0.0346 | 2          | 0        | 130  
+130   | Equation                       | 66         | 0.0338 | 0          | 0        | 161  
+131   | Threat Group-1314              | 163        | 0.0310 | 3          | 2        | 24   
+132   | DarkHydrus                     | 57         | 0.0307 | 4          | 2        | 5    
+133   | Rancor                         | 134        | 0.0303 | 8          | 0        | 5    
+134   | EXOTIC LILY                    | 68         | 0.0303 | 8          | 0        | 5    
+135   | APT                            | 12         | 0.0299 | 8          | 0        | 3    
+136   | Volatile Cedar                 | 172        | 0.0287 | 4          | 0        | 67   
+137   | POLONIUM                       | 130        | 0.0283 | 5          | 0        | 48   
+138   | Eyes On IOC's (AX)             | 69         | 0.0268 | 7          | 0        | 6    
+139   | Cleaver                        | 45         | 0.0266 | 3          | 2        | 3    
+140   | Elderwood                      | 64         | 0.0266 | 7          | 0        | 5    
+141   | IndigoZebra                    | 92         | 0.0266 | 7          | 0        | 5    
+142   | StickTeam                      | 150        | 0.0258 | 7          | 0        | 1    
+143   | Silent Librarian               | 145        | 0.0257 | 4          | 0        | 53   
+144   | PittyTiger                     | 127        | 0.0249 | 2          | 1        | 48   
+145   | GOLD SOUTHFIELD                | 83         | 0.0244 | 5          | 0        | 29   
+146   | Amateurs -Legitimately targ..  | 9          | 0.0234 | 6          | 0        | 7    
+147   | Thrip                          | 165        | 0.0224 | 2          | 2        | 0    
+148   | Metador                        | 109        | 0.0219 | 6          | 0        | 0    
+149   | TA459                          | 154        | 0.0193 | 5          | 0        | 5    
+150   | Ajax Security Team             | 6          | 0.0193 | 5          | 0        | 5    
+151   | APT12                          | 16         | 0.0157 | 4          | 0        | 5    
+152   | Mofang                         | 112        | 0.0157 | 4          | 0        | 5    
+153   | MoustachedBouncer              | 116        | 0.0146 | 4          | 0        | 0    
+154   | RTM                            | 137        | 0.0120 | 3          | 0        | 5    
+155   | APT30                          | 24         | 0.0084 | 2          | 0        | 5    
+156   | TA578                          | 158        | 0.0073 | 2          | 0        | 0    
+157   | Test Group 3                   | 161        | 0.0041 | 1          | 0        | 2    
+158   | Strider                        | 151        | 0.0039 | 1          | 0        | 1    
+159   | Egyptian Mind                  | 63         | 0.0039 | 1          | 0        | 1    
+160   | Massive Pulses                 | 107        | 0.0039 | 1          | 0        | 1    
+161   | Moafee                         | 111        | 0.0037 | 1          | 0        | 0    
+162   | APT17                          | 18         | 0.0037 | 1          | 0        | 0    
+163   | Group5                         | 85         | 0.0037 | 1          | 0        | 0    
+164   | SilverTerrier                  | 146        | 0.0037 | 1          | 0        | 0    
+165   | CyAlly - Cyber Advisory Res..  | 50         | 0.0004 | 0          | 0        | 2    
+166   | CYSE-610                       | 53         | 0.0004 | 0          | 0        | 2    
+167   | HCINT                          | 87         | 0.0002 | 0          | 0        | 1    
+168   | MISP FEED                      | 110        | 0.0002 | 0          | 0        | 1    
+169   | DragonOK                       | 61         | 0.0000 | 0          | 0        | 0    
+170   | APT16                          | 17         | 0.0000 | 0          | 0        | 0    
+171   | Scarlet Mimic                  | 140        | 0.0000 | 0          | 0        | 0    
+172   | Lotus Blossom                  | 102        | 0.0000 | 0          | 0        | 0    
+173   | GCMAN                          | 82         | 0.0000 | 0          | 0        | 0    
+174   | NEODYMIUM                      | 121        | 0.0000 | 0          | 0        | 0    
+175   | Bouncing Golf                  | 39         | 0.0000 | 0          | 0        | 0    
+176   | ALLANITE                       | 8          | 0.0000 | 0          | 0        | 0    
+177   | CyberAv3ngers                  | 51         | 0.0000 | 0          | 0        | 0    
+178   | APT-C-23                       | 13         | 0.0000 | 0          | 0        | 0    
+179   | UNC788                         | 171        | 0.0000 | 0          | 0        | 0    
+180   | Linux IOCs                     | 101        | 0.0000 | 0          | 0        | 0    
+181   | C&W Customers and Partners     | 41         | 0.0000 | 0          | 0        | 0    
+Computing Feature Matching similarity matrix...
+Feature Matching similarity matrix computation completed!
+
+Text version of Feature Matching similarity matrix (first 10x10):
+==========================================================================================
+                    Axiom   Moafee  Cleaver Ke3changAPT12   APT1    APT28   CarbanakDeep PanTurla   
+------------------------------------------------------------------------------------------
+Axiom               1.00  0.36  0.01  0.32  0.31  0.18  0.43  0.20  0.23  0.26  
+Moafee              0.36  0.78  0.00  0.00  0.00  0.36  0.00  0.00  0.00  0.00  
+Cleaver             0.01  0.00  1.00  0.35  0.00  0.35  0.47  0.28  0.01  0.36  
+Ke3chang            0.32  0.00  0.35  1.00  0.00  0.58  0.46  0.49  0.46  0.57  
+APT12               0.31  0.00  0.00  0.00  1.00  0.31  0.56  0.08  0.00  0.31  
+APT1                0.18  0.36  0.35  0.58  0.31  1.00  0.48  0.42  0.30  0.52  
+APT28               0.43  0.00  0.47  0.46  0.56  0.48  1.00  0.54  0.48  0.40  
+Carbanak            0.20  0.00  0.28  0.49  0.08  0.42  0.54  1.00  0.20  0.52  
+Deep Panda          0.23  0.00  0.01  0.46  0.00  0.30  0.48  0.20  1.00  0.49  
+Turla               0.26  0.00  0.36  0.57  0.31  0.52  0.40  0.52  0.49  1.00  
+
+================================================================================
+EVALUATION WITH FULL PROFILE (100% data as query)
+================================================================================
+Using 100% of profile data as query
+Processed 20/181 APTs...
+Processed 40/181 APTs...
+Processed 60/181 APTs...
+Processed 80/181 APTs...
+Processed 100/181 APTs...
+Processed 120/181 APTs...
+Processed 140/181 APTs...
+Processed 160/181 APTs...
+Processed 180/181 APTs...
+
+Results based on 181 tests:
+Top 1: 98.9% success rate (179/181)
+Top 5: 100.0% success rate (181/181)
+Top 10: 100.0% success rate (181/181)
+Top 20: 100.0% success rate (181/181)
+
+================================================================================
+EVALUATION WITH DIVIDED PROFILES (50% data as query)
+================================================================================
+Using 50.0% of profile data as query
+Processed 20/181 APTs...
+Processed 40/181 APTs...
+Processed 60/181 APTs...
+Processed 80/181 APTs...
+Processed 100/181 APTs...
+Processed 120/181 APTs...
+Processed 140/181 APTs...
+Processed 160/181 APTs...
+Processed 180/181 APTs...
+
+Results based on 181 tests:
+Top 1: 95.6% success rate (173/181)
+Top 5: 99.4% success rate (180/181)
+Top 10: 99.4% success rate (180/181)
+Top 20: 100.0% success rate (181/181)
+
+==================================================
+RESOURCE USAGE REPORT../featureMatching/featureMatching.py
+==================================================
+Execution Time: 134.32 seconds
+Memory Usage: 0.00 MB
+Current Memory: 40.70 MB
+CPU Usage: 0.1%
+System CPU: 16.3%

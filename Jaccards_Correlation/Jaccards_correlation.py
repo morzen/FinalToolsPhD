@@ -339,10 +339,7 @@ def hybrid_query(evidence_forhybrid):
     feature_weights = {
         'techniques': 1.5,
         'software': 1.3,
-        'capec': 1.0,
-        'cwe': 1.0,
-        'cve': 0.8,
-        'pulse': 0.7
+        'cve': 0.8
     }
     # Calculate similarities using Jaccard
     jaccard_similarities = calculate_jaccard_similarity(encoded_evidence, apt_profiles, feature_weights)

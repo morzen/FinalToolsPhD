@@ -1,0 +1,71 @@
+GNN APT SIMILARITY PIPELINE
+============================================================
+Loading training data...
+Training data: 753970 records
+
+CREATING APT PROFILES
+==================================================
+Found 181 unique APTs
+
+PROFILE STATISTICS
+==================================================
+Total APTs: 181
+Total techniques: 4436
+Total software: 1021
+Total cve: 68883
+
+BUILDING GRAPH STRUCTURE
+==================================================
+Graph Structure:
+  APT nodes: 181
+  Technique nodes: 547
+  Software nodes: 540
+  CVE nodes: 7937
+  TOTAL NODES: 9205
+
+ Graph built:
+Nodes: 9205
+Edges: 148680
+GNN TRAINING FOR 50 EPOCHS...
+Epoch 000, Loss: 0.4927, Self-sim: 1.0000
+Epoch 030, Loss: 0.2543, Self-sim: 1.0000
+
+GNN TRAINING COMPLETE!
+
+GNN MODEL DEBUG INFO
+==================================================
+APT embeddings shape: torch.Size([181, 128])
+Embedding stats - Mean: -0.0084, Std: 0.0880
+Min: -0.2830, Max: 0.3903
+
+Cosine Similarity matrix stats:
+Self-similarity mean: 1.0000
+Cross-similarity mean: 0.5998
+Similarity range: -0.8174 to 1.0000
+
+ANALYZING RANKING ANOMALIES
+==================================================
+Top 10 APTs by Embedding Norm:
+APT Name                       Embed Norm Techniques Software CVE      Total 
+--------------------------------------------------------------------------------
+APT28                          1.0000     88         27       1017     1132  
+Ferocious Kitten               1.0000     6          2        150      158   
+FIN4                           1.0000     12         0        56       68    
+Gallmaker                      1.0000     6          0        603      609   
+GOLD SOUTHFIELD                1.0000     9          2        29       40    
+HCINT                          1.0000     2          0        7        9     
+OilRig                         1.0000     61         22       657      740   
+Suckfly                        1.0000     5          1        552      558   
+Tonto Team                     1.0000     15         6        264      285   
+"No Problems" - OTX 2096       1.0000     50         0        6533     6583  
+
+GNN model saved as '3feat_trained_apt_gnn_model.pkl' with graph structure
+
+==================================================
+RESOURCE USAGE REPORT../2.GNN/train.py
+==================================================
+Execution Time: 29.52 seconds
+Memory Usage: 0.00 MB
+Current Memory: 41.09 MB
+CPU Usage: 0.1%
+System CPU: 46.0%

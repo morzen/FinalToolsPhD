@@ -24,7 +24,7 @@ PARTIAL_KEEP_FRACTION = 0.5  # keep 50% of features (like MIL volume_fraction)
 
 # ---------- FeatureEncoder (must match trained model) ----------
 class FeatureEncoder(nn.Module):
-    def __init__(self, num_techniques, num_software, num_cve, embed_dim=128):
+    def __init__(self, num_techniques, num_software, num_cve, embed_dim=256):
         super().__init__()
         embed_per_feature = embed_dim // 3
         self.tech_embed = nn.Embedding(num_techniques+1, embed_per_feature)
@@ -104,7 +104,7 @@ def load_model_and_embeddings():
 def sample_mixed_features(attacker_profile, mimicked_profile, rng=None,
                           attacker_fraction=0.3, partial=False, keep_fraction=0.5):
     """
-    Returns a 6‑element array with 30% attacker / 70% mimicked per feature type.
+    Returns a 3‑element array with 30% attacker / 70% mimicked per feature type.
     If partial=True, randomly set each feature to -1 (missing) with probability (1-keep_fraction).
     This mimics MIL's "shuffle and keep ~50% per category" at the per‑feature level.
     """
@@ -131,7 +131,7 @@ def sample_mixed_features(attacker_profile, mimicked_profile, rng=None,
     
     if partial:
         # Per‑feature dropout: keep with probability keep_fraction
-        for i in range(6):
+        for i in range(3):
             if rng.random() > keep_fraction:
                 features[i] = -1.0
     return features
@@ -326,7 +326,7 @@ def plot_false_flag_deception_siamese(results, apt_names, apt_ids, partial=False
     plt.xticks(rotation=90, fontsize=8)
     plt.yticks(rotation=0, fontsize=8)
     plt.tight_layout()
-    output_path = f'false_flag_deception_matrix_siamese_30_70_{"partial" if partial else "full"}.png'
+    output_path = f'3feat_false_flag_deception_matrix_siamese_30_70_{"partial" if partial else "full"}.png'
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.show()
     print(f" Saved: {output_path}")

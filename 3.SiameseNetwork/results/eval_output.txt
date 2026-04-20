@@ -1,0 +1,42 @@
+Using device: cpu
+LOADING saved model...
+Loaded 181 APTs, 753970 total rows
+
+=== 1. Full vs Full Similarity Matrix (all rows) ===
+Top-1: 181/181 (100.0%)
+Top-5: 181/181 (100.0%)
+Top-10: 181/181 (100.0%)
+Top-20: 181/181 (100.0%)
+
+=== 2. Complete Profile Analysis (no sampling, all rows for query) ===
+Top-1: 181/181 (100.0%)
+Top-5: 181/181 (100.0%)
+Top-10: 181/181 (100.0%)
+Top-20: 181/181 (100.0%)
+
+=== 3. Profile Division (divider=2) – half rows vs full profiles ===
+  0/181...
+  20/181...
+  40/181...
+  60/181...
+  80/181...
+  100/181...
+  120/181...
+  140/181...
+  160/181...
+  180/181...
+Top-1: 172/181 (95.0%)
+Top-5: 180/181 (99.4%)
+Top-10: 181/181 (100.0%)
+Top-20: 181/181 (100.0%)
+
+ ALL TESTS COMPLETE – no sampling, no random combinations, just rows.
+
+==================================================
+RESOURCE USAGE REPORT../3.SiameseNetwork/eval.py
+==================================================
+Execution Time: 19.08 seconds
+Memory Usage: 0.00 MB
+Current Memory: 41.34 MB
+CPU Usage: 0.1%
+System CPU: 0.0%

@@ -7,15 +7,17 @@ from itertools import islice
 import random
 
 # Define the model class here to avoid pickling issues
-class OptimizedAttentionMILSimilarity(nn.Module):
+class OptimizedAttentionMILSimilarity(nn.Module):  # KEEP THE ORIGINAL NAME
+    """Optimized Attention-based MIL model for APT similarity"""
+    
     def __init__(self, hidden_dim=256):
         super().__init__()
         self.hidden_dim = hidden_dim
         
         # Feature embedding layers
-        self.technique_embed = nn.Embedding(10000, hidden_dim)
-        self.software_embed = nn.Embedding(10000, hidden_dim)
-        self.cve_embed = nn.Embedding(10000, hidden_dim)
+        self.technique_embed = nn.Embedding(100000, hidden_dim)
+        self.software_embed = nn.Embedding(100000, hidden_dim)
+        self.cve_embed = nn.Embedding(100000, hidden_dim)
         
         # Attention networks
         self.attention_nets = nn.ModuleDict({
@@ -26,7 +28,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):
         
         # Similarity network
         self.similarity_net = nn.Sequential(
-            nn.Linear(hidden_dim * 3 * 2 + 3, hidden_dim*4),
+            nn.Linear(hidden_dim * 3 * 2 + 6, hidden_dim*4),
             nn.LayerNorm(hidden_dim*4),
             nn.ReLU(),
             nn.Linear(hidden_dim*4, hidden_dim*2),
@@ -36,13 +38,13 @@ class OptimizedAttentionMILSimilarity(nn.Module):
             nn.Sigmoid()
         )
         
+        
         # Initialize weights with higher technique importance
         self.feature_weights = nn.Parameter(torch.tensor([0.8, 0.7, 0.4]))
-        self.perfect_match_boost = 2.0  # Direct score multiplier for perfect matches
-        
         self.init_weights()
 
     def _build_attention(self):
+        """Build attention network for a feature type"""
         return nn.Sequential(
             nn.Linear(self.hidden_dim, self.hidden_dim),
             nn.Tanh(),
@@ -51,23 +53,30 @@ class OptimizedAttentionMILSimilarity(nn.Module):
 
     def init_weights(self):
         """Initialize weights for embeddings and linear layers"""
+        print("\nInitializing model weights...")
+        
+        # Initialize embedding layers
         for embed in [self.technique_embed, self.software_embed, self.cve_embed]:
             nn.init.xavier_uniform_(embed.weight)
         
+        # Initialize attention networks
         for net in self.attention_nets.values():
             for layer in net:
                 if isinstance(layer, nn.Linear):
                     nn.init.xavier_uniform_(layer.weight)
                     nn.init.zeros_(layer.bias)
         
+        # Initialize similarity network
         for layer in self.similarity_net:
             if isinstance(layer, nn.Linear):
                 nn.init.xavier_uniform_(layer.weight)
                 nn.init.zeros_(layer.bias)
+        
+        print("Weights initialized successfully")
 
     def _calculate_match_ratios(self, apt_dict, evidence_dict):
+        """Calculate match ratios between APT and evidence features"""
         ratios = []
-        perfect_matches = []
         feature_types = ['technique', 'software', 'cve']
         
         for feat_type in feature_types:
@@ -76,39 +85,41 @@ class OptimizedAttentionMILSimilarity(nn.Module):
             evidence_features = set(evidence_dict.get(dict_key, []))
             
             if len(evidence_features) == 0:
-                ratios.append(0.01)
-                perfect_matches.append(0)
+                ratios.append(0.00)
             else:
                 coverage = len(apt_features & evidence_features) / len(evidence_features)
                 is_perfect = 1 if coverage == 1.0 else 0
-                perfect_matches.append(is_perfect)
                 
                 # Linear coverage with small minimum
                 ratios.append(max(coverage, 0.01))
                 
-        return torch.tensor(ratios), torch.tensor(perfect_matches)
+        return torch.tensor(ratios)
 
     def forward(self, x1_dict, x2_dict):
-        match_ratios, perfect_matches = self._calculate_match_ratios(x1_dict, x2_dict)
-        emb1 = self._forward_single(x1_dict, match_ratios)
-        emb2 = self._forward_single(x2_dict, match_ratios)
+        """Forward pass for similarity calculation"""
+        ratios_12 = self._calculate_match_ratios(x1_dict, x2_dict)
+        ratios_21 = self._calculate_match_ratios(x2_dict, x1_dict)
+        emb1 = self._forward_single(x1_dict, ratios_12)
+        emb2 = self._forward_single(x2_dict, ratios_21)
         
-        combined = torch.cat([emb1, emb2, match_ratios.unsqueeze(0)], dim=-1)
-        feature_similarities = self.similarity_net(combined)
+        both_ratios = torch.cat([ratios_12, ratios_21])   # shape: (12,)
+        combined = torch.cat([emb1, emb2, both_ratios.unsqueeze(0)], dim=-1)
+        feature_similarities = self.similarity_net(combined)  
         
         # Use softmax weights
         weights = F.softmax(self.feature_weights, dim=0)
 
         # Final score - NO PERFECT MATCH BOOST
         similarity = (feature_similarities * weights).sum(dim=-1, keepdim=True)
-        return torch.sigmoid(similarity * 10)
+        return similarity
 
     def _forward_single(self, x_dict, match_ratios):
+        """Forward pass for a single APT profile"""
         features = []
         feature_types = ['technique', 'software', 'cve']
         
         for i, feat_type in enumerate(feature_types):
-            dict_key = feat_type
+            dict_key = feat_type 
             feat = x_dict.get(dict_key, [])
             
             if len(feat) > 0:
@@ -244,7 +255,7 @@ def analyze_feature_matching_classification(encoded_evidence, results, apt_profi
               f"{score['soft_matches']:>2}/{total_software:<3} ({score['soft_profile_coverage']:.3f})  " \
               f"{score['soft_score']:.4f}"
         print(row)
-
+    
     # TABLE 5: TOP 5 CVE MATCHING
     print("\n TOP 5 APTs BY CVE MATCHING")
     print("-" * 85)
@@ -345,7 +356,7 @@ def print_mil_results_table(results, encoded_evidence, apt_profiles, apt_name_di
             apt_name = apt_name[:31] + "..."
         
         # Get profile information
-        total_matches = result['technique'] + result['software'] + result['cve'] 
+        total_matches = result['technique'] + result['software'] + result['cve']
         
         # Find profile for this APT
         profile_info = ""
@@ -373,8 +384,8 @@ def load_complete_model(status):
     
     if status == "hybrid":
         # Try the fixed version first, then original
-        fixed_path = '../4.Attention-Based_MIL/6feat_apt_similarity_model_fixed.pth'
-        original_path = '../4.Attention-Based_MIL/6feat_apt_similarity_model_complete.pth'
+        fixed_path = '../4.Attention-Based_MIL/3feat_apt_similarity_model_fixed.pth'
+        original_path = '../4.Attention-Based_MIL/3feat_apt_similarity_model_complete.pth'
         
         # Check which file exists
         import os
@@ -528,7 +539,7 @@ def process_custom_evidence(evidence, model, apt_profiles, apt_name_dict, df_map
     
     # Prepare evidence features
     evidence_features = {
-        'technique': encoded_evidence.get('techniques', []),
+        'technique': encoded_evidence.get('technique', []),
         'software': encoded_evidence.get('software', []),
         'cve': encoded_evidence.get('cve', [])
     }

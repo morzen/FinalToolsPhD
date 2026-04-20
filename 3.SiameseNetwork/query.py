@@ -63,7 +63,7 @@ def load_model_and_data(status):
         
         config = data['model_config']
         model = FeatureEncoder(
-            config['num_techniques'], 
+            config['num_techniques'],
             config['num_software'],
             config['num_cve'],
             embed_dim=config['embedding_dim'],
@@ -300,8 +300,7 @@ def query_siamese_with_features(model, apt_embeddings, encoded_evidence, origina
                 'cve_matches': 0,
                 'total_matches': 0,
                 'profile_size': profile_size,
-                'profile_total': len(profile.get('techniques',[])) + len(profile.get('software',[])) +
-                                 len(profile.get('cve',[]))
+                'profile_total': len(profile.get('techniques',[])) + len(profile.get('software',[])) + len(profile.get('cve',[]))
             })
         results_sorted = sorted(results, key=lambda x: x['apt_name'])
         for i, result in enumerate(results_sorted, 1):
@@ -357,8 +356,7 @@ def query_siamese_with_features(model, apt_embeddings, encoded_evidence, origina
             'cve_matches': cve_matches,
             'total_matches': total_matches,
             'profile_size': profile_size,
-            'profile_total': len(profile.get('techniques',[])) + len(profile.get('software',[])) +
-                           len(profile.get('cve',[]))
+            'profile_total': len(profile.get('techniques',[])) + len(profile.get('software',[])) + len(profile.get('cve',[]))
         })
 
     results_sorted = sorted(results, key=lambda x: x['similarity'], reverse=True)

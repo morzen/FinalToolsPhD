@@ -284,17 +284,17 @@ def remotequery(evidence_first_batch):
     # )
 
     #weight decide on results of CTI evaluation
-    result = hybrid_rank_aggregate(
-            all_lists,
-            weight_featureMatching=5,
-            weight_jaccard=4,
-            weight_xgboost=3,
-            weight_mil=2.5,
-            weight_gnn=2,
-            weight_tvd=1.8,
-            weight_siamese=1.5,
-            weight_rf=1
-        )
+    # result = hybrid_rank_aggregate(
+    #         all_lists,
+    #         weight_featureMatching=5,
+    #         weight_jaccard=4,
+    #         weight_xgboost=3,
+    #         weight_mil=2.5,
+    #         weight_gnn=2,
+    #         weight_tvd=1.8,
+    #         weight_siamese=1.5,
+    #         weight_rf=1
+    #     )
 
 
     # Transform to match first list format (only rank and apt_name)

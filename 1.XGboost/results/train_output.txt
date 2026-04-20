@@ -1,0 +1,35 @@
+XGBOOST TRAINING PIPELINE (NO PCA)
+============================================================
+Loading encoded data...
+Data: 753970 records, 7 columns
+
+CREATING MULTI-HOT ENCODING (NO PCA)
+==================================================
+Feature vector length: 9027
+Number of APTs: 181
+
+Total features breakdown:
+  Techniques: 548
+  Software: 541
+  CVE: 7938
+
+TRAINING ON ALL APTs
+Total APTs: 181
+Feature vector length: 9027
+
+TRAINING XGBOOST CLASSIFIER ON BINARY VECTORS
+==================================================
+Training classifier on 181 samples, 9027 features...
+Training completed!
+Training accuracy: 0.0110
+
+Model saved to '3feat_efficient_apt_similarity_nopca.pkl'
+
+==================================================
+RESOURCE USAGE REPORT../1.XGboost/train.py
+==================================================
+Execution Time: 77.75 seconds
+Memory Usage: 0.00 MB
+Current Memory: 40.81 MB
+CPU Usage: 0.1%
+System CPU: 85.7%

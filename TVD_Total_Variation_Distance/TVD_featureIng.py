@@ -366,7 +366,7 @@ def hybrid_query(hybridEvidence):
     # Convert sets to lists and add counts
     for apt_name in apt_profiles:
         profile = apt_profiles[apt_name]
-        for key in ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']:
+        for key in ['techniques', 'software', 'cve']:
             profile[key] = list(profile[key])
             profile[f'{key}_count'] = len(profile[key])
 
@@ -511,7 +511,7 @@ def main():
     # Format and print results
     print("\nAPT Ranking using Total Variation Distance:")
     print("="*110)
-    print(f"{'Rank':<5} | {'APT':<30} | {'Encoded ID':<10} | {'Score':<8} | {'Techniques':<10} | {'Software':<8} | {'CAPEC':<6} | {'CWE':<4} | {'CVE':<4} | {'Pulse':<5}")
+    print(f"{'Rank':<5} | {'APT':<30} | {'Encoded ID':<10} | {'Score':<8} | {'Techniques':<10} | {'Software':<8} | {'CVE':<4}")
     print("-"*110)
 
     for rank, (apt_name, score) in enumerate(ranked_results, 1):

@@ -30,15 +30,11 @@ class AttentionMILConfig:
     }
 
     #variables unique to this model:
-    EMBEDDING_VOCAB_SIZE = 10000  # For each feature type
-        # Training parameters
-    PERFECT_MATCH_BOOST = 2.0
+    EMBEDDING_VOCAB_SIZE = 100000   # enough for pulse up to 85510
     
     # New training parameters
     LEARNING_RATE = 0.001
     EPOCHS = 50
-    BATCH_SIZE = 32
-    TRAIN_TEST_SPLIT = 0.2
     RANDOM_STATE = 42
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -175,7 +171,7 @@ class OptimizedAttentionMILSimilarity(nn.Module):  # KEEP THE ORIGINAL NAME
         
         # Similarity network
         self.similarity_net = nn.Sequential(
-            nn.Linear(hidden_dim * 3 * 2 + 3, hidden_dim*4),
+            nn.Linear(hidden_dim * 3 * 2 + 6, hidden_dim*4),
             nn.LayerNorm(hidden_dim*4),
             nn.ReLU(),
             nn.Linear(hidden_dim*4, hidden_dim*2),
@@ -187,7 +183,6 @@ class OptimizedAttentionMILSimilarity(nn.Module):  # KEEP THE ORIGINAL NAME
         
         # Initialize weights with higher technique importance
         self.feature_weights = nn.Parameter(torch.tensor([0.8, 0.7, 0.4]))
-        self.perfect_match_boost = 2.0  # Direct score multiplier for perfect matches
         
         self.init_weights()
 
@@ -225,7 +220,6 @@ class OptimizedAttentionMILSimilarity(nn.Module):  # KEEP THE ORIGINAL NAME
     def _calculate_match_ratios(self, apt_dict, evidence_dict):
         """Calculate match ratios between APT and evidence features"""
         ratios = []
-        perfect_matches = []
         feature_types = ['technique', 'software', 'cve']
         
         for feat_type in feature_types:
@@ -234,33 +228,32 @@ class OptimizedAttentionMILSimilarity(nn.Module):  # KEEP THE ORIGINAL NAME
             evidence_features = set(evidence_dict.get(dict_key, []))
             
             if len(evidence_features) == 0:
-                ratios.append(0.01)
-                perfect_matches.append(0)
+                ratios.append(0.00)
             else:
                 coverage = len(apt_features & evidence_features) / len(evidence_features)
                 is_perfect = 1 if coverage == 1.0 else 0
-                perfect_matches.append(is_perfect)
                 
                 # Linear coverage with small minimum
                 ratios.append(max(coverage, 0.01))
                 
-        return torch.tensor(ratios), torch.tensor(perfect_matches)
+        return torch.tensor(ratios)
 
     def forward(self, x1_dict, x2_dict):
         """Forward pass for similarity calculation"""
-        match_ratios, perfect_matches = self._calculate_match_ratios(x1_dict, x2_dict)
-        emb1 = self._forward_single(x1_dict, match_ratios)
-        emb2 = self._forward_single(x2_dict, match_ratios)
+        ratios_12 = self._calculate_match_ratios(x1_dict, x2_dict)
+        ratios_21 = self._calculate_match_ratios(x2_dict, x1_dict)
+        emb1 = self._forward_single(x1_dict, ratios_12)
+        emb2 = self._forward_single(x2_dict, ratios_21)
         
-        combined = torch.cat([emb1, emb2, match_ratios.unsqueeze(0)], dim=-1)
-        feature_similarities = self.similarity_net(combined)
+        both_ratios = torch.cat([ratios_12, ratios_21])   # shape: (12,)
+        combined = torch.cat([emb1, emb2, both_ratios.unsqueeze(0)], dim=-1)
+        feature_similarities = self.similarity_net(combined)  
         
         # Use softmax weights
         weights = F.softmax(self.feature_weights, dim=0)
 
-        # Final score - NO PERFECT MATCH BOOST
         similarity = (feature_similarities * weights).sum(dim=-1, keepdim=True)
-        return torch.sigmoid(similarity * 10)
+        return similarity
 
     def _forward_single(self, x_dict, match_ratios):
         """Forward pass for a single APT profile"""
@@ -306,7 +299,6 @@ class ModelInitializer:
         print(f"  Hidden dimension: {AttentionMILConfig.HIDDEN_DIM}")
         print(f"  Embedding vocabulary size: {AttentionMILConfig.EMBEDDING_VOCAB_SIZE}")
         print(f"  Feature weights: {AttentionMILConfig.FEATURE_WEIGHTS}")
-        print(f"  Perfect match boost: {AttentionMILConfig.PERFECT_MATCH_BOOST}")
         
         # Count parameters
         total_params = sum(p.numel() for p in model.parameters())
@@ -431,8 +423,7 @@ class AttentionMILModelSaver:
             'config': {
                 'hidden_dim': AttentionMILConfig.HIDDEN_DIM,
                 'embedding_vocab_size': AttentionMILConfig.EMBEDDING_VOCAB_SIZE,
-                'feature_weights': AttentionMILConfig.FEATURE_WEIGHTS,
-                'perfect_match_boost': AttentionMILConfig.PERFECT_MATCH_BOOST
+                'feature_weights': AttentionMILConfig.FEATURE_WEIGHTS
             }
         }
         
