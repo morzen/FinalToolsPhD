@@ -84,7 +84,62 @@ rf_query = modules.get("rf")
 sys.stdout = sys.__stdout__
 sys.stderr = sys.__stderr__
 
-# ===== YOUR ORIGINAL FUNCTIONS =====
+# ===== UNIFIED MIXING FUNCTIONS (replaced old ones) =====
+
+def unified_full_mix(apt1, apt2, rng=None, attacker_fraction=0.3, max_count=10):
+    """
+    Unified per‑feature 30/70 mixing (no volume reduction).
+    apt1 and apt2 are dictionaries with keys: techniques, software, capec, cwe, cves, pulse.
+    Returns a dictionary with same keys, each value is a list of selected feature IDs.
+    """
+    if rng is None:
+        rng = random.Random()
+    
+    categories = ['techniques', 'software', 'capec', 'cwe', 'cves', 'pulse']
+    mixed = {}
+    for cat in categories:
+        atk_list = list(apt1.get(cat, []))
+        mim_list = list(apt2.get(cat, []))
+        if not atk_list and not mim_list:
+            mixed[cat] = []
+            continue
+        
+        result = []
+        atk_copy = atk_list[:]
+        mim_copy = mim_list[:]
+        total_needed = min(max_count, len(atk_copy) + len(mim_copy))
+        while len(result) < total_needed:
+            use_attacker = (rng.random() < attacker_fraction)
+            if use_attacker and atk_copy:
+                chosen = rng.choice(atk_copy)
+                result.append(chosen)
+                atk_copy.remove(chosen)
+            elif mim_copy:
+                chosen = rng.choice(mim_copy)
+                result.append(chosen)
+                mim_copy.remove(chosen)
+            else:
+                break
+        mixed[cat] = result
+    return mixed
+
+def unified_partial_mix(full_mixed_dict, rng=None, volume_fraction=0.5):
+    """
+    Takes the output of unified_full_mix and reduces volume per category
+    by shuffling and keeping `volume_fraction` (default 0.5).
+    """
+    if rng is None:
+        rng = random.Random()
+    partial = {}
+    for cat, feats in full_mixed_dict.items():
+        feats = list(feats)
+        rng.shuffle(feats)
+        keep = max(1, int(len(feats) * volume_fraction)) if feats else 0
+        partial[cat] = feats[:keep]
+    return partial
+
+# ===== YOUR ORIGINAL FUNCTIONS (unchanged except worker) =====
+
 def process_apt_data(apt_name, apt_data_cache=None):
     """Modified to use pre-computed cache"""
     if apt_data_cache is not None:
@@ -135,38 +190,7 @@ def hybrid_rank_aggregate(lists):
     results.sort(key=lambda x: (x['avg'], x['median'], x['min'], x['range'], x['name']))
     return [(item['name'], i+1) for i, item in enumerate(results)]
 
-def shuffler_and_divider(evidence_dict):
-    shuffled = {}
-    for key, items in evidence_dict.items():
-        if key in ['techniques', 'software', 'capec', 'cwe', 'cves', 'pulse']:
-            shuffled_items = items.copy()
-            random.shuffle(shuffled_items)
-            half_length = len(shuffled_items) // 2
-            shuffled[key] = shuffled_items[:half_length]
-        else:
-            shuffled[key] = items
-    return shuffled
-
-def shuffle_remove_and_combine(apt1, apt2, apt1_ratio=0.3, apt2_ratio=0.7):
-    combined = {}
-    for category in apt1.keys():
-        apt1_items = apt1[category]
-        apt1_count = int(len(apt1_items) * apt1_ratio)
-        apt1_sample = apt1_items[:apt1_count]
-        
-        apt2_items = apt2[category]
-        apt2_count = int(len(apt2_items) * apt2_ratio)
-        apt2_sample = apt2_items[-apt2_count:] if apt2_count > 0 else []
-        
-        combined_category = []
-        seen = set()
-        for item in apt1_sample + apt2_sample:
-            if item not in seen:
-                seen.add(item)
-                combined_category.append(item)
-        
-        combined[category] = combined_category
-    return combined
+# ===== MODIFIED WORKER FUNCTION (uses unified mixing) =====
 
 def automated_query_for_eval(evidence):
     try:
@@ -198,11 +222,23 @@ def automated_query_for_eval(evidence):
     except Exception as e:
         print(f"Error: {e}")
 
-def worker_function(apt1, apt2, shuffle_n_divide):
-    combined = shuffle_remove_and_combine(apt1, apt2)
+def worker_function(apt1, apt2, shuffle_n_divide, seed=None):
+    """
+    shuffle_n_divide: False -> full mix, True -> partial mix (full + volume reduction)
+    """
+    rng = random.Random(seed) if seed is not None else random.Random()
+    
+    # First create full mixed evidence
+    full_mixed = unified_full_mix(apt1, apt2, rng, attacker_fraction=0.3, max_count=10)
+    
     if shuffle_n_divide:
-        combined = shuffler_and_divider(combined)
-    return automated_query_for_eval(combined)
+        # Reduce volume by 50%
+        mixed_evidence = unified_partial_mix(full_mixed, rng, volume_fraction=0.5)
+    else:
+        mixed_evidence = full_mixed
+    
+    # Now pass to automated_query_for_eval (which expects the mixed evidence dict)
+    return automated_query_for_eval(mixed_evidence)
 
 def eval_precision(unique_apt_names_list, givenEvidence):
     metrics = {
@@ -228,7 +264,7 @@ def eval_precision(unique_apt_names_list, givenEvidence):
             # Find where the REAL ATTACKER appears in THIS ranking list
             self_rank = None
             for apt_name, rank in ranking_list:
-                if apt_name == attacker_name:  # Look for the attacker in the results
+                if apt_name == attacker_name:
                     self_rank = int(rank)
                     break
             
@@ -399,9 +435,10 @@ def plot_false_flag_deception_heatmap(Full_FalseFlag_evidencetable, apt_names):
     
     return deception_matrix
 
-# ===== OPTIMIZED PROCESS PAIR =====
+# ===== OPTIMIZED PROCESS PAIR (with seed) =====
+
 def process_pair(args):
-    """Process a single pair - uses pre-computed data"""
+    """Process a single pair - uses pre-computed data and deterministic seed"""
     name1, name2, apt_cache = args
     if name1 == name2:
         return None
@@ -411,9 +448,11 @@ def process_pair(args):
         apt1 = apt_cache[name1]
         apt2 = apt_cache[name2]
         
-        # Process both conditions
-        full_result = worker_function(apt1, apt2, False)
-        shuffled_result = worker_function(apt1, apt2, True)
+        # Create a deterministic seed from the pair names
+        seed = hash((name1, name2)) % (2**32)
+        
+        full_result = worker_function(apt1, apt2, False, seed)
+        shuffled_result = worker_function(apt1, apt2, True, seed)
         
         elapsed = time.time() - start
         return (name1, name2, full_result, shuffled_result, elapsed)
