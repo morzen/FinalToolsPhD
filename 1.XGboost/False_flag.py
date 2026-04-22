@@ -251,121 +251,75 @@ def create_binary_vector_matrix(saved_data, profiles, apt_ids):
     return np.array(apt_vectors)
 
 
-def sample_mixed_features(attacker_profile, mimicked_profile, rng=None, attacker_fraction=0.3):
+# ============================================================
+# UNIFIED PER-FEATURE 30/70 MIX (FULL)
+# ============================================================
+def sample_mixed_features(attacker_profile, mimicked_profile, rng=None,
+                          attacker_fraction=0.3, max_count=10):
     """
-    Sample 30% attacker / 70% mimicked feature triple for false-flag testing
-    Uses probabilistic sampling per feature slot
+    For each feature category, sample up to `max_count` features,
+    each chosen with probability attacker_fraction from attacker's set,
+    otherwise from mimicked's set. Sampling without replacement.
     """
     if rng is None:
-        rng = random
+        rng = random.Random()
 
-    atk_tech = list(attacker_profile['techniques'])
-    atk_soft = list(attacker_profile['software'])
-    atk_capec  = list(attacker_profile['capec'])
-    atk_cwe  = list(attacker_profile['cwe'])
-    atk_cve  = list(attacker_profile['cve'])
-    atk_pulse  = list(attacker_profile['pulse'])
-
-    mim_tech = list(mimicked_profile['techniques'])
-    mim_soft = list(mimicked_profile['software'])
-    mim_capec  = list(mimicked_profile['capec'])
-    mim_cwe  = list(mimicked_profile['cwe'])
-    mim_cve  = list(mimicked_profile['cve'])
-    mim_pulse  = list(mimicked_profile['pulse'])
-
-    def pick_feature(atk_list, mim_list):
+    mixed = {}
+    categories = ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']
+    for cat in categories:
+        atk_list = list(attacker_profile.get(cat, []))
+        mim_list = list(mimicked_profile.get(cat, []))
         if not atk_list and not mim_list:
-            return []
+            mixed[cat] = []
+            continue
 
-        use_attacker = (rng.random() < attacker_fraction)
-        if use_attacker and atk_list:
-            # Return all attacker features for this category
-            return list(atk_list)
-        elif mim_list:
-            # Return all mimicked features for this category
-            return list(mim_list)
-        elif atk_list:
-            return list(atk_list)
-        else:
-            return []
-
-    # Collect all features for each category
-    techniques = pick_feature(atk_tech, mim_tech)
-    software  = pick_feature(atk_soft, mim_soft)
-    capec     = pick_feature(atk_capec,  mim_capec)
-    cwe       = pick_feature(atk_cwe,  mim_cwe)
-    cve       = pick_feature(atk_cve,  mim_cve)
-    pulse     = pick_feature(atk_pulse,  mim_pulse)
-
-    return {
-        'techniques': techniques,
-        'software': software,
-        'capec': capec,
-        'cwe': cwe,
-        'cve': cve,
-        'pulse': pulse
-    }
+        result = []
+        atk_copy = atk_list[:]
+        mim_copy = mim_list[:]
+        total_needed = min(max_count, len(atk_copy) + len(mim_copy))
+        while len(result) < total_needed:
+            use_attacker = (rng.random() < attacker_fraction)
+            if use_attacker and atk_copy:
+                chosen = rng.choice(atk_copy)
+                result.append(chosen)
+                atk_copy.remove(chosen)
+            elif mim_copy:
+                chosen = rng.choice(mim_copy)
+                result.append(chosen)
+                mim_copy.remove(chosen)
+            else:
+                break
+        mixed[cat] = result
+    return mixed
 
 
+def sample_mixed_features_partial(attacker_profile, mimicked_profile, rng=None,
+                                  attacker_fraction=0.3, max_count=10,
+                                  volume_fraction=0.5):
+    """
+    Partial evidence:
+      1) Build full 30/70 mixed evidence (per-feature, up to max_count).
+      2) Reduce volume per category: shuffle and keep volume_fraction (default 0.5).
+    """
+    full_mixed = sample_mixed_features(attacker_profile, mimicked_profile, rng,
+                                       attacker_fraction, max_count)
+    partial_mixed = {}
+    for cat, feats in full_mixed.items():
+        feats = list(feats)
+        rng.shuffle(feats)
+        keep = max(1, int(len(feats) * volume_fraction)) if feats else 0
+        partial_mixed[cat] = feats[:keep]
+    return partial_mixed
+
+
+# ============================================================
+# WORKERS
+# ============================================================
 def process_single_false_flag_binary(args):
-    """Process single false-flag with 30/70 mixed evidence using binary vectors (no PCA)"""
-    attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping, profiles, apt_vectors, apt_ids, seed = args
-    
-    rng = random.Random(seed)  # Reproducible randomness
-    
-    attacker_name = apt_name_mapping.get(attacker_apt_id, f"APT{attacker_apt_id}")
-    mimicked_name = apt_name_mapping.get(mimicked_apt_id, f"APT{mimicked_apt_id}")
-    
-    attacker_profile = profiles[attacker_apt_id]
-    mimicked_profile = profiles[mimicked_apt_id]
-    
-    # 30% ATTACKER / 70% MIMICKED mixed evidence (FULL volume)
-    mixed_evidence = sample_mixed_features(
-        attacker_profile, mimicked_profile, rng=rng, attacker_fraction=0.3
-    )
-    
-    # Create predictor
-    predictor = EfficientXGBoostPredictorBinary(
-        saved_data['model'], 
-        saved_data['apt_features'], 
-        saved_data['apt_encoder'],
-        saved_data['feature_metadata']
-    )
-    
-    # Create binary vector from mixed evidence (no PCA)
-    false_flag_vector = predictor.create_vector_from_evidence(mixed_evidence)
-    
-    # Calculate similarities with all APT binary vectors
-    similarities = []
-    for apt_vector in apt_vectors:
-        similarity = predictor.predict_vector_similarity(false_flag_vector, apt_vector)
-        similarities.append(similarity)
-    
-    # Rank results
-    ranked_results = {}
-    sorted_indices = np.argsort(similarities)[::-1]
-    
-    for idx in sorted_indices:
-        apt_id = apt_ids[idx]
-        ranked_results[apt_id] = similarities[idx]
-    
-    ranked_apt_ids = list(ranked_results.keys())
-    attacker_rank = ranked_apt_ids.index(attacker_apt_id) + 1 if attacker_apt_id in ranked_apt_ids else None
-    mimicked_rank = ranked_apt_ids.index(mimicked_apt_id) + 1 if mimicked_apt_id in ranked_apt_ids else None
-    
-    return {
-        'key': f"{attacker_name}→{mimicked_name}",
-        'attacker_rank': attacker_rank,
-        'mimicked_rank': mimicked_rank,
-        'attacker_similarity': ranked_results.get(attacker_apt_id),
-        'mimicked_similarity': ranked_results.get(mimicked_apt_id),
-        'false_flag_evidence': mixed_evidence
-    }
-
-
-def process_single_false_flag_partial_binary(args):
-    """Process single false-flag with 30/70 mixed evidence (HALVED after mixing) using binary vectors (no PCA)"""
-    attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping, profiles, apt_vectors, apt_ids, seed = args
+    """Full evidence worker (no volume reduction)"""
+    (attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, software_mapping,
+     capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping,
+     profiles, apt_vectors, apt_ids, seed) = args
     
     rng = random.Random(seed)
     
@@ -375,93 +329,25 @@ def process_single_false_flag_partial_binary(args):
     attacker_profile = profiles[attacker_apt_id]
     mimicked_profile = profiles[mimicked_apt_id]
     
-    def process_feature_category(atk_features, mim_features, feature_type):
-        """Process a single feature category: get 30% attacker, 70% mimicked, then halve both"""
-        # Get attacker features (30%)
-        if atk_features:
-            attacker_selected = list(atk_features)
-            rng.shuffle(attacker_selected)
-            attacker_count = max(1, int(len(attacker_selected) * 0.3))
-            attacker_final = attacker_selected[:attacker_count]
-            # Halve the attacker features
-            attacker_final = attacker_final[:max(1, len(attacker_final) // 2)]
-        else:
-            attacker_final = []
-        
-        # Get mimicked features (70%)
-        if mim_features:
-            mimicked_selected = list(mim_features)
-            rng.shuffle(mimicked_selected)
-            mimicked_count = max(1, int(len(mimicked_selected) * 0.7))
-            mimicked_final = mimicked_selected[:mimicked_count]
-            # Halve the mimicked features
-            mimicked_final = mimicked_final[:max(1, len(mimicked_final) // 2)]
-        else:
-            mimicked_final = []
-        
-        # Combine halved features
-        return attacker_final + mimicked_final
+    # 30/70 mixed evidence (full volume)
+    mixed_evidence = sample_mixed_features(attacker_profile, mimicked_profile, rng,
+                                           attacker_fraction=0.3, max_count=10)
     
-    # Create evidence with halved features for each category
-    partial_evidence = {
-        'techniques': process_feature_category(
-            attacker_profile['techniques'], 
-            mimicked_profile['techniques'],
-            'techniques'
-        ),
-        'software': process_feature_category(
-            attacker_profile['software'], 
-            mimicked_profile['software'],
-            'software'
-        ),
-        'capec': process_feature_category(
-            attacker_profile['capec'], 
-            mimicked_profile['capec'],
-            'capec'
-        ),
-        'cwe': process_feature_category(
-            attacker_profile['cwe'], 
-            mimicked_profile['cwe'],
-            'cwe'
-        ),
-        'cve': process_feature_category(
-            attacker_profile['cve'], 
-            mimicked_profile['cve'],
-            'cve'
-        ),
-        'pulse': process_feature_category(
-            attacker_profile['pulse'], 
-            mimicked_profile['pulse'],
-            'pulse'
-        )
-    }
-    
-    # Create predictor
     predictor = EfficientXGBoostPredictorBinary(
-        saved_data['model'], 
-        saved_data['apt_features'], 
-        saved_data['apt_encoder'],
-        saved_data['feature_metadata']
+        saved_data['model'], saved_data['apt_features'],
+        saved_data['apt_encoder'], saved_data['feature_metadata']
     )
     
-    # Create binary vector from partial evidence (no PCA)
-    false_flag_vector = predictor.create_vector_from_evidence(partial_evidence)
+    false_flag_vector = predictor.create_vector_from_evidence(mixed_evidence)
     
-    # Calculate similarities
     similarities = []
     for apt_vector in apt_vectors:
-        similarity = predictor.predict_vector_similarity(false_flag_vector, apt_vector)
-        similarities.append(similarity)
+        sim = predictor.predict_vector_similarity(false_flag_vector, apt_vector)
+        similarities.append(sim)
     
-    # Rank results
-    ranked_results = {}
     sorted_indices = np.argsort(similarities)[::-1]
+    ranked_apt_ids = [apt_ids[idx] for idx in sorted_indices]
     
-    for idx in sorted_indices:
-        apt_id = apt_ids[idx]
-        ranked_results[apt_id] = similarities[idx]
-    
-    ranked_apt_ids = list(ranked_results.keys())
     attacker_rank = ranked_apt_ids.index(attacker_apt_id) + 1 if attacker_apt_id in ranked_apt_ids else None
     mimicked_rank = ranked_apt_ids.index(mimicked_apt_id) + 1 if mimicked_apt_id in ranked_apt_ids else None
     
@@ -469,39 +355,84 @@ def process_single_false_flag_partial_binary(args):
         'key': f"{attacker_name}→{mimicked_name}",
         'attacker_rank': attacker_rank,
         'mimicked_rank': mimicked_rank,
-        'attacker_similarity': ranked_results.get(attacker_apt_id),
-        'mimicked_similarity': ranked_results.get(mimicked_apt_id),
-        'false_flag_evidence': partial_evidence
+        'attacker_similarity': similarities[apt_ids.index(attacker_apt_id)],
+        'mimicked_similarity': similarities[apt_ids.index(mimicked_apt_id)]
     }
 
 
+def process_single_false_flag_partial_binary(args):
+    """Partial evidence worker: 30/70 mix + volume reduction (50%)"""
+    (attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, software_mapping,
+     capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping,
+     profiles, apt_vectors, apt_ids, seed) = args
+    
+    rng = random.Random(seed)
+    
+    attacker_name = apt_name_mapping.get(attacker_apt_id, f"APT{attacker_apt_id}")
+    mimicked_name = apt_name_mapping.get(mimicked_apt_id, f"APT{mimicked_apt_id}")
+    
+    attacker_profile = profiles[attacker_apt_id]
+    mimicked_profile = profiles[mimicked_apt_id]
+    
+    # Partial evidence: full mix then volume reduction
+    partial_evidence = sample_mixed_features_partial(attacker_profile, mimicked_profile, rng,
+                                                     attacker_fraction=0.3, max_count=10,
+                                                     volume_fraction=0.5)
+    
+    predictor = EfficientXGBoostPredictorBinary(
+        saved_data['model'], saved_data['apt_features'],
+        saved_data['apt_encoder'], saved_data['feature_metadata']
+    )
+    
+    false_flag_vector = predictor.create_vector_from_evidence(partial_evidence)
+    
+    similarities = []
+    for apt_vector in apt_vectors:
+        sim = predictor.predict_vector_similarity(false_flag_vector, apt_vector)
+        similarities.append(sim)
+    
+    sorted_indices = np.argsort(similarities)[::-1]
+    ranked_apt_ids = [apt_ids[idx] for idx in sorted_indices]
+    
+    attacker_rank = ranked_apt_ids.index(attacker_apt_id) + 1 if attacker_apt_id in ranked_apt_ids else None
+    mimicked_rank = ranked_apt_ids.index(mimicked_apt_id) + 1 if mimicked_apt_id in ranked_apt_ids else None
+    
+    return {
+        'key': f"{attacker_name}→{mimicked_name}",
+        'attacker_rank': attacker_rank,
+        'mimicked_rank': mimicked_rank,
+        'attacker_similarity': similarities[apt_ids.index(attacker_apt_id)],
+        'mimicked_similarity': similarities[apt_ids.index(mimicked_apt_id)]
+    }
+
+
+# ============================================================
+# EVALUATION FUNCTIONS
+# ============================================================
 def evaluate_false_flag_attacks_binary_parallel(saved_data, top_x_values=[1, 5, 10, 20]):
-    """FULL EVIDENCE: 30/70 mixed features using binary vectors (no PCA)"""
+    """FULL EVIDENCE: 30/70 mixed features (no volume reduction)"""
     print(" EVALUATING FALSE-FLAG ATTACKS (XGBOOST NO-PCA - 30/70 MIX FULL)")
     print("=" * 80)
-    print(" FALSE-FLAG: 30% Attacker + 70% Mimicked features per category")
+    print(" FALSE-FLAG: 30% Attacker + 70% Mimicked features (per-feature, up to 10 per cat)")
     print(" Using binary vectors with cosine similarity (no PCA)")
     print("=" * 80)
     
     profiles = load_apt_profiles_from_data()
     apt_ids = list(profiles.keys())
-    
-    # Create binary vectors for all APTs
     apt_vectors = create_binary_vector_matrix(saved_data, profiles, apt_ids)
     
-    technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping = load_mappings()
+    _, _, _, _, _, _, apt_name_mapping = load_mappings()
     
     all_combinations = [(a, m) for a in apt_ids for m in apt_ids if a != m]
     total_combinations = len(all_combinations)
     
-    print(f"Testing {total_combinations} false-flag combinations (30/70 FULL, no PCA)...")
+    print(f"Testing {total_combinations} false-flag combinations...")
     print(f"Vector dimension: {apt_vectors.shape[1]}")
     print(f"Using {mp.cpu_count()} CPU cores")
     
     args_list = []
     for i, (attacker_apt_id, mimicked_apt_id) in enumerate(all_combinations):
-        args = (attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, 
-                software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping,
+        args = (attacker_apt_id, mimicked_apt_id, saved_data, None, None, None, None, None, None,
                 apt_name_mapping, profiles, apt_vectors, apt_ids, i)
         args_list.append(args)
     
@@ -512,7 +443,6 @@ def evaluate_false_flag_attacks_binary_parallel(saved_data, top_x_values=[1, 5, 
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         future_to_combination = {executor.submit(process_single_false_flag_binary, args): args 
                                for args in args_list}
-        
         completed = 0
         for future in as_completed(future_to_combination):
             try:
@@ -525,9 +455,9 @@ def evaluate_false_flag_attacks_binary_parallel(saved_data, top_x_values=[1, 5, 
                 }
                 completed += 1
                 if completed % 100 == 0:
-                    elapsed_time = time.time() - start_time
-                    estimated_total = (elapsed_time / completed) * total_combinations
-                    remaining = estimated_total - elapsed_time
+                    elapsed = time.time() - start_time
+                    est_total = (elapsed / completed) * total_combinations
+                    remaining = est_total - elapsed
                     print(f"Progress: {completed}/{total_combinations} "
                           f"({completed/total_combinations*100:.1f}%) "
                           f"ETA: {remaining/60:.1f} minutes")
@@ -539,29 +469,26 @@ def evaluate_false_flag_attacks_binary_parallel(saved_data, top_x_values=[1, 5, 
     
     # Top-k analysis
     print("\n" + "="*80)
-    print("FALSE-FLAG RESULTS - XGBOOST NO-PCA 30/70 FULL EVIDENCE")
+    print("FALSE-FLAG RESULTS - XGBOOST NO-PCA 30/70 FULL EVIDENCE (UNIFIED MIX)")
     print("="*80)
     
     for top_x in top_x_values:
-        print(f"\n Top-{top_x} Analysis:")
         attacker_detected = mimicked_deceived = both_correct = neither_correct = 0
-        
-        for result in all_results.values():
-            ar = result['attacker_rank']
-            mr = result['mimicked_rank']
-            attacker_in_top = ar is not None and ar <= top_x
-            mimicked_in_top = mr is not None and mr <= top_x
-            
-            if attacker_in_top: attacker_detected += 1
-            if mimicked_in_top: mimicked_deceived += 1
-            if attacker_in_top and mimicked_in_top: both_correct += 1
-            if not attacker_in_top and not mimicked_in_top: neither_correct += 1
-        
+        for res in all_results.values():
+            ar = res['attacker_rank']
+            mr = res['mimicked_rank']
+            a_ok = ar is not None and ar <= top_x
+            m_ok = mr is not None and mr <= top_x
+            if a_ok: attacker_detected += 1
+            if m_ok: mimicked_deceived += 1
+            if a_ok and m_ok: both_correct += 1
+            if not a_ok and not m_ok: neither_correct += 1
         total_cases = len(all_results)
-        print(f"  Actual attacker Top-{top_x}: {attacker_detected}/{total_cases} ({attacker_detected/total_cases*100:.1f}%)")
-        print(f"  Mimicked APT Top-{top_x}: {mimicked_deceived}/{total_cases} ({mimicked_deceived/total_cases*100:.1f}%)")
-        print(f"  Both Top-{top_x}: {both_correct}/{total_cases} ({both_correct/total_cases*100:.1f}%)")
-        print(f"  Neither Top-{top_x}: {neither_correct}/{total_cases} ({neither_correct/total_cases*100:.1f}%)")
+        print(f"\n Top-{top_x}:")
+        print(f"  Actual attacker: {attacker_detected}/{total_cases} ({attacker_detected/total_cases*100:.1f}%)")
+        print(f"  Mimicked APT: {mimicked_deceived}/{total_cases} ({mimicked_deceived/total_cases*100:.1f}%)")
+        print(f"  Both: {both_correct}/{total_cases} ({both_correct/total_cases*100:.1f}%)")
+        print(f"  Neither: {neither_correct}/{total_cases} ({neither_correct/total_cases*100:.1f}%)")
         print(f"   Deception: {mimicked_deceived/total_cases*100:.1f}% |  Detection: {attacker_detected/total_cases*100:.1f}%")
         print(f"  ⚖ Net Advantage: {mimicked_deceived/total_cases*100 - attacker_detected/total_cases*100:+.1f}%")
     
@@ -569,29 +496,26 @@ def evaluate_false_flag_attacks_binary_parallel(saved_data, top_x_values=[1, 5, 
 
 
 def evaluate_false_flag_attacks_partial_binary(saved_data, top_x_values=[1, 5, 10, 20]):
-    """PARTIAL EVIDENCE: 30/70 mix + volume reduction using binary vectors (no PCA)"""
+    """PARTIAL EVIDENCE: 30/70 mix + volume reduction (~50%)"""
     print("\n" + "="*80)
-    print("FALSE-FLAG: 30/70 MIX + PARTIAL VOLUME (~33% reduction, no PCA)")
+    print("FALSE-FLAG: 30/70 MIX + VOLUME REDUCTION (~50%, UNIFIED)")
     print("=" * 80)
     
     profiles = load_apt_profiles_from_data()
     apt_ids = list(profiles.keys())
-    
-    # Create binary vectors for all APTs
     apt_vectors = create_binary_vector_matrix(saved_data, profiles, apt_ids)
     
-    technique_mapping, software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping = load_mappings()
+    _, _, _, _, _, _, apt_name_mapping = load_mappings()
     
     all_combinations = [(a, m) for a in apt_ids for m in apt_ids if a != m]
     total_combinations = len(all_combinations)
     
-    print(f"Testing {total_combinations} partial evidence combinations (no PCA)...")
+    print(f"Testing {total_combinations} partial evidence combinations...")
     print(f"Vector dimension: {apt_vectors.shape[1]}")
     
     args_list = []
     for i, (attacker_apt_id, mimicked_apt_id) in enumerate(all_combinations):
-        args = (attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, 
-                software_mapping, capec_mapping, cwe_mapping, cve_mapping, pulse_mapping,
+        args = (attacker_apt_id, mimicked_apt_id, saved_data, None, None, None, None, None, None,
                 apt_name_mapping, profiles, apt_vectors, apt_ids, i)
         args_list.append(args)
     
@@ -602,7 +526,6 @@ def evaluate_false_flag_attacks_partial_binary(saved_data, top_x_values=[1, 5, 1
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         future_to_combination = {executor.submit(process_single_false_flag_partial_binary, args): args 
                                for args in args_list}
-        
         completed = 0
         for future in as_completed(future_to_combination):
             try:
@@ -615,40 +538,39 @@ def evaluate_false_flag_attacks_partial_binary(saved_data, top_x_values=[1, 5, 1
                 }
                 completed += 1
                 if completed % 100 == 0:
-                    elapsed_time = time.time() - start_time
-                    estimated_total = (elapsed_time / completed) * total_combinations
-                    remaining = estimated_total - elapsed_time
+                    elapsed = time.time() - start_time
+                    est_total = (elapsed / completed) * total_combinations
+                    remaining = est_total - elapsed
                     print(f"Progress: {completed}/{total_combinations} "
                           f"({completed/total_combinations*100:.1f}%) "
                           f"ETA: {remaining/60:.1f} minutes")
             except Exception as e:
                 print(f"Combination failed: {e}")
     
-    # Same analysis format
+    total_time = time.time() - start_time
+    print(f"\nCompleted {total_combinations} evaluations in {total_time/60:.1f} minutes")
+    
     print("\n" + "="*80)
-    print("FALSE-FLAG RESULTS - XGBOOST NO-PCA 30/70 PARTIAL EVIDENCE")
+    print("FALSE-FLAG RESULTS - XGBOOST NO-PCA 30/70 PARTIAL EVIDENCE (UNIFIED)")
     print("="*80)
     
     for top_x in top_x_values:
-        print(f"\n Top-{top_x} Analysis:")
         attacker_detected = mimicked_deceived = both_correct = neither_correct = 0
-        
-        for result in all_results.values():
-            ar = result['attacker_rank']
-            mr = result['mimicked_rank']
-            attacker_in_top = ar is not None and ar <= top_x
-            mimicked_in_top = mr is not None and mr <= top_x
-            
-            if attacker_in_top: attacker_detected += 1
-            if mimicked_in_top: mimicked_deceived += 1
-            if attacker_in_top and mimicked_in_top: both_correct += 1
-            if not attacker_in_top and not mimicked_in_top: neither_correct += 1
-        
+        for res in all_results.values():
+            ar = res['attacker_rank']
+            mr = res['mimicked_rank']
+            a_ok = ar is not None and ar <= top_x
+            m_ok = mr is not None and mr <= top_x
+            if a_ok: attacker_detected += 1
+            if m_ok: mimicked_deceived += 1
+            if a_ok and m_ok: both_correct += 1
+            if not a_ok and not m_ok: neither_correct += 1
         total_cases = len(all_results)
-        print(f"  Actual attacker Top-{top_x}: {attacker_detected}/{total_cases} ({attacker_detected/total_cases*100:.1f}%)")
-        print(f"  Mimicked APT Top-{top_x}: {mimicked_deceived}/{total_cases} ({mimicked_deceived/total_cases*100:.1f}%)")
-        print(f"  Both Top-{top_x}: {both_correct}/{total_cases} ({both_correct/total_cases*100:.1f}%)")
-        print(f"  Neither Top-{top_x}: {neither_correct}/{total_cases} ({neither_correct/total_cases*100:.1f}%)")
+        print(f"\n Top-{top_x}:")
+        print(f"  Actual attacker: {attacker_detected}/{total_cases} ({attacker_detected/total_cases*100:.1f}%)")
+        print(f"  Mimicked APT: {mimicked_deceived}/{total_cases} ({mimicked_deceived/total_cases*100:.1f}%)")
+        print(f"  Both: {both_correct}/{total_cases} ({both_correct/total_cases*100:.1f}%)")
+        print(f"  Neither: {neither_correct}/{total_cases} ({neither_correct/total_cases*100:.1f}%)")
         print(f"   Deception: {mimicked_deceived/total_cases*100:.1f}% |  Detection: {attacker_detected/total_cases*100:.1f}%")
         print(f"  ⚖ Net Advantage: {mimicked_deceived/total_cases*100 - attacker_detected/total_cases*100:+.1f}%")
     
@@ -656,51 +578,33 @@ def evaluate_false_flag_attacks_partial_binary(saved_data, top_x_values=[1, 5, 1
 
 
 def plot_false_flag_analysis_binary(results, apt_name_mapping, profiles, apt_ids):
-    """
-    XGBoost no-PCA continuous deception heatmap:
-    deception_score = attacker_rank - mimicked_rank
-    
-    > 0: mimicked ranked better (smaller rank) -> successful deception (RED)
-    < 0: attacker ranked better                -> successful detection (BLUE)
-    """
-    print("\n CREATING XGBOOST NO-PCA FALSE-FLAG DECEPTION HEATMAP (30/70, CONTINUOUS)...")
+    """Deception heatmap (same as before)"""
+    print("\n CREATING XGBOOST NO-PCA FALSE-FLAG DECEPTION HEATMAP (UNIFIED MIX)...")
     
     n = len(apt_ids)
     apt_names = [apt_name_mapping.get(aid, f"APT{aid}") for aid in apt_ids]
-    
-    # Continuous matrix: attacker_rank - mimicked_rank
     deception_matrix = np.zeros((n, n), dtype=float)
     id_to_idx = {apt_id: i for i, apt_id in enumerate(apt_ids)}
     
     for key, result in results.items():
         attacker_rank = result['attacker_rank']
         mimicked_rank = result['mimicked_rank']
-        
-        # Parse key: "AttackerName→MimickedName"
         try:
             attacker_name, mimicked_name = key.split("→")
             attacker_name = attacker_name.strip()
             mimicked_name = mimicked_name.strip()
-            
-            # Find APT IDs from names
             attacker_id = next((aid for aid, name in apt_name_mapping.items() if name == attacker_name), None)
             mimicked_id = next((aid for aid, name in apt_name_mapping.items() if name == mimicked_name), None)
         except:
             continue
-        
         i = id_to_idx.get(attacker_id)
         j = id_to_idx.get(mimicked_id)
         if i is None or j is None:
             continue
-        
-        # Substitute n for missing ranks
         a_r = attacker_rank if attacker_rank is not None else n
         m_r = mimicked_rank if mimicked_rank is not None else n
-        
-        # Positive = deception success (mimicked better rank)
         deception_matrix[i, j] = a_r - m_r
     
-    # Robust color scaling
     non_zero = deception_matrix[np.nonzero(deception_matrix)]
     if non_zero.size == 0:
         print("⚠ All deception scores zero; nothing to plot.")
@@ -712,44 +616,26 @@ def plot_false_flag_analysis_binary(results, apt_name_mapping, profiles, apt_ids
     vmin, vmax = -max_abs, max_abs
     
     plt.figure(figsize=(16, 14))
-    sns.heatmap(
-        deception_matrix,
-        xticklabels=apt_names,
-        yticklabels=apt_names,
-        cmap='RdBu_r',  # Red (positive=deception) → Blue (negative=detection)
-        center=0,
-        vmin=vmin,
-        vmax=vmax,
-        square=True,
-        cbar_kws={
-            'label': 'Deception Score (Attacker Rank - Mimicked Rank)\n'
-                     '>0: Deception (RED), <0: Detection (BLUE)'
-        }
-    )
-    
-    plt.title(
-        'XGBoost NO-PCA False-Flag Deception (30/70 Mixed Evidence, Continuous)\n'
-        'Rows=Actual Attacker | Columns=Mimicked Target',
-        fontsize=14, fontweight='bold', pad=20
-    )
+    sns.heatmap(deception_matrix, xticklabels=apt_names, yticklabels=apt_names,
+                cmap='RdBu_r', center=0, vmin=vmin, vmax=vmax, square=True,
+                cbar_kws={'label': 'Deception Score (Attacker Rank - Mimicked Rank)\n>0: Deception (RED), <0: Detection (BLUE)'})
+    plt.title('XGBoost NO-PCA False-Flag Deception (Unified 30/70 Per-Feature Mix)\nRows=Actual Attacker | Columns=Mimicked Target',
+              fontsize=14, fontweight='bold', pad=20)
     plt.xlabel('Mimicked APT (70% features)', fontsize=12)
     plt.ylabel('Actual Attacker APT (30% features)', fontsize=12)
     plt.xticks(rotation=90, fontsize=8)
     plt.yticks(rotation=0, fontsize=8)
     plt.tight_layout()
-    
-    # Save AND display
-    out_name = 'false_flag_deception_matrix_xgboost_nopca_30_70_continuous.png'
-    plt.savefig(out_name, dpi=300, bbox_inches='tight')
+    plt.savefig('false_flag_deception_matrix_xgboost_unified_30_70.png', dpi=300, bbox_inches='tight')
     plt.show()
-    print(f" Saved & displayed: {out_name}")
+    print(" Saved & displayed: false_flag_deception_matrix_xgboost_unified_30_70.png")
 
 
 def main():
-    print(" FALSE-FLAG EVALUATION: XGBOOST NO-PCA 30/70 MIX (BINARY VECTORS)")
+    print(" FALSE-FLAG EVALUATION: XGBOOST NO-PCA (UNIFIED PER-FEATURE MIX)")
     print("=" * 70)
-    print("Each test creates binary vectors from mixed evidence (no PCA)")
-    print("30% attacker + 70% mimicked features per category")
+    print("30% attacker + 70% mimicked features per category (up to 10 features each)")
+    print("Partial version additionally reduces volume by ~50%")
     print("Similarity = cosine similarity between binary vectors")
     print("=" * 70)
     
@@ -757,26 +643,24 @@ def main():
     if saved_data is None:
         return
     
-    print(f"XGBoost no-PCA model loaded: {saved_data['training_info']['unique_apts']} APTs")
+    print(f"XGBoost model loaded: {saved_data['training_info']['unique_apts']} APTs")
     print(f"Feature vector length: {saved_data['training_info']['feature_vector_length']}")
     
-    # FULL 30/70 evidence with binary vectors
+    # FULL 30/70
     results_full, apt_name_mapping, profiles, apt_ids = evaluate_false_flag_attacks_binary_parallel(
         saved_data, top_x_values=[1, 5, 10, 20]
     )
     
-    # PARTIAL 30/70 + volume reduction with binary vectors
+    # PARTIAL (volume reduction)
     results_partial = evaluate_false_flag_attacks_partial_binary(
         saved_data, top_x_values=[1, 5, 10, 20]
     )
     
-    # Visualizations (FULL evidence only)
+    # Heatmap (full only)
     plot_false_flag_analysis_binary(results_full, apt_name_mapping, profiles, apt_ids)
-    print("\n XGBOOST NO-PCA 30/70 FALSE-FLAG COMPLETE!")
-    print("Binary vector similarity evaluation finished")
+    print("\n XGBOOST UNIFIED 30/70 FALSE-FLAG COMPLETE!")
 
 
 if __name__ == "__main__":
     mp.set_start_method('spawn', force=True)
     main()
-

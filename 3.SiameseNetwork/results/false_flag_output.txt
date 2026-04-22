@@ -1,4 +1,8 @@
- SIAMESE FALSE-FLAG EVALUATION (30/70 MIX + PARTIAL DROPOUT)
+ SIAMESE FALSE-FLAG EVALUATION (UNIFIED PER‑FEATURE 30/70 MIX, ROW‑BASED)
+======================================================================
+Generates false‑flag evidence with 30% attacker + 70% mimicked features
+(up to 10 features per category), then constructs rows (each row = 6 features)
+and computes embedding by averaging over rows – exactly like eval.py
 ======================================================================
  LOADING SIAMESE MODEL AND EMBEDDINGS...
  Model + 181 embeddings loaded.
@@ -6,228 +10,236 @@
  Loaded 181 APTs
 
 ================================================================================
- SIAMESE FALSE-FLAG: FULL (30/70 mix)
+ SIAMESE FALSE-FLAG: FULL (unified 30/70 per‑feature mix)
 ================================================================================
 Testing 32,580 combinations...
 Using 10 cores
-Progress: 500/32,580 (1.5%) ETA: 130.9 min
-Progress: 1,000/32,580 (3.1%) ETA: 132.9 min
-Progress: 1,500/32,580 (4.6%) ETA: 131.1 min
-Progress: 2,000/32,580 (6.1%) ETA: 127.2 min
-Progress: 2,500/32,580 (7.7%) ETA: 123.4 min
-Progress: 3,000/32,580 (9.2%) ETA: 119.9 min
-Progress: 3,500/32,580 (10.7%) ETA: 117.2 min
-Progress: 4,000/32,580 (12.3%) ETA: 114.9 min
-Progress: 4,500/32,580 (13.8%) ETA: 113.3 min
-Progress: 5,000/32,580 (15.3%) ETA: 112.1 min
-Progress: 5,500/32,580 (16.9%) ETA: 110.4 min
-Progress: 6,000/32,580 (18.4%) ETA: 108.6 min
-Progress: 6,500/32,580 (20.0%) ETA: 106.1 min
-Progress: 7,000/32,580 (21.5%) ETA: 103.9 min
-Progress: 7,500/32,580 (23.0%) ETA: 101.5 min
-Progress: 8,000/32,580 (24.6%) ETA: 99.8 min
-Progress: 8,500/32,580 (26.1%) ETA: 98.0 min
-Progress: 9,000/32,580 (27.6%) ETA: 96.0 min
-Progress: 9,500/32,580 (29.2%) ETA: 93.8 min
-Progress: 10,000/32,580 (30.7%) ETA: 91.9 min
-Progress: 10,500/32,580 (32.2%) ETA: 89.8 min
-Progress: 11,000/32,580 (33.8%) ETA: 87.6 min
-Progress: 11,500/32,580 (35.3%) ETA: 85.3 min
-Progress: 12,000/32,580 (36.8%) ETA: 83.3 min
-Progress: 12,500/32,580 (38.4%) ETA: 81.3 min
-Progress: 13,000/32,580 (39.9%) ETA: 79.1 min
-Progress: 13,500/32,580 (41.4%) ETA: 77.1 min
-Progress: 14,000/32,580 (43.0%) ETA: 75.1 min
-Progress: 14,500/32,580 (44.5%) ETA: 73.0 min
-Progress: 15,000/32,580 (46.0%) ETA: 70.9 min
-Progress: 15,500/32,580 (47.6%) ETA: 69.0 min
-Progress: 16,000/32,580 (49.1%) ETA: 66.9 min
-Progress: 16,500/32,580 (50.6%) ETA: 64.9 min
-Progress: 17,000/32,580 (52.2%) ETA: 63.1 min
-Progress: 17,500/32,580 (53.7%) ETA: 61.2 min
-Progress: 18,000/32,580 (55.2%) ETA: 59.4 min
-Progress: 18,500/32,580 (56.8%) ETA: 57.5 min
-Progress: 19,000/32,580 (58.3%) ETA: 55.7 min
-Progress: 19,500/32,580 (59.9%) ETA: 53.8 min
-Progress: 20,000/32,580 (61.4%) ETA: 51.9 min
-Progress: 20,500/32,580 (62.9%) ETA: 50.0 min
-Progress: 21,000/32,580 (64.5%) ETA: 48.0 min
-Progress: 21,500/32,580 (66.0%) ETA: 46.1 min
-Progress: 22,000/32,580 (67.5%) ETA: 44.1 min
-Progress: 22,500/32,580 (69.1%) ETA: 42.0 min
-Progress: 23,000/32,580 (70.6%) ETA: 39.9 min
-Progress: 23,500/32,580 (72.1%) ETA: 37.8 min
-Progress: 24,000/32,580 (73.7%) ETA: 35.6 min
-Progress: 24,500/32,580 (75.2%) ETA: 33.5 min
-Progress: 25,000/32,580 (76.7%) ETA: 31.4 min
-Progress: 25,500/32,580 (78.3%) ETA: 29.3 min
-Progress: 26,000/32,580 (79.8%) ETA: 27.2 min
-Progress: 26,500/32,580 (81.3%) ETA: 25.2 min
-Progress: 27,000/32,580 (82.9%) ETA: 23.1 min
-Progress: 27,500/32,580 (84.4%) ETA: 21.0 min
-Progress: 28,000/32,580 (85.9%) ETA: 18.9 min
-Progress: 28,500/32,580 (87.5%) ETA: 16.8 min
-Progress: 29,000/32,580 (89.0%) ETA: 14.8 min
-Progress: 29,500/32,580 (90.5%) ETA: 12.7 min
-Progress: 30,000/32,580 (92.1%) ETA: 10.6 min
-Progress: 30,500/32,580 (93.6%) ETA: 8.6 min
-Progress: 31,000/32,580 (95.2%) ETA: 6.5 min
-Progress: 31,500/32,580 (96.7%) ETA: 4.5 min
-Progress: 32,000/32,580 (98.2%) ETA: 2.4 min
+Progress: 500/32,580 (1.5%) ETA: 112.7 min
+Progress: 1,000/32,580 (3.1%) ETA: 114.2 min
+Progress: 1,500/32,580 (4.6%) ETA: 114.1 min
+Progress: 2,000/32,580 (6.1%) ETA: 111.7 min
+Progress: 2,500/32,580 (7.7%) ETA: 107.6 min
+Progress: 3,000/32,580 (9.2%) ETA: 104.8 min
+Progress: 3,500/32,580 (10.7%) ETA: 102.0 min
+Progress: 4,000/32,580 (12.3%) ETA: 99.5 min
+Progress: 4,500/32,580 (13.8%) ETA: 97.2 min
+Progress: 5,000/32,580 (15.3%) ETA: 94.9 min
+Progress: 5,500/32,580 (16.9%) ETA: 92.6 min
+Progress: 6,000/32,580 (18.4%) ETA: 90.5 min
+Progress: 6,500/32,580 (20.0%) ETA: 88.6 min
+Progress: 7,000/32,580 (21.5%) ETA: 86.7 min
+Progress: 7,500/32,580 (23.0%) ETA: 84.9 min
+Progress: 8,000/32,580 (24.6%) ETA: 83.1 min
+Progress: 8,500/32,580 (26.1%) ETA: 81.2 min
+Progress: 9,000/32,580 (27.6%) ETA: 79.5 min
+Progress: 9,500/32,580 (29.2%) ETA: 77.7 min
+Progress: 10,000/32,580 (30.7%) ETA: 75.9 min
+Progress: 10,500/32,580 (32.2%) ETA: 74.0 min
+Progress: 11,000/32,580 (33.8%) ETA: 72.3 min
+Progress: 11,500/32,580 (35.3%) ETA: 70.4 min
+Progress: 12,000/32,580 (36.8%) ETA: 68.6 min
+Progress: 12,500/32,580 (38.4%) ETA: 66.8 min
+Progress: 13,000/32,580 (39.9%) ETA: 65.1 min
+Progress: 13,500/32,580 (41.4%) ETA: 63.3 min
+Progress: 14,000/32,580 (43.0%) ETA: 61.6 min
+Progress: 14,500/32,580 (44.5%) ETA: 59.8 min
+Progress: 15,000/32,580 (46.0%) ETA: 60.3 min
+Progress: 15,500/32,580 (47.6%) ETA: 62.2 min
+Progress: 16,000/32,580 (49.1%) ETA: 61.7 min
+Progress: 16,500/32,580 (50.6%) ETA: 59.6 min
+Progress: 17,000/32,580 (52.2%) ETA: 57.6 min
+Progress: 17,500/32,580 (53.7%) ETA: 55.6 min
+Progress: 18,000/32,580 (55.2%) ETA: 53.7 min
+Progress: 18,500/32,580 (56.8%) ETA: 51.7 min
+Progress: 19,000/32,580 (58.3%) ETA: 49.7 min
+Progress: 19,500/32,580 (59.9%) ETA: 47.7 min
+Progress: 20,000/32,580 (61.4%) ETA: 45.8 min
+Progress: 20,500/32,580 (62.9%) ETA: 43.9 min
+Progress: 21,000/32,580 (64.5%) ETA: 42.0 min
+Progress: 21,500/32,580 (66.0%) ETA: 40.1 min
+Progress: 22,000/32,580 (67.5%) ETA: 38.2 min
+Progress: 22,500/32,580 (69.1%) ETA: 36.3 min
+Progress: 23,000/32,580 (70.6%) ETA: 34.5 min
+Progress: 23,500/32,580 (72.1%) ETA: 32.7 min
+Progress: 24,000/32,580 (73.7%) ETA: 31.0 min
+Progress: 24,500/32,580 (75.2%) ETA: 29.2 min
+Progress: 25,000/32,580 (76.7%) ETA: 27.4 min
+Progress: 25,500/32,580 (78.3%) ETA: 25.6 min
+Progress: 26,000/32,580 (79.8%) ETA: 23.9 min
+Progress: 26,500/32,580 (81.3%) ETA: 22.1 min
+Progress: 27,000/32,580 (82.9%) ETA: 20.3 min
+Progress: 27,500/32,580 (84.4%) ETA: 18.5 min
+Progress: 28,000/32,580 (85.9%) ETA: 16.7 min
+Progress: 28,500/32,580 (87.5%) ETA: 14.9 min
+Progress: 29,000/32,580 (89.0%) ETA: 13.1 min
+Progress: 29,500/32,580 (90.5%) ETA: 11.3 min
+Progress: 30,000/32,580 (92.1%) ETA: 9.4 min
+Progress: 30,500/32,580 (93.6%) ETA: 7.6 min
+Progress: 31,000/32,580 (95.2%) ETA: 5.8 min
+Progress: 31,500/32,580 (96.7%) ETA: 3.9 min
+Progress: 32,000/32,580 (98.2%) ETA: 2.1 min
 Progress: 32,500/32,580 (99.8%) ETA: 0.3 min
 
- Completed 32,580 evals in 134.4 min
+ Completed 32,580 evals in 118.2 min
 
 ================================================================================
-SIAMESE RESULTS - FULL (30/70 mix)
+SIAMESE RESULTS - FULL (unified 30/70 per‑feature mix)
 ================================================================================
 
  Top-1:
-  Attacker: 968/32580 (3.0%)
-  Mimicked: 2826/32580 (8.7%)
+  Attacker: 788/32580 (2.4%)
+  Mimicked: 4884/32580 (15.0%)
   Both: 0/32580 (0.0%)
-  Neither: 28786/32580 (88.4%)
-   Deception: 8.7% |  Detection: 3.0%
+  Neither: 26908/32580 (82.6%)
+   Deception: 15.0% |  Detection: 2.4%
+  ⚖ Net Advantage: +12.6%
 
  Top-5:
-  Attacker: 3025/32580 (9.3%)
-  Mimicked: 6717/32580 (20.6%)
-  Both: 286/32580 (0.9%)
-  Neither: 23124/32580 (71.0%)
-   Deception: 20.6% |  Detection: 9.3%
+  Attacker: 2925/32580 (9.0%)
+  Mimicked: 11126/32580 (34.1%)
+  Both: 681/32580 (2.1%)
+  Neither: 19210/32580 (59.0%)
+   Deception: 34.1% |  Detection: 9.0%
+  ⚖ Net Advantage: +25.2%
 
  Top-10:
-  Attacker: 4917/32580 (15.1%)
-  Mimicked: 9655/32580 (29.6%)
-  Both: 926/32580 (2.8%)
-  Neither: 18934/32580 (58.1%)
-   Deception: 29.6% |  Detection: 15.1%
+  Attacker: 5062/32580 (15.5%)
+  Mimicked: 15670/32580 (48.1%)
+  Both: 1973/32580 (6.1%)
+  Neither: 13821/32580 (42.4%)
+   Deception: 48.1% |  Detection: 15.5%
+  ⚖ Net Advantage: +32.6%
 
  Top-20:
-  Attacker: 7784/32580 (23.9%)
-  Mimicked: 13278/32580 (40.8%)
-  Both: 2494/32580 (7.7%)
-  Neither: 14012/32580 (43.0%)
-   Deception: 40.8% |  Detection: 23.9%
+  Attacker: 8639/32580 (26.5%)
+  Mimicked: 21209/32580 (65.1%)
+  Both: 5041/32580 (15.5%)
+  Neither: 7773/32580 (23.9%)
+   Deception: 65.1% |  Detection: 26.5%
+  ⚖ Net Advantage: +38.6%
 
 ================================================================================
- SIAMESE FALSE-FLAG: PARTIAL (per‑feature dropout, keep 50%)
+ SIAMESE FALSE-FLAG: PARTIAL (unified 30/70 + 50% volume reduction)
 ================================================================================
 Testing 32,580 combinations...
 Using 10 cores
-Progress: 500/32,580 (1.5%) ETA: 147.1 min
-Progress: 1,000/32,580 (3.1%) ETA: 140.0 min
-Progress: 1,500/32,580 (4.6%) ETA: 134.7 min
-Progress: 2,000/32,580 (6.1%) ETA: 130.3 min
-Progress: 2,500/32,580 (7.7%) ETA: 127.0 min
-Progress: 3,000/32,580 (9.2%) ETA: 124.1 min
-Progress: 3,500/32,580 (10.7%) ETA: 121.7 min
-Progress: 4,000/32,580 (12.3%) ETA: 119.3 min
-Progress: 4,500/32,580 (13.8%) ETA: 117.1 min
-Progress: 5,000/32,580 (15.3%) ETA: 114.7 min
-Progress: 5,500/32,580 (16.9%) ETA: 111.8 min
-Progress: 6,000/32,580 (18.4%) ETA: 109.2 min
-Progress: 6,500/32,580 (20.0%) ETA: 107.1 min
-Progress: 7,000/32,580 (21.5%) ETA: 105.5 min
-Progress: 7,500/32,580 (23.0%) ETA: 104.1 min
-Progress: 8,000/32,580 (24.6%) ETA: 102.3 min
-Progress: 8,500/32,580 (26.1%) ETA: 100.7 min
-Progress: 9,000/32,580 (27.6%) ETA: 99.0 min
-Progress: 9,500/32,580 (29.2%) ETA: 97.2 min
-Progress: 10,000/32,580 (30.7%) ETA: 95.5 min
-Progress: 10,500/32,580 (32.2%) ETA: 93.8 min
-Progress: 11,000/32,580 (33.8%) ETA: 91.8 min
-Progress: 11,500/32,580 (35.3%) ETA: 90.1 min
-Progress: 12,000/32,580 (36.8%) ETA: 87.8 min
-Progress: 12,500/32,580 (38.4%) ETA: 85.5 min
-Progress: 13,000/32,580 (39.9%) ETA: 83.4 min
-Progress: 13,500/32,580 (41.4%) ETA: 81.0 min
-Progress: 14,000/32,580 (43.0%) ETA: 78.8 min
-Progress: 14,500/32,580 (44.5%) ETA: 76.6 min
-Progress: 15,000/32,580 (46.0%) ETA: 74.3 min
-Progress: 15,500/32,580 (47.6%) ETA: 72.2 min
-Progress: 16,000/32,580 (49.1%) ETA: 70.1 min
-Progress: 16,500/32,580 (50.6%) ETA: 67.9 min
-Progress: 17,000/32,580 (52.2%) ETA: 65.8 min
-Progress: 17,500/32,580 (53.7%) ETA: 63.6 min
-Progress: 18,000/32,580 (55.2%) ETA: 61.5 min
-Progress: 18,500/32,580 (56.8%) ETA: 59.4 min
-Progress: 19,000/32,580 (58.3%) ETA: 57.2 min
-Progress: 19,500/32,580 (59.9%) ETA: 55.1 min
-Progress: 20,000/32,580 (61.4%) ETA: 53.0 min
-Progress: 20,500/32,580 (62.9%) ETA: 50.8 min
-Progress: 21,000/32,580 (64.5%) ETA: 48.7 min
-Progress: 21,500/32,580 (66.0%) ETA: 46.6 min
-Progress: 22,000/32,580 (67.5%) ETA: 44.5 min
-Progress: 22,500/32,580 (69.1%) ETA: 42.4 min
-Progress: 23,000/32,580 (70.6%) ETA: 40.2 min
-Progress: 23,500/32,580 (72.1%) ETA: 38.1 min
-Progress: 24,000/32,580 (73.7%) ETA: 36.0 min
-Progress: 24,500/32,580 (75.2%) ETA: 33.9 min
-Progress: 25,000/32,580 (76.7%) ETA: 31.8 min
-Progress: 25,500/32,580 (78.3%) ETA: 29.7 min
-Progress: 26,000/32,580 (79.8%) ETA: 27.6 min
-Progress: 26,500/32,580 (81.3%) ETA: 25.5 min
-Progress: 27,000/32,580 (82.9%) ETA: 23.4 min
-Progress: 27,500/32,580 (84.4%) ETA: 21.3 min
-Progress: 28,000/32,580 (85.9%) ETA: 19.2 min
-Progress: 28,500/32,580 (87.5%) ETA: 17.1 min
-Progress: 29,000/32,580 (89.0%) ETA: 15.0 min
-Progress: 29,500/32,580 (90.5%) ETA: 12.9 min
-Progress: 30,000/32,580 (92.1%) ETA: 10.8 min
-Progress: 30,500/32,580 (93.6%) ETA: 8.7 min
-Progress: 31,000/32,580 (95.2%) ETA: 6.6 min
-Progress: 31,500/32,580 (96.7%) ETA: 4.5 min
-Progress: 32,000/32,580 (98.2%) ETA: 2.4 min
+Progress: 500/32,580 (1.5%) ETA: 108.5 min
+Progress: 1,000/32,580 (3.1%) ETA: 104.9 min
+Progress: 1,500/32,580 (4.6%) ETA: 102.3 min
+Progress: 2,000/32,580 (6.1%) ETA: 100.4 min
+Progress: 2,500/32,580 (7.7%) ETA: 98.5 min
+Progress: 3,000/32,580 (9.2%) ETA: 96.5 min
+Progress: 3,500/32,580 (10.7%) ETA: 94.6 min
+Progress: 4,000/32,580 (12.3%) ETA: 93.0 min
+Progress: 4,500/32,580 (13.8%) ETA: 91.3 min
+Progress: 5,000/32,580 (15.3%) ETA: 89.7 min
+Progress: 5,500/32,580 (16.9%) ETA: 88.0 min
+Progress: 6,000/32,580 (18.4%) ETA: 86.5 min
+Progress: 6,500/32,580 (20.0%) ETA: 84.9 min
+Progress: 7,000/32,580 (21.5%) ETA: 83.3 min
+Progress: 7,500/32,580 (23.0%) ETA: 81.7 min
+Progress: 8,000/32,580 (24.6%) ETA: 80.1 min
+Progress: 8,500/32,580 (26.1%) ETA: 78.5 min
+Progress: 9,000/32,580 (27.6%) ETA: 76.9 min
+Progress: 9,500/32,580 (29.2%) ETA: 75.3 min
+Progress: 10,000/32,580 (30.7%) ETA: 73.7 min
+Progress: 10,500/32,580 (32.2%) ETA: 72.1 min
+Progress: 11,000/32,580 (33.8%) ETA: 70.6 min
+Progress: 11,500/32,580 (35.3%) ETA: 68.9 min
+Progress: 12,000/32,580 (36.8%) ETA: 67.4 min
+Progress: 12,500/32,580 (38.4%) ETA: 65.7 min
+Progress: 13,000/32,580 (39.9%) ETA: 64.1 min
+Progress: 13,500/32,580 (41.4%) ETA: 62.5 min
+Progress: 14,000/32,580 (43.0%) ETA: 60.9 min
+Progress: 14,500/32,580 (44.5%) ETA: 59.3 min
+Progress: 15,000/32,580 (46.0%) ETA: 57.7 min
+Progress: 15,500/32,580 (47.6%) ETA: 56.2 min
+Progress: 16,000/32,580 (49.1%) ETA: 54.8 min
+Progress: 16,500/32,580 (50.6%) ETA: 53.3 min
+Progress: 17,000/32,580 (52.2%) ETA: 51.9 min
+Progress: 17,500/32,580 (53.7%) ETA: 50.4 min
+Progress: 18,000/32,580 (55.2%) ETA: 48.9 min
+Progress: 18,500/32,580 (56.8%) ETA: 47.4 min
+Progress: 19,000/32,580 (58.3%) ETA: 45.8 min
+Progress: 19,500/32,580 (59.9%) ETA: 44.2 min
+Progress: 20,000/32,580 (61.4%) ETA: 42.7 min
+Progress: 20,500/32,580 (62.9%) ETA: 41.1 min
+Progress: 21,000/32,580 (64.5%) ETA: 39.5 min
+Progress: 21,500/32,580 (66.0%) ETA: 37.9 min
+Progress: 22,000/32,580 (67.5%) ETA: 36.3 min
+Progress: 22,500/32,580 (69.1%) ETA: 34.7 min
+Progress: 23,000/32,580 (70.6%) ETA: 33.0 min
+Progress: 23,500/32,580 (72.1%) ETA: 31.2 min
+Progress: 24,000/32,580 (73.7%) ETA: 29.5 min
+Progress: 24,500/32,580 (75.2%) ETA: 27.8 min
+Progress: 25,000/32,580 (76.7%) ETA: 26.0 min
+Progress: 25,500/32,580 (78.3%) ETA: 24.3 min
+Progress: 26,000/32,580 (79.8%) ETA: 22.6 min
+Progress: 26,500/32,580 (81.3%) ETA: 20.9 min
+Progress: 27,000/32,580 (82.9%) ETA: 19.2 min
+Progress: 27,500/32,580 (84.4%) ETA: 17.5 min
+Progress: 28,000/32,580 (85.9%) ETA: 15.7 min
+Progress: 28,500/32,580 (87.5%) ETA: 14.0 min
+Progress: 29,000/32,580 (89.0%) ETA: 12.3 min
+Progress: 29,500/32,580 (90.5%) ETA: 10.6 min
+Progress: 30,000/32,580 (92.1%) ETA: 8.9 min
+Progress: 30,500/32,580 (93.6%) ETA: 7.1 min
+Progress: 31,000/32,580 (95.2%) ETA: 5.4 min
+Progress: 31,500/32,580 (96.7%) ETA: 3.7 min
+Progress: 32,000/32,580 (98.2%) ETA: 2.0 min
 Progress: 32,500/32,580 (99.8%) ETA: 0.3 min
 
- Completed 32,580 evals in 136.0 min
+ Completed 32,580 evals in 111.5 min
 
 ================================================================================
-SIAMESE RESULTS - PARTIAL (per‑feature dropout, keep 50%)
+SIAMESE RESULTS - PARTIAL (unified 30/70 + 50% volume reduction)
 ================================================================================
 
  Top-1:
-  Attacker: 461/32580 (1.4%)
-  Mimicked: 994/32580 (3.1%)
+  Attacker: 736/32580 (2.3%)
+  Mimicked: 3597/32580 (11.0%)
   Both: 0/32580 (0.0%)
-  Neither: 31125/32580 (95.5%)
-   Deception: 3.1% |  Detection: 1.4%
+  Neither: 28247/32580 (86.7%)
+   Deception: 11.0% |  Detection: 2.3%
+  ⚖ Net Advantage: +8.8%
 
  Top-5:
-  Attacker: 1516/32580 (4.7%)
-  Mimicked: 2516/32580 (7.7%)
-  Both: 84/32580 (0.3%)
-  Neither: 28632/32580 (87.9%)
-   Deception: 7.7% |  Detection: 4.7%
+  Attacker: 2631/32580 (8.1%)
+  Mimicked: 8867/32580 (27.2%)
+  Both: 464/32580 (1.4%)
+  Neither: 21546/32580 (66.1%)
+   Deception: 27.2% |  Detection: 8.1%
+  ⚖ Net Advantage: +19.1%
 
  Top-10:
-  Attacker: 2717/32580 (8.3%)
-  Mimicked: 3971/32580 (12.2%)
-  Both: 278/32580 (0.9%)
-  Neither: 26170/32580 (80.3%)
-   Deception: 12.2% |  Detection: 8.3%
+  Attacker: 4549/32580 (14.0%)
+  Mimicked: 13021/32580 (40.0%)
+  Both: 1396/32580 (4.3%)
+  Neither: 16406/32580 (50.4%)
+   Deception: 40.0% |  Detection: 14.0%
+  ⚖ Net Advantage: +26.0%
 
  Top-20:
-  Attacker: 5008/32580 (15.4%)
-  Mimicked: 6856/32580 (21.0%)
-  Both: 947/32580 (2.9%)
-  Neither: 21663/32580 (66.5%)
-   Deception: 21.0% |  Detection: 15.4%
+  Attacker: 7810/32580 (24.0%)
+  Mimicked: 18206/32580 (55.9%)
+  Both: 3796/32580 (11.7%)
+  Neither: 10360/32580 (31.8%)
+   Deception: 55.9% |  Detection: 24.0%
+  ⚖ Net Advantage: +31.9%
 
  CREATING SIAMESE DECEPTION HEATMAP...
- Saved: false_flag_deception_matrix_siamese_30_70_full.png
+ Saved: false_flag_deception_matrix_siamese_unified_30_70_full.png
 
  CREATING SIAMESE DECEPTION HEATMAP...
 ⚠ No deception signal
 
- SIAMESE 30/70 FALSE-FLAG COMPLETE!
+ SIAMESE UNIFIED 30/70 FALSE-FLAG COMPLETE!
 
 ==================================================
 RESOURCE USAGE REPORT../3.SiameseNetwork/False_flag.py
 ==================================================
-Execution Time: 16342.23 seconds
-Memory Usage: 0.00 MB
-Current Memory: 41.09 MB
+Execution Time: 15688.95 seconds
+Memory Usage: -27.86 MB
+Current Memory: 13.28 MB
 CPU Usage: 0.1%
-System CPU: 100.0%
+System CPU: 89.1%

@@ -19,8 +19,7 @@ MODEL_PATH = "6feat_apt_siamese_feature_model.pkl"
 TOP_X_VALUES = [1, 5, 10, 20]
 MAX_WORKERS = min(mp.cpu_count(), 8)
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-N_SAMPLES = 32               # number of random vectors to average for query embedding
-PARTIAL_KEEP_FRACTION = 0.5  # keep 50% of features (like MIL volume_fraction)
+MAX_FEATURES_PER_CAT = 10   # max features to sample per category (unified with GNN/MIL/RF)
 
 # ---------- FeatureEncoder (must match trained model) ----------
 class FeatureEncoder(nn.Module):
@@ -111,56 +110,110 @@ def load_model_and_embeddings():
     return model, apt_embeddings, apt_ids, apt_names, apt_name_mapping, apt_to_idx
 
 # ============================================================
-# 30/70 SAMPLING + PARTIAL (per‑feature dropout, like MIL)
+# UNIFIED PER‑FEATURE 30/70 MIXING (same as GNN/MIL/RF)
 # ============================================================
-def sample_mixed_features(attacker_profile, mimicked_profile, rng=None,
-                          attacker_fraction=0.3, partial=False, keep_fraction=0.5):
+def sample_mixed_features_unified(attacker_profile, mimicked_profile, rng=None,
+                                  attacker_fraction=0.3, max_count=MAX_FEATURES_PER_CAT):
     """
-    Returns a 6‑element array with 30% attacker / 70% mimicked per feature type.
-    If partial=True, randomly set each feature to -1 (missing) with probability (1-keep_fraction).
-    This mimics MIL's "shuffle and keep ~50% per category" at the per‑feature level.
+    For each category, sample up to `max_count` features,
+    each chosen with probability attacker_fraction from attacker's set,
+    otherwise from mimicked's set. Sampling without replacement.
+    Returns dict with lists.
     """
     if rng is None:
-        rng = random
-    
-    def pick_one(atk_list, mim_list):
-        if not atk_list and not mim_list:
-            return -1
-        use_attacker = (rng.random() < attacker_fraction)
-        if use_attacker and atk_list:
-            return rng.choice(list(atk_list))
-        elif mim_list:
-            return rng.choice(list(mim_list))
-        elif atk_list:
-            return rng.choice(list(atk_list))
-        return -1
-    
-    features = np.array([
-        pick_one(attacker_profile['techniques'], mimicked_profile['techniques']),
-        pick_one(attacker_profile['software'], mimicked_profile['software']),
-        pick_one(attacker_profile['capec'], mimicked_profile['capec']),
-        pick_one(attacker_profile['cwe'], mimicked_profile['cwe']),
-        pick_one(attacker_profile['cve'], mimicked_profile['cve']),
-        pick_one(attacker_profile['pulse'], mimicked_profile['pulse'])
-    ], dtype=np.float32)
-    
-    if partial:
-        # Per‑feature dropout: keep with probability keep_fraction
-        for i in range(6):
-            if rng.random() > keep_fraction:
-                features[i] = -1.0
-    return features
+        rng = random.Random()
 
-def generate_query_embedding(model, features, n_samples=N_SAMPLES):
-    """Average embedding over n_samples copies of the feature vector (to mimic training)."""
-    batch = np.tile(features, (n_samples, 1))
-    batch_tensor = torch.tensor(batch, dtype=torch.float32).to(DEVICE)
-    with torch.no_grad():
-        emb = model(batch_tensor)
-    return emb.mean(dim=0)
+    mixed = {}
+    categories = ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']
+    for cat in categories:
+        atk_list = list(attacker_profile.get(cat, []))
+        mim_list = list(mimicked_profile.get(cat, []))
+        if not atk_list and not mim_list:
+            mixed[cat] = []
+            continue
+
+        result = []
+        atk_copy = atk_list[:]
+        mim_copy = mim_list[:]
+        total_needed = min(max_count, len(atk_copy) + len(mim_copy))
+        while len(result) < total_needed:
+            use_attacker = (rng.random() < attacker_fraction)
+            if use_attacker and atk_copy:
+                chosen = rng.choice(atk_copy)
+                result.append(chosen)
+                atk_copy.remove(chosen)
+            elif mim_copy:
+                chosen = rng.choice(mim_copy)
+                result.append(chosen)
+                mim_copy.remove(chosen)
+            else:
+                break
+        mixed[cat] = result
+    return mixed
+
+def sample_mixed_features_partial_unified(attacker_profile, mimicked_profile, rng=None,
+                                          attacker_fraction=0.3, max_count=MAX_FEATURES_PER_CAT,
+                                          volume_fraction=0.5):
+    """
+    Partial evidence:
+      1) Build full 30/70 mixed evidence (per-feature, up to max_count).
+      2) Reduce volume per category: shuffle and keep volume_fraction (default 0.5).
+    """
+    full_mixed = sample_mixed_features_unified(attacker_profile, mimicked_profile, rng,
+                                               attacker_fraction, max_count)
+    partial_mixed = {}
+    for cat, feats in full_mixed.items():
+        feats = list(feats)
+        rng.shuffle(feats)
+        keep = max(1, int(len(feats) * volume_fraction)) if feats else 0
+        partial_mixed[cat] = feats[:keep]
+    return partial_mixed
 
 # ============================================================
-# WORKER PROCESS
+# Convert mixed lists into a list of rows (each row = 6 features)
+# ============================================================
+def mixed_lists_to_rows(mixed_lists):
+    """
+    mixed_lists: dict with keys 'techniques','software',..., each a list of feature IDs.
+    Returns a numpy array of shape (n_rows, 6) where each row contains one feature from each category.
+    Rows are created by taking the i-th element from each list (if exists, else -1).
+    Number of rows = maximum length among the lists.
+    """
+    categories = ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']
+    max_len = max(len(mixed_lists[cat]) for cat in categories) if mixed_lists else 0
+    if max_len == 0:
+        # empty evidence: return a single row of -1
+        return np.array([[-1, -1, -1, -1, -1, -1]], dtype=np.float32)
+    
+    rows = []
+    for i in range(max_len):
+        row = []
+        for cat in categories:
+            lst = mixed_lists[cat]
+            if i < len(lst):
+                row.append(lst[i])
+            else:
+                row.append(-1)
+        rows.append(row)
+    return np.array(rows, dtype=np.float32)
+
+# ============================================================
+# Embedding from rows (exactly as in eval.py)
+# ============================================================
+def embedding_from_rows(model, rows, device):
+    """
+    rows: numpy array of shape (n_rows, 6)
+    Returns averaged embedding (1D tensor)
+    """
+    if len(rows) == 0:
+        rows = np.array([[-1]*6])
+    tensor = torch.FloatTensor(rows).to(device)
+    with torch.no_grad():
+        embs = model(tensor)          # (n_rows, embed_dim)
+        return embs.mean(dim=0).cpu() # (embed_dim,)
+
+# ============================================================
+# WORKER PROCESS (UPDATED: uses rows)
 # ============================================================
 def process_single_false_flag_siamese(args):
     (attacker_apt_id, mimicked_apt_id, model_state_dict, config,
@@ -168,7 +221,7 @@ def process_single_false_flag_siamese(args):
      apt_to_idx, partial, seed) = args
     
     rng = random.Random(seed)
-    device = DEVICE  # use same device as main
+    device = DEVICE
     
     model = FeatureEncoder(
         config['num_techniques'],
@@ -186,17 +239,31 @@ def process_single_false_flag_siamese(args):
     attacker_profile = profiles[attacker_apt_id]
     mimicked_profile = profiles[mimicked_apt_id]
     
-    # Build false‑flag evidence (30/70 mix) with optional per‑feature dropout
-    false_flag_features = sample_mixed_features(
-        attacker_profile, mimicked_profile, rng,
-        partial=partial, keep_fraction=PARTIAL_KEEP_FRACTION
-    )
+    # Generate mixed evidence (dict of lists)
+    if partial:
+        mixed_lists = sample_mixed_features_partial_unified(
+            attacker_profile, mimicked_profile, rng,
+            attacker_fraction=0.3, max_count=MAX_FEATURES_PER_CAT, volume_fraction=0.5
+        )
+    else:
+        mixed_lists = sample_mixed_features_unified(
+            attacker_profile, mimicked_profile, rng,
+            attacker_fraction=0.3, max_count=MAX_FEATURES_PER_CAT
+        )
     
-    query_emb = generate_query_embedding(model, false_flag_features, N_SAMPLES)
+    # Convert to rows
+    rows = mixed_lists_to_rows(mixed_lists)
     
-    # Compute similarities
-    apt_emb_tensor = apt_embeddings.to(device)
-    similarities = torch.matmul(query_emb.unsqueeze(0), apt_emb_tensor.t()).squeeze().cpu().numpy()
+    # Compute query embedding
+    query_emb = embedding_from_rows(model, rows, device)
+    query_emb = query_emb / query_emb.norm()
+    
+    # Database embeddings (already normalized)
+    db_embs = apt_embeddings.to(device)
+    db_embs = db_embs / db_embs.norm(dim=1, keepdim=True)
+    
+    # Similarities
+    similarities = torch.mv(db_embs, query_emb.to(device)).cpu().numpy()
     
     sorted_indices = np.argsort(similarities)[::-1]
     ranked_apts = [apt_ids[idx] for idx in sorted_indices]
@@ -224,7 +291,7 @@ def process_single_false_flag_siamese(args):
 def evaluate_false_flag_attacks_siamese(model, apt_embeddings, apt_ids, apt_names,
                                         apt_name_mapping, apt_to_idx, profiles,
                                         partial=False):
-    scenario = "PARTIAL (per‑feature dropout, keep 50%)" if partial else "FULL (30/70 mix)"
+    scenario = "PARTIAL (unified 30/70 + 50% volume reduction)" if partial else "FULL (unified 30/70 per‑feature mix)"
     print(f"\n{'='*80}")
     print(f" SIAMESE FALSE-FLAG: {scenario}")
     print(f"{'='*80}")
@@ -297,11 +364,12 @@ def evaluate_false_flag_attacks_siamese(model, apt_embeddings, apt_ids, apt_name
         print(f"  Both: {both_correct}/{total_cases} ({both_correct/total_cases*100:.1f}%)")
         print(f"  Neither: {neither_correct}/{total_cases} ({neither_correct/total_cases*100:.1f}%)")
         print(f"   Deception: {mimicked_deceived/total_cases*100:.1f}% |  Detection: {attacker_detected/total_cases*100:.1f}%")
+        print(f"  ⚖ Net Advantage: {mimicked_deceived/total_cases*100 - attacker_detected/total_cases*100:+.1f}%")
     
     return all_results
 
 # ============================================================
-# HEATMAP (same as before)
+# HEATMAP (unchanged)
 # ============================================================
 def plot_false_flag_deception_siamese(results, apt_names, apt_ids, partial=False):
     print("\n CREATING SIAMESE DECEPTION HEATMAP...")
@@ -340,14 +408,14 @@ def plot_false_flag_deception_siamese(results, apt_names, apt_ids, partial=False
                 cmap='RdBu_r', center=0, vmin=vmin, vmax=vmax, square=True,
                 cbar_kws={'label': 'Deception (Attacker Rank - Mimicked Rank)\nRed>0 Deception | Blue<0 Detection'})
     scenario = "PARTIAL" if partial else "FULL"
-    plt.title(f'Siamese False-Flag Deception (30/70 Mix - {scenario})\nRows=Attacker | Columns=Mimicked', 
+    plt.title(f'Siamese False-Flag Deception (Unified 30/70 Mix - {scenario})\nRows=Attacker | Columns=Mimicked', 
               fontsize=14, fontweight='bold', pad=20)
     plt.xlabel('Mimicked APT (70%)')
     plt.ylabel('Actual Attacker (30%)')
     plt.xticks(rotation=90, fontsize=8)
     plt.yticks(rotation=0, fontsize=8)
     plt.tight_layout()
-    output_path = f'false_flag_deception_matrix_siamese_30_70_{"partial" if partial else "full"}.png'
+    output_path = f'false_flag_deception_matrix_siamese_unified_30_70_{"partial" if partial else "full"}.png'
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.show()
     print(f" Saved: {output_path}")
@@ -356,18 +424,23 @@ def plot_false_flag_deception_siamese(results, apt_names, apt_ids, partial=False
 # MAIN
 # ============================================================
 def main():
-    print(" SIAMESE FALSE-FLAG EVALUATION (30/70 MIX + PARTIAL DROPOUT)")
+    print(" SIAMESE FALSE-FLAG EVALUATION (UNIFIED PER‑FEATURE 30/70 MIX, ROW‑BASED)")
     print("=" * 70)
+    print("Generates false‑flag evidence with 30% attacker + 70% mimicked features")
+    print("(up to 10 features per category), then constructs rows (each row = 6 features)")
+    print("and computes embedding by averaging over rows – exactly like eval.py")
+    print("=" * 70)
+    
     model, apt_embeddings, apt_ids, apt_names, apt_name_mapping, apt_to_idx = load_model_and_embeddings()
     profiles = load_apt_profiles_from_data()
     
-    # FULL (no dropout)
+    # FULL (no volume reduction)
     full_results = evaluate_false_flag_attacks_siamese(
         model, apt_embeddings, apt_ids, apt_names, apt_name_mapping, apt_to_idx, profiles,
         partial=False
     )
     
-    # PARTIAL (per‑feature dropout with keep_fraction = 0.5)
+    # PARTIAL (volume reduction 50%)
     partial_results = evaluate_false_flag_attacks_siamese(
         model, apt_embeddings, apt_ids, apt_names, apt_name_mapping, apt_to_idx, profiles,
         partial=True
@@ -375,12 +448,9 @@ def main():
     
     # Heatmaps
     plot_false_flag_deception_siamese(full_results, apt_names, apt_ids, partial=False)
-
-    
-
     plot_false_flag_deception_siamese(partial_results, apt_names, apt_ids, partial=True)
     
-    print("\n SIAMESE 30/70 FALSE-FLAG COMPLETE!")
+    print("\n SIAMESE UNIFIED 30/70 FALSE-FLAG COMPLETE!")
 
 if __name__ == "__main__":
     mp.set_start_method('spawn', force=True)
