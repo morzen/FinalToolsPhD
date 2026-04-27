@@ -48,7 +48,7 @@ class ResourceMonitor:
         except:
             print("\nGPU: Not available or not detected")
 
-# scriptpath = "../1.XGboost/False_flag.py"
+scriptpath = "../1.XGboost/False_flag.py"
 
 # scriptpath = "../2.GNN/False_flag.py"
 
@@ -60,9 +60,9 @@ class ResourceMonitor:
 
 # scriptpath = "../6.hybrid/hybrid_eval.py"
 
-# scriptpath = "../featureMatching/featureMatching.py"
-# scriptpath = "../Jaccards_Correlation/Jaccards_correlation.py"
-# scriptpath = "../TVD_Total_Variation_Distance/TVD_featureIng.py"
+# scriptpath = "../featureMatching/false_flag.py"
+# scriptpath = "../Jaccards_Correlation/false_flag.py"
+# scriptpath = "../TVD_Total_Variation_Distance/false_flag.py"
 
 
 # Usage with subprocess

@@ -27,56 +27,57 @@ class EfficientXGBoostPredictorBinary:
         self.feature_metadata = feature_metadata
     
     def create_vector_from_evidence(self, evidence):
-        """Create binary vector from evidence dictionary (no PCA)"""
         techniques = evidence.get('techniques', [])
         software = evidence.get('software', [])
         cve = evidence.get('cve', [])
         
-        # Use feature mappings for consistent indexing
         feature_mapping = self.feature_metadata.get('feature_mapping', {})
-        
-        # Create binary vector
-        total_length = (self.feature_metadata['pulse_offset'] + 
-                        len(self.feature_metadata['all_pulse']))
+
+        # ---- compute total vector length exactly as the training script did ----
+        # The model stores these offsets and the lists of features.
+        # Last category is CVE; total length = cve_offset + number of CVEs
+        cve_offset = self.feature_metadata.get('cve_offset', 0)
+        all_cve = self.feature_metadata.get('all_cve', [])
+        total_length = cve_offset + len(all_cve)
+        # --------------------------------------------------------------------
+
         vector = np.zeros(total_length, dtype=np.float64)
-        
+
         if feature_mapping:
             # Techniques
-            if 'techniques' in feature_mapping:
-                tech_map = feature_mapping['techniques']
-                for t in techniques:
-                    if t in tech_map:
-                        vector[tech_map[t]] = 1.0
-            # Software
-            if 'software' in feature_mapping:
-                soft_map = feature_mapping['software']
-                for s in software:
-                    if s in soft_map:
-                        idx = soft_map[s] + self.feature_metadata['software_offset']
-                        vector[idx] = 1.0
-            # CVE
-            if 'cve' in feature_mapping:
-                cve_map = feature_mapping['cve']
-                for v in cve:
-                    if v in cve_map:
-                        idx = cve_map[v] + self.feature_metadata['cve_offset']
-                        vector[idx] = 1.0
-        else:
-            # Fallback to index lookup (slower, less reliable)
+            tech_map = feature_mapping.get('techniques', {})
             for t in techniques:
-                if t in self.feature_metadata['all_techniques']:
-                    idx = self.feature_metadata['all_techniques'].index(t)
-                    vector[idx] = 1.0
+                if t in tech_map:
+                    vector[tech_map[t]] = 1.0
+
+            # Software
+            soft_map = feature_mapping.get('software', {})
+            sw_offset = self.feature_metadata.get('software_offset', 0)
             for s in software:
-                if s in self.feature_metadata['all_software']:
-                    idx = self.feature_metadata['all_software'].index(s) + self.feature_metadata['software_offset']
-                    vector[idx] = 1.0
+                if s in soft_map:
+                    vector[soft_map[s] + sw_offset] = 1.0
+
+            # CVE
+            cve_map = feature_mapping.get('cve', {})
             for v in cve:
-                if v in self.feature_metadata['all_cve']:
-                    idx = self.feature_metadata['all_cve'].index(v) + self.feature_metadata['cve_offset']
-                    vector[idx] = 1.0
-        
-        return vector  # No PCA transformation
+                if v in cve_map:
+                    vector[cve_map[v] + cve_offset] = 1.0
+        else:
+            # Fallback (should not be needed with your model, but kept for safety)
+            all_tech = self.feature_metadata.get('all_techniques', [])
+            for t in techniques:
+                if t in all_tech:
+                    vector[all_tech.index(t)] = 1.0
+            all_sw = self.feature_metadata.get('all_software', [])
+            sw_off = len(all_tech)
+            for s in software:
+                if s in all_sw:
+                    vector[all_sw.index(s) + sw_off] = 1.0
+            for v in cve:
+                if v in all_cve:
+                    vector[all_cve.index(v) + sw_off + len(all_sw)] = 1.0
+
+        return vector
     
     def predict_vector_similarity(self, vector1, vector2):
         """Predict similarity between two binary vectors using cosine similarity"""
@@ -257,9 +258,9 @@ def sample_mixed_features_partial(attacker_profile, mimicked_profile, rng=None,
 # WORKERS
 # ============================================================
 def process_single_false_flag_binary(args):
-    """Full evidence worker (no volume reduction)"""
-    (attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, software_mapping, cve_mapping, apt_name_mapping,
-     profiles, apt_vectors, apt_ids, seed) = args
+    (attacker_apt_id, mimicked_apt_id, saved_data,
+     apt_name_mapping, profiles, apt_vectors, apt_ids, seed) = args
+    # rest unchanged
     
     rng = random.Random(seed)
     
@@ -301,10 +302,8 @@ def process_single_false_flag_binary(args):
 
 
 def process_single_false_flag_partial_binary(args):
-    """Partial evidence worker: 30/70 mix + volume reduction (50%)"""
-    (attacker_apt_id, mimicked_apt_id, saved_data, technique_mapping, software_mapping,
-     capec_mapping, cwe_mapping, cve_mapping, pulse_mapping, apt_name_mapping,
-     profiles, apt_vectors, apt_ids, seed) = args
+    (attacker_apt_id, mimicked_apt_id, saved_data,
+     apt_name_mapping, profiles, apt_vectors, apt_ids, seed) = args
     
     rng = random.Random(seed)
     
@@ -361,7 +360,7 @@ def evaluate_false_flag_attacks_binary_parallel(saved_data, top_x_values=[1, 5, 
     apt_ids = list(profiles.keys())
     apt_vectors = create_binary_vector_matrix(saved_data, profiles, apt_ids)
     
-    _, _, _, _, _, _, apt_name_mapping = load_mappings()
+    _, _, _, apt_name_mapping = load_mappings()
     
     all_combinations = [(a, m) for a in apt_ids for m in apt_ids if a != m]
     total_combinations = len(all_combinations)
@@ -372,8 +371,8 @@ def evaluate_false_flag_attacks_binary_parallel(saved_data, top_x_values=[1, 5, 
     
     args_list = []
     for i, (attacker_apt_id, mimicked_apt_id) in enumerate(all_combinations):
-        args = (attacker_apt_id, mimicked_apt_id, saved_data, None, None, None, None, None, None,
-                apt_name_mapping, profiles, apt_vectors, apt_ids, i)
+        args = (attacker_apt_id, mimicked_apt_id, saved_data,
+        apt_name_mapping, profiles, apt_vectors, apt_ids, i)
         args_list.append(args)
     
     all_results = {}
@@ -445,7 +444,7 @@ def evaluate_false_flag_attacks_partial_binary(saved_data, top_x_values=[1, 5, 1
     apt_ids = list(profiles.keys())
     apt_vectors = create_binary_vector_matrix(saved_data, profiles, apt_ids)
     
-    _, _, _, _, _, _, apt_name_mapping = load_mappings()
+    _, _, _, apt_name_mapping = load_mappings()
     
     all_combinations = [(a, m) for a in apt_ids for m in apt_ids if a != m]
     total_combinations = len(all_combinations)
@@ -455,8 +454,8 @@ def evaluate_false_flag_attacks_partial_binary(saved_data, top_x_values=[1, 5, 1
     
     args_list = []
     for i, (attacker_apt_id, mimicked_apt_id) in enumerate(all_combinations):
-        args = (attacker_apt_id, mimicked_apt_id, saved_data, None, None, None, None, None, None,
-                apt_name_mapping, profiles, apt_vectors, apt_ids, i)
+        args = (attacker_apt_id, mimicked_apt_id, saved_data,
+            apt_name_mapping, profiles, apt_vectors, apt_ids, i)
         args_list.append(args)
     
     all_results = {}

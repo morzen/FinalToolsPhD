@@ -21,23 +21,14 @@ def create_apt_profiles_with_names(df_encoded, name_mapping):
                 'encoded_id': apt_encoded,
                 'techniques': set(),
                 'software': set(),
-                'capec': set(),
-                'cwe': set(),
-                'cve': set(),
-                'pulse': set()
+                'cve': set()
             }
         if row['techniques_str'] != -1:
             profiles[apt_name]['techniques'].add(row['techniques_str'])
         if row['software_str'] != -1:
             profiles[apt_name]['software'].add(row['software_str'])
-        if row['CAPEC_ID'] != -1:
-            profiles[apt_name]['capec'].add(row['CAPEC_ID'])
-        if row['CWE_ID'] != -1:
-            profiles[apt_name]['cwe'].add(row['CWE_ID'])
         if row['CVE_ID'] != -1:
             profiles[apt_name]['cve'].add(row['CVE_ID'])
-        if row['Pulse_ID'] != -1:
-            profiles[apt_name]['pulse'].add(row['Pulse_ID'])
     return profiles
 
 def load_apt_profiles_and_mappings():
@@ -92,7 +83,7 @@ def sample_mixed_features_unified(attacker_profile, mimicked_profile, rng=None,
     if rng is None:
         rng = random.Random()
     mixed = {}
-    categories = ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']
+    categories = ['techniques', 'software', 'cve']
     for cat in categories:
         atk_list = list(attacker_profile.get(cat, []))
         mim_list = list(mimicked_profile.get(cat, []))
@@ -196,8 +187,7 @@ def evaluate_false_flag_jaccard(apt_profiles, apt_name_dict, partial=False,
     print(f"Using {mp.cpu_count()} CPU cores")
     
     feature_weights = {
-        'techniques': 1.5, 'software': 1.3, 'capec': 1.0,
-        'cwe': 1.0, 'cve': 0.8, 'pulse': 0.7
+        'techniques': 1.5, 'software': 1.3, 'cve': 0.8
     }
     
     args_list = []

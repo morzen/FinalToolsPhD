@@ -15,7 +15,7 @@ import seaborn as sns
 # ============================================================
 # CONFIG
 # ============================================================
-MODEL_PATH = "6feat_apt_siamese_feature_model.pkl"
+MODEL_PATH = "3feat_apt_siamese_feature_model.pkl"
 TOP_X_VALUES = [1, 5, 10, 20]
 MAX_WORKERS = min(mp.cpu_count(), 8)
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -23,30 +23,24 @@ MAX_FEATURES_PER_CAT = 10   # max features to sample per category (unified with 
 
 # ---------- FeatureEncoder (must match trained model) ----------
 class FeatureEncoder(nn.Module):
-    def __init__(self, num_techniques, num_software, num_capec, num_cwe, num_cve, num_pulse, embed_dim=128):
+    def __init__(self, num_techniques, num_software, num_cve, embed_dim=128):
         super().__init__()
-        embed_per_feature = embed_dim // 6
+        embed_per_feature = embed_dim // 3
         self.tech_embed = nn.Embedding(num_techniques+1, embed_per_feature)
         self.soft_embed = nn.Embedding(num_software+1, embed_per_feature)
-        self.capec_embed = nn.Embedding(num_capec+1, embed_per_feature)
-        self.cwe_embed = nn.Embedding(num_cwe+1, embed_per_feature)
         self.cve_embed = nn.Embedding(num_cve+1, embed_per_feature)
-        self.pulse_embed = nn.Embedding(num_pulse+1, embed_per_feature)
-        total_embed_size = embed_per_feature * 6
+        total_embed_size = embed_per_feature * 3
         self.fc1 = nn.Linear(total_embed_size, 256)
         self.fc2 = nn.Linear(256, embed_dim)
         self.dropout = nn.Dropout(0.3)
         self.layer_norm = nn.LayerNorm(embed_dim)
         
     def forward(self, features):
-        tech, soft, capec, cwe, cve, pulse = features[:, 0], features[:, 1], features[:, 2], features[:, 3], features[:, 4], features[:, 5]
+        tech, soft, cve = features[:, 0], features[:, 1], features[:, 2]
         t_emb = self.tech_embed(tech.long() + 1)
         s_emb = self.soft_embed(soft.long() + 1)
-        ca_emb = self.capec_embed(capec.long() + 1)
-        cw_emb = self.cwe_embed(cwe.long() + 1)
         cv_emb = self.cve_embed(cve.long() + 1)
-        p_emb = self.pulse_embed(pulse.long() + 1)
-        x = torch.cat([t_emb, s_emb, ca_emb, cw_emb, cv_emb, p_emb], dim=-1)
+        x = torch.cat([t_emb, s_emb, cv_emb], dim=-1)
         x = F.relu(self.fc1(x))
         x = self.dropout(x)
         x = self.fc2(x)
@@ -66,10 +60,7 @@ def load_apt_profiles_from_data():
         profiles[int(apt_id)] = {
             'techniques': set(apt_data['techniques_str'].dropna().unique()),
             'software': set(apt_data['software_str'].dropna().unique()),
-            'capec': set(apt_data['CAPEC_ID'].dropna().unique()),
-            'cwe': set(apt_data['CWE_ID'].dropna().unique()),
             'cve': set(apt_data['CVE_ID'].dropna().unique()),
-            'pulse': set(apt_data['Pulse_ID'].dropna().unique()),
             'total_features': len(apt_data)
         }
     print(f" Loaded {len(profiles)} APTs")
@@ -87,10 +78,7 @@ def load_model_and_embeddings():
     model = FeatureEncoder(
         config['num_techniques'],
         config['num_software'],
-        config['num_capec'],
-        config['num_cwe'],
         config['num_cve'],
-        config['num_pulse'],
         config['embedding_dim']
     )
     model.load_state_dict(data['model_state_dict'])
@@ -124,7 +112,7 @@ def sample_mixed_features_unified(attacker_profile, mimicked_profile, rng=None,
         rng = random.Random()
 
     mixed = {}
-    categories = ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']
+    categories = ['techniques', 'software', 'cve']
     for cat in categories:
         atk_list = list(attacker_profile.get(cat, []))
         mim_list = list(mimicked_profile.get(cat, []))
@@ -175,15 +163,15 @@ def sample_mixed_features_partial_unified(attacker_profile, mimicked_profile, rn
 def mixed_lists_to_rows(mixed_lists):
     """
     mixed_lists: dict with keys 'techniques','software',..., each a list of feature IDs.
-    Returns a numpy array of shape (n_rows, 6) where each row contains one feature from each category.
+    Returns a numpy array of shape (n_rows, 3) where each row contains one feature from each category.
     Rows are created by taking the i-th element from each list (if exists, else -1).
     Number of rows = maximum length among the lists.
     """
-    categories = ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']
+    categories = ['techniques', 'software', 'cve']
     max_len = max(len(mixed_lists[cat]) for cat in categories) if mixed_lists else 0
     if max_len == 0:
         # empty evidence: return a single row of -1
-        return np.array([[-1, -1, -1, -1, -1, -1]], dtype=np.float32)
+        return np.array([[-1, -1, -1]], dtype=np.float32)
     
     rows = []
     for i in range(max_len):
@@ -202,11 +190,11 @@ def mixed_lists_to_rows(mixed_lists):
 # ============================================================
 def embedding_from_rows(model, rows, device):
     """
-    rows: numpy array of shape (n_rows, 6)
+    rows: numpy array of shape (n_rows, 3)
     Returns averaged embedding (1D tensor)
     """
     if len(rows) == 0:
-        rows = np.array([[-1]*6])
+        rows = np.array([[-1]*3])
     tensor = torch.FloatTensor(rows).to(device)
     with torch.no_grad():
         embs = model(tensor)          # (n_rows, embed_dim)
@@ -226,10 +214,7 @@ def process_single_false_flag_siamese(args):
     model = FeatureEncoder(
         config['num_techniques'],
         config['num_software'],
-        config['num_capec'],
-        config['num_cwe'],
         config['num_cve'],
-        config['num_pulse'],
         config['embedding_dim']
     )
     model.load_state_dict(model_state_dict)
@@ -305,10 +290,7 @@ def evaluate_false_flag_attacks_siamese(model, apt_embeddings, apt_ids, apt_name
     config = {
         'num_techniques': model.tech_embed.num_embeddings - 1,
         'num_software': model.soft_embed.num_embeddings - 1,
-        'num_capec': model.capec_embed.num_embeddings - 1,
-        'num_cwe': model.cwe_embed.num_embeddings - 1,
         'num_cve': model.cve_embed.num_embeddings - 1,
-        'num_pulse': model.pulse_embed.num_embeddings - 1,
         'embedding_dim': model.fc2.out_features
     }
     
