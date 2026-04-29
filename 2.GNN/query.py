@@ -531,10 +531,11 @@ def print_enhanced_results_table(results, evidence, confidence):
     print("-" * 120)
 
 def hybrid_query(evidence_humanreadable):
-
+    print("[GNN] Starting hybrid_query")         # new
     encoded_evidence = convert_evidence_to_encoded(evidence_humanreadable, "../BaseData/comparison_Encoded_df.csv")
+    print("[GNN] Evidence encoded, calling enhanced query...")  # new
     results, confidence, profiles, apt_name_mapping, feature_scores = query_apt_similarity_enhanced(encoded_evidence, "hybrid")
-
+    print("[GNN] Query done, returning results")  # new
     return results
 
 if __name__ == "__main__":

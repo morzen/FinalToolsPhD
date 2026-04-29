@@ -1,9 +1,58 @@
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"   # tolerate multiple OpenMP copies
+os.environ["OMP_NUM_THREADS"] = "1"           # prevent thread oversubscription
 import pandas as pd
 import importlib.util
 from pathlib import Path
-import os
 import sys
 import numpy as np
+import xgboost as xgb
+import gc
+import multiprocessing
+
+
+
+class PicklableXGBWrapper:
+    """Wrapper to mimic XGBClassifier for predict_proba."""
+    def __init__(self, booster, num_classes, seed):
+        self._Booster = booster
+        self.n_classes_ = num_classes
+        self.objective = 'multi:softprob'
+        self.seed = seed
+        self.classes_ = np.arange(num_classes)
+
+    def predict_proba(self, X):
+        dtest = xgb.DMatrix(X, missing=np.nan)
+        return self._Booster.predict(dtest)
+
+    def predict(self, X):
+        probas = self.predict_proba(X)
+        return np.argmax(probas, axis=1)
+
+# ============================================================================
+# 🔽 TOP-LEVEL GNN WORKER (must be picklable) + SUBPROCESS WRAPPER
+# ============================================================================
+def _gnn_worker(evidence):
+    """Run GNN hybrid_query in a clean subprocess."""
+    import importlib.util
+    from pathlib import Path
+    gnn_dir = Path(__file__).parent.parent / "2.GNN"
+    query_file = gnn_dir / "query.py"
+    spec = importlib.util.spec_from_file_location("gnn_worker", query_file)
+    gnn_mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gnn_mod)
+    return gnn_mod.hybrid_query(evidence)
+
+def run_gnn_in_subprocess(evidence):
+    """Call GNN in a separate process to avoid memory fragmentation."""
+    with multiprocessing.Pool(1) as pool:
+        result = pool.apply_async(_gnn_worker, (evidence,))
+        try:
+            return result.get(timeout=300)   # 5 minutes
+        except multiprocessing.TimeoutError:
+            print("⚠ GNN subprocess timed out – skipping GNN results.")
+            return []
+# ============================================================================
 
 # Path to Jaccards_correlation.py
 jaccard_dir = Path("..") / "Jaccards_Correlation"
@@ -13,7 +62,6 @@ spec = importlib.util.spec_from_file_location("jaccards_module", jaccard_file)
 jaccard_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(jaccard_module)
 
-
 # Path to TVD_featureIng.py
 TVD_dir = Path("..") / "TVD_Total_Variation_Distance"
 TVD_file = TVD_dir / "TVD_featureIng.py"
@@ -21,7 +69,6 @@ TVD_file = TVD_dir / "TVD_featureIng.py"
 spec = importlib.util.spec_from_file_location("TVD_module", TVD_file)
 TVD_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(TVD_module)
-
 
 # Path to featureMatching.py
 featureMatching_dir = Path("..") / "featureMatching"
@@ -31,7 +78,6 @@ spec = importlib.util.spec_from_file_location("featureMatching_module", featureM
 featureMatching_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(featureMatching_module)
 
-
 # Store original state
 original_dir = os.getcwd()
 original_sys_path = sys.path.copy()
@@ -39,7 +85,7 @@ original_sys_path = sys.path.copy()
 # Define all directories
 directories = {
     "xgboost": Path("..") / "1.XGboost",
-    "gnn": Path("..") / "2.GNN", 
+    "gnn": Path("..") / "2.GNN",
     "siamese": Path("..") / "3.SiameseNetwork",
     "mil": Path("..") / "4.Attention-Based_MIL",
     "rf": Path("..") / "5.RF_FeatureEngineering",
@@ -50,36 +96,27 @@ modules = {}
 
 try:
     for module_name, dir_path in directories.items():
-        # Check if directory exists
         if not dir_path.exists():
             print(f"⚠️  Directory not found: {dir_path}")
             continue
-            
-        # Change to the module's directory
+
         os.chdir(dir_path)
-        
-        # Add current directory to path
         sys.path.insert(0, os.getcwd())
-        
-        # Import from the current directory
+
         spec = importlib.util.spec_from_file_location(f"{module_name}_query", "query.py")
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        
-        # Store the module
+
         modules[module_name] = module
-        
+
         print(f"✓ Imported {module_name} from {os.getcwd()}/query.py")
-        
-        # IMPORTANT: Reset path before next import
+
         sys.path.remove(os.getcwd())
-        
+
 finally:
-    # Always restore original state
     os.chdir(original_dir)
     sys.path = original_sys_path
 
-# Now you have all modules in the dictionary
 xgboost_query = modules.get("xgboost")
 gnn_query = modules.get("gnn")
 siamese_query = modules.get("siamese")
@@ -90,37 +127,17 @@ print(f"\n✓ Successfully imported {len(modules)} modules")
 for name in modules.keys():
     print(f"  - {name}")
 
-##########################################################################################
+##########################################################################
 
-##########################################################################################
 def process_apt_data(csv_file_path, apt_name):
-    """
-    Process CSV file and extract all 7 features for a specific APT
-    """
-    # Read CSV data from file
     df = pd.read_csv(csv_file_path)
-    
-    # Filter data for the specified APT
     apt_data = df[df['APTname'] == apt_name]
-    
-    # Extract unique techniques (excluding empty values and -1)
     techniques = sorted(apt_data['techniques_str'].dropna().unique().tolist())
-    
-    # Extract unique software (excluding empty values and -1)
     software = sorted(apt_data['software_str'].dropna().unique().tolist())
-    
-    # Extract unique CAPEC_ID (excluding empty values and -1)
     capec = sorted([x for x in apt_data['CAPEC_ID'].dropna().unique().tolist() if x != -1])
-    
-    # Extract unique CWE_ID (excluding empty values and -1)
     cwe = sorted([x for x in apt_data['CWE_ID'].dropna().unique().tolist() if x != -1])
-    
-    # Extract unique CVEs (excluding empty values and -1)
     cves = sorted([x for x in apt_data['CVE_ID'].dropna().unique().tolist() if x != -1])
-    
-    # Extract unique Pulse_ID (excluding empty values and -1)
     pulse = sorted([x for x in apt_data['Pulse_ID'].dropna().unique().tolist() if x != -1])
-    
     return {
         'techniques': techniques,
         'software': software,
@@ -130,260 +147,125 @@ def process_apt_data(csv_file_path, apt_name):
         'pulse': pulse
     }
 
-
-def hybrid_rank_aggregate(lists, weight_xgboost, weight_gnn, 
-                          weight_siamese, weight_mil, weight_rf, 
+def hybrid_rank_aggregate(lists, weight_xgboost, weight_gnn,
+                          weight_siamese, weight_mil, weight_rf,
                           weight_featureMatching, weight_jaccard, weight_tvd):
-    
-    """
-    Reciprocal Rank Fusion (RRF) with per-model weights.
-    RRF score = sum_i ( weight_i / (k + rank_i) )
-    Lower rank (1 = best) gives higher contribution.
-    """
-    k = 60  # standard constant, can be tuned
+    k = 60
     n_lists = len(lists)
-    
-    # Create weights list in the same order as the lists
-    weights = [weight_xgboost, weight_gnn, weight_siamese, weight_mil, 
+    weights = [weight_xgboost, weight_gnn, weight_siamese, weight_mil,
                weight_rf, weight_jaccard, weight_tvd, weight_featureMatching]
-    
-    # Normalize weights (so they sum to 1, but not strictly necessary for RRF)
     weights = np.array(weights) / np.sum(weights)
-    
-    # For each APT, collect its rank from each model (if present)
+
     rank_dict = {}
     for list_idx, ranking in enumerate(lists):
         for item in ranking:
             name = item['apt_name']
-            rank = item['rank']   # 1-indexed, lower is better
+            rank = item['rank']
             if name not in rank_dict:
                 rank_dict[name] = [None] * n_lists
             rank_dict[name][list_idx] = rank
-    
-    # Calculate RRF score for each APT
+
     results = []
     for name, ranks in rank_dict.items():
         rrf_score = 0.0
         for i, rank in enumerate(ranks):
             if rank is not None:
                 rrf_score += weights[i] / (k + rank)
-        results.append({
-            'name': name,
-            'rrf_score': rrf_score
-        })
-    
-    # Sort by RRF score descending (higher = better)
-    # If scores are equal (extremely rare), break ties by alphabetical order
+        results.append({'name': name, 'rrf_score': rrf_score})
+
     results.sort(key=lambda x: (-x['rrf_score'], x['name']))
-    
     return [(item['name'], i+1) for i, item in enumerate(results)]
 
-
 def automated_query_for_eval(evidence_first_batch):
-    
-    # print("IN")
     try:
-        # Save original outputs
         original_stdout = sys.stdout
         original_stderr = sys.stderr
-
-        # Redirect to null
         sys.stdout = open(os.devnull, 'w')
         sys.stderr = open(os.devnull, 'w')
 
         XGboost_results = xgboost_query.hybrid_query(evidence_first_batch)
-
-        GNN_results = gnn_query.hybrid_query(evidence_first_batch)
-
+        GNN_results = run_gnn_in_subprocess(evidence_first_batch)
         Siamese_results = siamese_query.hybrid_query(evidence_first_batch)
-
         MIL_results = mil_query.hybrid_query(evidence_first_batch)
-
         RF_results = rf_query.hybrid_query(evidence_first_batch)
-
         Jaccards_result = jaccard_module.hybrid_query(evidence_first_batch)
-
         TVD_result = TVD_module.hybrid_query(evidence_first_batch)
-
         featureMatching_result = featureMatching_module.hybrid_query(evidence_first_batch)
 
-        all_lists = [XGboost_results, GNN_results, Siamese_results, MIL_results, RF_results, Jaccards_result, TVD_result, featureMatching_result]
-
+        all_lists = [XGboost_results, GNN_results, Siamese_results, MIL_results,
+                     RF_results, Jaccards_result, TVD_result, featureMatching_result]
         result = hybrid_rank_aggregate(all_lists)
 
-        # Restore outputs
         sys.stdout.close()
         sys.stderr.close()
         sys.stdout = original_stdout
         sys.stderr = original_stderr
-
-        # print(result)
         return result
-
     except Exception as e:
         print(f"Error: {e}")
 
-
 def remotequery(evidence_first_batch):
-
+    gc.collect()
     XGboost_results = xgboost_query.hybrid_query(evidence_first_batch)
-
-    GNN_results = gnn_query.hybrid_query(evidence_first_batch)
-
+    gc.collect()
+    GNN_results = run_gnn_in_subprocess(evidence_first_batch)
+    gc.collect()
     Siamese_results = siamese_query.hybrid_query(evidence_first_batch)
-
+    gc.collect()
     MIL_results = mil_query.hybrid_query(evidence_first_batch)
-
+    gc.collect()
     RF_results = rf_query.hybrid_query(evidence_first_batch)
-
+    gc.collect()
     Jaccards_result = jaccard_module.hybrid_query(evidence_first_batch)
-
     TVD_result = TVD_module.hybrid_query(evidence_first_batch)
-
     featureMatching_result = featureMatching_module.hybrid_query(evidence_first_batch)
 
-    # print("RESULTS ::::::::")
-    # i = 0
-    # print(str("XGboost")+" :: "+str(XGboost_results[i]))
-    # print(str("GNN")+" :: "+str(GNN_results[i]))
-    # print(str("Siamese")+" :: "+str(Siamese_results[i]))
-    # print(str("MIL")+" :: "+str(MIL_results[i]))
-    # print(str("RF")+" :: "+str(RF_results[i]))
+    all_lists = [XGboost_results, GNN_results, Siamese_results, MIL_results,
+                 RF_results, Jaccards_result, TVD_result, featureMatching_result]
 
-    # print(str("Jaccard")+" :: "+str(Jaccards_result[i]))
-    # print(str("TVD")+" :: "+str(TVD_result[i]))
-    # print(str("featureMatching_result")+" :: "+str(featureMatching_result[i]))
-
-
-    all_lists = [XGboost_results, GNN_results, Siamese_results, MIL_results, RF_results, Jaccards_result, TVD_result, featureMatching_result]
-
-    #no weights
-    # result = hybrid_rank_aggregate(
-    #         all_lists,
-    #         weight_xgboost=1,
-    #         weight_gnn=1,
-    #         weight_siamese=1,
-    #         weight_mil=1,
-    #         weight_rf=1,
-    #         weight_featureMatching=1,
-    #         weight_jaccard=1,
-    #         weight_tvd=1
-    #     )
-
-    #weight based only on self evaluation
-    # result = hybrid_rank_aggregate(
-    #         all_lists,
-    #         weight_jaccard=5,
-    #         weight_xgboost=5,
-    #         weight_featureMatching=5,
-    #         weight_siamese=1,
-    #         weight_tvd=2,
-    #         weight_rf=1,
-    #         weight_gnn=1,
-    #         weight_mil=1
-    #     )
-
-    #weight determined on precision evaluation through dataset and CTI eval testing
     result = hybrid_rank_aggregate(
-            all_lists,
-            weight_featureMatching=5,
-            weight_jaccard=4,
-            weight_xgboost=4,
-            weight_mil=4,
-            weight_gnn=1,
-            weight_tvd=2,
-            weight_siamese=1,
-            weight_rf=2
-        )
+        all_lists,
+        weight_xgboost=1, weight_gnn=1, weight_siamese=1,
+        weight_mil=1, weight_rf=1, weight_featureMatching=1,
+        weight_jaccard=1, weight_tvd=1
+    )
 
-
-    # Transform to match first list format (only rank and apt_name)
-    final_result = [
-        {'rank': rank, 'apt_name': name}
-        for name, rank in result
-    ]
-
+    final_result = [{'rank': rank, 'apt_name': name} for name, rank in result]
     return final_result
 
 def main():
-    # Get CSV file path from user
-    csv_file_path = "../BaseData/TestFinal_df.csv"
-    
-    
-
-
-
     import json
-    # Read evidence from JSON file
     with open('../query_input.json', 'r') as f:
         evidence_first_batch = json.load(f)
 
+    gc.collect()
     XGboost_results = xgboost_query.hybrid_query(evidence_first_batch)
-
-    GNN_results = gnn_query.hybrid_query(evidence_first_batch)
-
+    gc.collect()
+    GNN_results = run_gnn_in_subprocess(evidence_first_batch)
+    gc.collect()
     Siamese_results = siamese_query.hybrid_query(evidence_first_batch)
-
+    gc.collect()
     MIL_results = mil_query.hybrid_query(evidence_first_batch)
-
+    gc.collect()
     RF_results = rf_query.hybrid_query(evidence_first_batch)
-
+    gc.collect()
     Jaccards_result = jaccard_module.hybrid_query(evidence_first_batch)
-
     TVD_result = TVD_module.hybrid_query(evidence_first_batch)
-
     featureMatching_result = featureMatching_module.hybrid_query(evidence_first_batch)
 
-    # print("RESULTS ::::::::")
-    # i = 0
-    # print(str("XGboost")+" :: "+str(XGboost_results[i]))
-    # print(str("GNN")+" :: "+str(GNN_results[i]))
-    # print(str("Siamese")+" :: "+str(Siamese_results[i]))
-    # print(str("MIL")+" :: "+str(MIL_results[i]))
-    # print(str("RF")+" :: "+str(RF_results[i]))
+    all_lists = [XGboost_results, GNN_results, Siamese_results, MIL_results,
+                 RF_results, Jaccards_result, TVD_result, featureMatching_result]
 
-    # print(str("Jaccard")+" :: "+str(Jaccards_result[i]))
-    # print(str("TVD")+" :: "+str(TVD_result[i]))
-    # print(str("featureMatching_result")+" :: "+str(featureMatching_result[i]))
-
-
-    all_lists = [XGboost_results, GNN_results, Siamese_results, MIL_results, RF_results, Jaccards_result, TVD_result, featureMatching_result]
-
-    #no weights
     result = hybrid_rank_aggregate(
-            all_lists,
-            weight_xgboost=1,
-            weight_gnn=1,
-            weight_siamese=1,
-            weight_mil=1,
-            weight_rf=1,
-            weight_featureMatching=1,
-            weight_jaccard=1,
-            weight_tvd=1
-        )
-    
-    # #weight determined on precision evaluation through dataset
-    # result = hybrid_rank_aggregate(
-    #     all_lists,
-    #     weight_xgboost=9,
-    #     weight_gnn=1,
-    #     weight_siamese=1,
-    #     weight_mil=1,
-    #     weight_rf=8,
-    #     weight_featureMatching=10,
-    #     weight_jaccard=10,
-    #     weight_tvd=10
-    # )
-    
+        all_lists,
+        weight_xgboost=1, weight_gnn=1, weight_siamese=1,
+        weight_mil=1, weight_rf=1, weight_featureMatching=1,
+        weight_jaccard=1, weight_tvd=1
+    )
+
     for name, rank in result:
         print(f"  {name}: {rank}")
-        
-    # except FileNotFoundError:
-    #     print(f"Error: File '{csv_file_path}' not found.")
-    # except Exception as e:
-    #     print(f"Error: {e}")
-
-
 
 if __name__ == "__main__":
+    multiprocessing.set_start_method('spawn', force=True)
     main()

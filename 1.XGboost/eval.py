@@ -4,34 +4,63 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import random
+import xgboost as xgb
 from itertools import islice
+from matplotlib.colors import LinearSegmentedColormap
+
+# ============================================================================
+# 🔽  WRAPPER CLASS (must match train.py) so pickle can load the model
+# ============================================================================
+class PicklableXGBWrapper:
+    """Wrapper to mimic XGBClassifier for predict_proba."""
+    def __init__(self, booster, num_classes, seed):
+        self._Booster = booster
+        self.n_classes_ = num_classes
+        self.objective = 'multi:softprob'
+        self.seed = seed
+        self.classes_ = np.arange(num_classes)
+
+    def predict_proba(self, X):
+        dtest = xgb.DMatrix(X, missing=np.nan)
+        return self._Booster.predict(dtest)
+
+    def predict(self, X):
+        probas = self.predict_proba(X)
+        return np.argmax(probas, axis=1)
+# ============================================================================
+
 
 #####################################################################
-# EFFICIENT MODEL PREDICTOR (NO PCA – USES BINARY VECTORS)
+# EFFICIENT MODEL PREDICTOR (updated to use model probabilities)
 #####################################################################
 
 class EfficientXGBoostPredictor:
-    """Predictor for the efficient XGBoost model using binary vectors (no PCA)"""
+    """Predictor for the efficient XGBoost model using binary vectors."""
     def __init__(self, model, apt_features, apt_encoder, feature_metadata):
         self.model = model
         self.apt_features = apt_features
         self.apt_encoder = apt_encoder
         self.reverse_encoder = {v: k for k, v in apt_encoder.items()}
         self.feature_metadata = feature_metadata
-        self.last_binary_vector = None  # For debugging
+        self.last_binary_vector = None
+
+    def predict_proba_vector(self, vector):
+        """
+        Return class probabilities from the model for a single vector.
+        """
+        return self.model.predict_proba(vector.reshape(1, -1))[0]
 
     def predict_vector_similarity(self, vector1, vector2):
-        """Cosine similarity on binary vectors."""
+        """Cosine similarity (kept for quick checks if needed)."""
         dot_product = np.dot(vector1, vector2)
         norm1 = np.linalg.norm(vector1)
         norm2 = np.linalg.norm(vector2)
         if norm1 == 0 or norm2 == 0:
             return 0.0
-        similarity = dot_product / (norm1 * norm2)
-        return np.clip(similarity, 0.0, 1.0)
+        return np.clip(dot_product / (norm1 * norm2), 0.0, 1.0)
 
     def create_vector_from_evidence(self, evidence):
-        """Build binary vector from evidence using feature mappings (no PCA)."""
+        """Build binary vector from evidence (same as in query.py)."""
         techniques = evidence.get('techniques', [])
         software = evidence.get('software', [])
         capec = evidence.get('capec', [])
@@ -39,87 +68,59 @@ class EfficientXGBoostPredictor:
         cve = evidence.get('cve', [])
         pulse = evidence.get('pulse', [])
 
-        dtype = np.float64
         total_length = (self.feature_metadata['pulse_offset'] +
                         len(self.feature_metadata['all_pulse']))
-        vector = np.zeros(total_length, dtype=dtype)
+        vector = np.zeros(total_length, dtype=np.float64)
 
-        feature_mapping = self.feature_metadata.get('feature_mapping', {})
+        fm = self.feature_metadata['feature_mapping']
 
-        if feature_mapping:
-            # Techniques
-            if 'techniques' in feature_mapping:
-                tech_map = feature_mapping['techniques']
-                for t in techniques:
-                    if t in tech_map:
-                        vector[tech_map[t]] = 1.0
-            # Software
-            if 'software' in feature_mapping:
-                soft_map = feature_mapping['software']
-                for s in software:
-                    if s in soft_map:
-                        idx = soft_map[s] + self.feature_metadata['software_offset']
-                        vector[idx] = 1.0
-            # CAPEC
-            if 'capec' in feature_mapping:
-                capec_map = feature_mapping['capec']
-                for c in capec:
-                    if c in capec_map:
-                        idx = capec_map[c] + self.feature_metadata['capec_offset']
-                        vector[idx] = 1.0
-            # CWE
-            if 'cwe' in feature_mapping:
-                cwe_map = feature_mapping['cwe']
-                for w in cwe:
-                    if w in cwe_map:
-                        idx = cwe_map[w] + self.feature_metadata['cwe_offset']
-                        vector[idx] = 1.0
-            # CVE
-            if 'cve' in feature_mapping:
-                cve_map = feature_mapping['cve']
-                for v in cve:
-                    if v in cve_map:
-                        idx = cve_map[v] + self.feature_metadata['cve_offset']
-                        vector[idx] = 1.0
-            # Pulse
-            if 'pulse' in feature_mapping:
-                pulse_map = feature_mapping['pulse']
-                for p in pulse:
-                    if p in pulse_map:
-                        idx = pulse_map[p] + self.feature_metadata['pulse_offset']
-                        vector[idx] = 1.0
-        else:
-            # Fallback to index lookup (less reliable)
+        # Techniques
+        if 'techniques' in fm:
+            tech_map = fm['techniques']
             for t in techniques:
-                if t in self.feature_metadata['all_techniques']:
-                    idx = self.feature_metadata['all_techniques'].index(t)
-                    vector[idx] = 1.0
+                if t in tech_map:
+                    vector[tech_map[t]] = 1.0
+        # Software
+        if 'software' in fm:
+            soft_map = fm['software']
             for s in software:
-                if s in self.feature_metadata['all_software']:
-                    idx = self.feature_metadata['all_software'].index(s) + self.feature_metadata['software_offset']
+                if s in soft_map:
+                    idx = soft_map[s]
                     vector[idx] = 1.0
+        # CAPEC
+        if 'capec' in fm:
+            capec_map = fm['capec']
             for c in capec:
-                if c in self.feature_metadata['all_capec']:
-                    idx = self.feature_metadata['all_capec'].index(c) + self.feature_metadata['capec_offset']
+                if c in capec_map:
+                    idx = capec_map[c]
                     vector[idx] = 1.0
+        # CWE
+        if 'cwe' in fm:
+            cwe_map = fm['cwe']
             for w in cwe:
-                if w in self.feature_metadata['all_cwe']:
-                    idx = self.feature_metadata['all_cwe'].index(w) + self.feature_metadata['cwe_offset']
+                if w in cwe_map:
+                    idx = cwe_map[w]
                     vector[idx] = 1.0
+        # CVE
+        if 'cve' in fm:
+            cve_map = fm['cve']
             for v in cve:
-                if v in self.feature_metadata['all_cve']:
-                    idx = self.feature_metadata['all_cve'].index(v) + self.feature_metadata['cve_offset']
+                if v in cve_map:
+                    idx = cve_map[v]
                     vector[idx] = 1.0
+        # Pulse
+        if 'pulse' in fm:
+            pulse_map = fm['pulse']
             for p in pulse:
-                if p in self.feature_metadata['all_pulse']:
-                    idx = self.feature_metadata['all_pulse'].index(p) + self.feature_metadata['pulse_offset']
+                if p in pulse_map:
+                    idx = pulse_map[p]
                     vector[idx] = 1.0
 
         self.last_binary_vector = vector.copy()
-        return vector  # No PCA transformation!
+        return vector
+
 
 def load_efficient_xgboost_model():
-    """Load the model (expects 'all_binary_vectors' in saved data)."""
     print(" LOADING EFFICIENT XGBOOST MODEL...")
     try:
         with open('6feat_efficient_apt_similarity_nopca.pkl', 'rb') as f:
@@ -129,6 +130,7 @@ def load_efficient_xgboost_model():
     except FileNotFoundError:
         print(" Model file not found. Please run train.py first.")
         return None
+
 
 def load_apt_profiles_from_data():
     """Load APT profiles from the encoded data file."""
@@ -149,15 +151,15 @@ def load_apt_profiles_from_data():
     print(f" Loaded profiles for {len(profiles)} APTs")
     return profiles
 
+
 #####################################################################
 # FEATURE ORDERING VERIFICATION
 #####################################################################
 
 def verify_feature_ordering(saved_data):
-    """Check that feature metadata is present."""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("FEATURE ORDERING VERIFICATION")
-    print("="*80)
+    print("=" * 80)
     fm = saved_data['feature_metadata']
     print(f"\nFeature counts:")
     print(f"  Techniques: {len(fm['all_techniques'])}")
@@ -174,31 +176,28 @@ def verify_feature_ordering(saved_data):
     print(f"  cve_offset: {fm['cve_offset']}")
     print(f"  pulse_offset: {fm['pulse_offset']}")
     if 'feature_mapping' in fm:
-        print("\n✅ Feature mappings found – will use for consistent indexing.")
+        print("\n✅ Feature mappings found.")
     else:
-        print("\n⚠️  No feature mappings found – may be inconsistent.")
+        print("\n⚠️  No feature mappings found.")
     if 'all_binary_vectors' in saved_data:
-        print(f"\n✅ Binary vectors saved – number: {len(saved_data['all_binary_vectors'])}")
+        print(f"\n✅ Binary vectors saved – count: {len(saved_data['all_binary_vectors'])}")
     else:
-        print("\n⚠️  Binary vectors not saved – cannot proceed.")
+        print("\n⚠️  Binary vectors not saved.")
     return True
 
+
 #####################################################################
-# VECTOR CONSISTENCY CHECK (BASIC)
+# VECTOR CONSISTENCY CHECK
 #####################################################################
 
 def test_vector_consistency(saved_data):
-    """Test if newly created binary vectors match stored ones."""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("VECTOR CONSISTENCY CHECK")
-    print("="*80)
+    print("=" * 80)
     profiles = load_apt_profiles_from_data()
     df_mapping = pd.read_csv("../BaseData/comparison_Encoded_df.csv")
-    apt_name_mapping = {}
-    for _, row in df_mapping.iterrows():
-        encoded_id = row['APTnameEncoded']
-        original_name = row['APTnameOrigin']
-        apt_name_mapping[encoded_id] = original_name
+    apt_name_mapping = {row['APTnameEncoded']: row['APTnameOrigin']
+                        for _, row in df_mapping.iterrows()}
 
     predictor = EfficientXGBoostPredictor(
         saved_data['model'],
@@ -206,14 +205,11 @@ def test_vector_consistency(saved_data):
         saved_data['apt_encoder'],
         saved_data['feature_metadata']
     )
-    all_binary_vectors = saved_data.get('all_binary_vectors', {})
+    all_binary = saved_data.get('all_binary_vectors', {})
     print(f"\nTesting first 10 APTs...")
-    print("-" * 60)
     total_tested = 0
-    good = 0
-    partial = 0
-    poor = 0
-    for i, (apt_id, stored_vec) in enumerate(list(all_binary_vectors.items())[:10]):
+    good, partial, poor = 0, 0, 0
+    for i, (apt_id, stored_vec) in enumerate(list(all_binary.items())[:10]):
         apt_name = apt_name_mapping.get(apt_id, f"APT{apt_id}")
         profile = profiles.get(apt_id, {})
         if not profile:
@@ -243,17 +239,22 @@ def test_vector_consistency(saved_data):
     print("\n" + "-" * 60)
     print(f"Summary: good >0.9: {good}, partial 0.5‑0.9: {partial}, poor <0.5: {poor}")
 
+
 #####################################################################
-# SIMILARITY MATRIX USING STORED BINARY VECTORS
+# SIMILARITY MATRIX USING MODEL PROBABILITIES
 #####################################################################
 
 def create_similarity_matrix_efficient(saved_data):
-    """Build similarity matrix from stored binary vectors."""
-    print("\nCreating similarity matrix from stored binary vectors...")
+    """
+    Build a matrix of model probabilities: row = query APT (full profile),
+    column = target APT, value = probability assigned by the model.
+    """
+    print("\nCreating similarity matrix from model probabilities...")
     profiles = load_apt_profiles_from_data()
-    apt_ids = list(profiles.keys())
+    apt_ids = sorted(profiles.keys())
     df_mapping = pd.read_csv("../BaseData/comparison_Encoded_df.csv")
-    apt_name_mapping = {row['APTnameEncoded']: row['APTnameOrigin'] for _, row in df_mapping.iterrows()}
+    apt_name_mapping = {row['APTnameEncoded']: row['APTnameOrigin']
+                        for _, row in df_mapping.iterrows()}
     apt_names = [apt_name_mapping.get(aid, f"APT{aid}") for aid in apt_ids]
 
     predictor = EfficientXGBoostPredictor(
@@ -262,106 +263,16 @@ def create_similarity_matrix_efficient(saved_data):
         saved_data['apt_encoder'],
         saved_data['feature_metadata']
     )
-    all_binary = saved_data.get('all_binary_vectors', {})
-    if not all_binary:
-        print("⚠️  No binary vectors found.")
-        return None, apt_names
-
-    # Build list in same order
-    vecs = []
-    for aid in apt_ids:
-        if aid in all_binary:
-            vecs.append(all_binary[aid])
-        else:
-            # Fallback – reconstruct from profile (should not happen)
-            profile = profiles[aid]
-            ev = {
-                'techniques': list(profile['techniques']),
-                'software': list(profile['software']),
-                'capec': list(profile['capec']),
-                'cwe': list(profile['cwe']),
-                'cve': list(profile['cve']),
-                'pulse': list(profile['pulse'])
-            }
-            vecs.append(predictor.create_vector_from_evidence(ev))
 
     n = len(apt_names)
-    sim_mat = np.zeros((n, n))
-    print(f"Computing pairwise cosine similarities for {n} APTs...")
-    for i in range(n):
+    prob_matrix = np.zeros((n, n))
+    print(f"Computing probability matrix for {n} APTs...")
+    for i, query_apt_id in enumerate(apt_ids):
         if i % 20 == 0:
             print(f"  row {i}/{n}")
-        for j in range(n):
-            sim_mat[i, j] = predictor.predict_vector_similarity(vecs[i], vecs[j])
-    sim_df = pd.DataFrame(sim_mat, index=apt_names, columns=apt_names)
-    return sim_df, apt_names
 
-def evaluate_similarity_matrix_efficient(sim_df, apt_names):
-    """Evaluate stored‑vector self‑similarity."""
-    print("\n" + "="*80)
-    print("EVALUATION 1: STORED BINARY VECTORS SELF‑SIMILARITY")
-    print("="*80)
-    for top_x in [1,5,10,20]:
-        success = 0
-        for i, name in enumerate(apt_names):
-            top = sim_df.iloc[i].nlargest(top_x)
-            if name in top.index:
-                success += 1
-        total = len(apt_names)
-        print(f"Top {top_x}: {success}/{total} ({success/total*100:.2f}%)")
-
-#####################################################################
-# FULL DATA QUERY (simulate real query with full profile)
-#####################################################################
-
-def evaluate_full_data_query(saved_data):
-    print("\n" + "="*80)
-    print("EVALUATION 2: FULL DATA QUERY (complete profile)")
-    print("="*80)
-    profiles = load_apt_profiles_from_data()
-    apt_ids = list(profiles.keys())
-    df_mapping = pd.read_csv("../BaseData/comparison_Encoded_df.csv")
-    apt_name_mapping = {row['APTnameEncoded']: row['APTnameOrigin'] for _, row in df_mapping.iterrows()}
-    apt_names = [apt_name_mapping.get(aid, f"APT{aid}") for aid in apt_ids]
-
-    predictor = EfficientXGBoostPredictor(
-        saved_data['model'],
-        saved_data['apt_features'],
-        saved_data['apt_encoder'],
-        saved_data['feature_metadata']
-    )
-    all_binary = saved_data.get('all_binary_vectors', {})
-    if not all_binary:
-        print("No binary vectors.")
-        return
-
-    # Build target database
-    target_vecs = []
-    for aid in apt_ids:
-        if aid in all_binary:
-            target_vecs.append(all_binary[aid])
-        else:
-            # reconstruct
-            p = profiles[aid]
-            ev = {
-                'techniques': list(p['techniques']),
-                'software': list(p['software']),
-                'capec': list(p['capec']),
-                'cwe': list(p['cwe']),
-                'cve': list(p['cve']),
-                'pulse': list(p['pulse'])
-            }
-            target_vecs.append(predictor.create_vector_from_evidence(ev))
-
-    results_by_top = {1:0,5:0,10:0,20:0}
-    rank_sum = 0
-    rank_count = 0
-
-    for i, target_name in enumerate(apt_names):
-        if i % 20 == 0:
-            print(f"  Processing {i}/{len(apt_names)}...")
-        aid = apt_ids[i]
-        prof = profiles[aid]
+        # Build query vector from the full profile of this APT
+        prof = profiles[query_apt_id]
         evidence = {
             'techniques': list(prof['techniques']),
             'software': list(prof['software']),
@@ -371,39 +282,50 @@ def evaluate_full_data_query(saved_data):
             'pulse': list(prof['pulse'])
         }
         qvec = predictor.create_vector_from_evidence(evidence)
-        sims = []
-        for j, tvec in enumerate(target_vecs):
-            sim = predictor.predict_vector_similarity(qvec, tvec)
-            sims.append((apt_names[j], sim))
-        sims.sort(key=lambda x: x[1], reverse=True)
-        for rank, (name, _) in enumerate(sims, 1):
-            if name == target_name:
-                rank_sum += rank
-                rank_count += 1
-                for top in results_by_top:
-                    if rank <= top:
-                        results_by_top[top] += 1
-                break
+        probs = predictor.predict_proba_vector(qvec)   # shape (num_classes,)
 
-    total = len(apt_names)
-    avg_rank = rank_sum / rank_count if rank_count else 0
-    print("\nResults:")
-    for top in sorted(results_by_top):
-        print(f"  Top {top}: {results_by_top[top]}/{total} ({results_by_top[top]/total*100:.2f}%)")
-    print(f"  Average self‑rank: {avg_rank:.2f}")
+        # Map probabilities back to APT ids using the encoder
+        for j, target_apt_id in enumerate(apt_ids):
+            if target_apt_id in predictor.apt_encoder:
+                idx = predictor.apt_encoder[target_apt_id]
+                prob_matrix[i, j] = probs[idx]
+            else:
+                prob_matrix[i, j] = 0.0
+
+    prob_df = pd.DataFrame(prob_matrix, index=apt_names, columns=apt_names)
+    return prob_df, apt_names
+
+
+def evaluate_similarity_matrix_efficient(prob_df, apt_names):
+    """Evaluate self‑recognition using the probability matrix."""
+    print("\n" + "=" * 80)
+    print("EVALUATION 1: MODEL PROBABILITY MATRIX SELF‑RECOGNITION")
+    print("=" * 80)
+    for top in [1, 5, 10, 20]:
+        success = 0
+        for i, name in enumerate(apt_names):
+            # check if the APT is within the top‑K highest probabilities
+            row = prob_df.iloc[i]
+            top_apts = row.nlargest(top).index
+            if name in top_apts:
+                success += 1
+        total = len(apt_names)
+        print(f"  Top {top}: {success}/{total} ({success/total*100:.2f}%)")
+
 
 #####################################################################
-# DIVIDED DATA QUERY (partial evidence)
+# FULL DATA QUERY (using model probabilities)
 #####################################################################
 
-def evaluate_profile_division_efficient(saved_data, divider=2, top_x_values=[1,5,10,20]):
-    print("\n" + "="*80)
-    print(f"EVALUATION 3: DIVIDED DATA (1/{divider} of features)")
-    print("="*80)
+def evaluate_full_data_query(saved_data):
+    print("\n" + "=" * 80)
+    print("EVALUATION 2: FULL DATA QUERY (using model probabilities)")
+    print("=" * 80)
     profiles = load_apt_profiles_from_data()
-    apt_ids = list(profiles.keys())
+    apt_ids = sorted(profiles.keys())
     df_mapping = pd.read_csv("../BaseData/comparison_Encoded_df.csv")
-    apt_name_mapping = {row['APTnameEncoded']: row['APTnameOrigin'] for _, row in df_mapping.iterrows()}
+    apt_name_mapping = {row['APTnameEncoded']: row['APTnameOrigin']
+                        for _, row in df_mapping.iterrows()}
     apt_names = [apt_name_mapping.get(aid, f"APT{aid}") for aid in apt_ids]
 
     predictor = EfficientXGBoostPredictor(
@@ -412,151 +334,180 @@ def evaluate_profile_division_efficient(saved_data, divider=2, top_x_values=[1,5
         saved_data['apt_encoder'],
         saved_data['feature_metadata']
     )
-    all_binary = saved_data.get('all_binary_vectors', {})
-    if not all_binary:
-        print("No binary vectors.")
-        return
 
-    # Build target database
-    target_vecs = []
-    for aid in apt_ids:
-        if aid in all_binary:
-            target_vecs.append(all_binary[aid])
-        else:
-            p = profiles[aid]
-            ev = {
-                'techniques': list(p['techniques']),
-                'software': list(p['software']),
-                'capec': list(p['capec']),
-                'cwe': list(p['cwe']),
-                'cve': list(p['cve']),
-                'pulse': list(p['pulse'])
-            }
-            target_vecs.append(predictor.create_vector_from_evidence(ev))
+    results = {1: 0, 5: 0, 10: 0, 20: 0}
+    rank_sum = 0
+    rank_count = 0
 
-    resultdict = {}
-    for i, target_name in enumerate(apt_names):
+    for i, apt_id in enumerate(apt_ids):
         if i % 20 == 0:
-            print(f"  Processing {i}/{len(apt_names)}...")
-        aid = apt_ids[i]
-        prof = profiles[aid]
-        # create divided evidence
-        div_ev = {
-            'techniques': [],
-            'software': [],
-            'capec': [],
-            'cwe': [],
-            'cve': [],
-            'pulse': []
+            print(f"  Processing {i}/{len(apt_ids)}...")
+        prof = profiles[apt_id]
+        evidence = {
+            'techniques': list(prof['techniques']),
+            'software': list(prof['software']),
+            'capec': list(prof['capec']),
+            'cwe': list(prof['cwe']),
+            'cve': list(prof['cve']),
+            'pulse': list(prof['pulse'])
         }
-        # techniques
-        if prof['techniques']:
-            lst = list(prof['techniques'])
-            random.shuffle(lst)
-            sz = max(1, len(lst) // divider)
-            div_ev['techniques'] = lst[:sz]
-        # software
-        if prof['software']:
-            lst = list(prof['software'])
-            random.shuffle(lst)
-            sz = max(1, len(lst) // divider)
-            div_ev['software'] = lst[:sz]
-        # capec
-        if prof['capec']:
-            lst = list(prof['capec'])
-            random.shuffle(lst)
-            sz = max(1, len(lst) // divider)
-            div_ev['capec'] = lst[:sz]
-        # cwe
-        if prof['cwe']:
-            lst = list(prof['cwe'])
-            random.shuffle(lst)
-            sz = max(1, len(lst) // divider)
-            div_ev['cwe'] = lst[:sz]
-        # cve
-        if prof['cve']:
-            lst = list(prof['cve'])
-            random.shuffle(lst)
-            sz = max(1, len(lst) // divider)
-            div_ev['cve'] = lst[:sz]
-        # pulse
-        if prof['pulse']:
-            lst = list(prof['pulse'])
-            random.shuffle(lst)
-            sz = max(1, len(lst) // divider)
-            div_ev['pulse'] = lst[:sz]
+        qvec = predictor.create_vector_from_evidence(evidence)
+        probs = predictor.predict_proba_vector(qvec)
 
-        qvec = predictor.create_vector_from_evidence(div_ev)
-        sims = []
-        for j, tvec in enumerate(target_vecs):
-            sim = predictor.predict_vector_similarity(qvec, tvec)
-            sims.append((apt_names[j], sim))
-        sims.sort(key=lambda x: x[1], reverse=True)
-        resultdict[target_name] = {name: s for name, s in sims}
+        # Pair each apt_name with its probability
+        prob_list = []
+        for j, target_id in enumerate(apt_ids):
+            if target_id in predictor.apt_encoder:
+                idx = predictor.apt_encoder[target_id]
+                prob_list.append((apt_names[j], probs[idx]))
+            else:
+                prob_list.append((apt_names[j], 0.0))
+        prob_list.sort(key=lambda x: x[1], reverse=True)
 
-    for topX in top_x_values:
+        # Determine rank of the true APT
+        target_name = apt_names[i]
+        rank = next((k+1 for k, (name, _) in enumerate(prob_list) if name == target_name), len(apt_ids)+1)
+        rank_sum += rank
+        rank_count += 1
+        for top in results:
+            if rank <= top:
+                results[top] += 1
+
+    total = len(apt_ids)
+    avg_rank = rank_sum / rank_count if rank_count else 0
+    print("\nResults:")
+    for top in sorted(results):
+        print(f"  Top {top}: {results[top]}/{total} ({results[top]/total*100:.2f}%)")
+    print(f"  Average self‑rank: {avg_rank:.2f}")
+
+
+#####################################################################
+# DIVIDED DATA QUERY (partial evidence) using model probabilities
+#####################################################################
+
+def evaluate_profile_division_efficient(saved_data, divider=2, top_x_values=[1,5,10,20]):
+    print("\n" + "=" * 80)
+    print(f"EVALUATION 3: DIVIDED DATA (1/{divider} of features) – model probabilities")
+    print("=" * 80)
+    profiles = load_apt_profiles_from_data()
+    apt_ids = sorted(profiles.keys())
+    df_mapping = pd.read_csv("../BaseData/comparison_Encoded_df.csv")
+    apt_name_mapping = {row['APTnameEncoded']: row['APTnameOrigin']
+                        for _, row in df_mapping.iterrows()}
+    apt_names = [apt_name_mapping.get(aid, f"APT{aid}") for aid in apt_ids]
+
+    predictor = EfficientXGBoostPredictor(
+        saved_data['model'],
+        saved_data['apt_features'],
+        saved_data['apt_encoder'],
+        saved_data['feature_metadata']
+    )
+
+    results_dict = {}
+    for i, apt_id in enumerate(apt_ids):
+        if i % 20 == 0:
+            print(f"  Processing {i}/{len(apt_ids)}...")
+        prof = profiles[apt_id]
+
+        # Build divided evidence (random subset)
+        def random_subset(lst):
+            if not lst:
+                return []
+            lst = list(lst)
+            random.shuffle(lst)
+            sz = max(1, len(lst) // divider)
+            return lst[:sz]
+
+        evidence = {
+            'techniques': random_subset(prof['techniques']),
+            'software': random_subset(prof['software']),
+            'capec': random_subset(prof['capec']),
+            'cwe': random_subset(prof['cwe']),
+            'cve': random_subset(prof['cve']),
+            'pulse': random_subset(prof['pulse'])
+        }
+
+        qvec = predictor.create_vector_from_evidence(evidence)
+        probs = predictor.predict_proba_vector(qvec)
+
+        # Build (name, prob) list
+        prob_list = []
+        for j, target_id in enumerate(apt_ids):
+            if target_id in predictor.apt_encoder:
+                idx = predictor.apt_encoder[target_id]
+                prob_list.append((apt_names[j], probs[idx]))
+            else:
+                prob_list.append((apt_names[j], 0.0))
+        prob_list.sort(key=lambda x: x[1], reverse=True)
+        results_dict[apt_names[i]] = {name: prob for name, prob in prob_list}
+
+    # Top‑K accuracy
+    for top in top_x_values:
         success = 0
-        for target, ranklist in resultdict.items():
-            top_items = dict(list(ranklist.items())[:topX])
-            if target in top_items:
+        for target_name, ranked_list in results_dict.items():
+            top_apts = set(list(ranked_list.keys())[:top])
+            if target_name in top_apts:
                 success += 1
-        total = len(resultdict)
-        print(f"Top {topX}, divider {divider}: {success}/{total} ({success/total*100:.2f}%)")
+        total = len(results_dict)
+        print(f"  Top {top}, divider {divider}: {success}/{total} ({success/total*100:.2f}%)")
+
 
 #####################################################################
 # HEATMAP PLOTTING
 #####################################################################
 
 def plot_similarity_heatmap(sim_df):
-    print("\n" + "="*80)
-    print("PLOTTING HEATMAP")
-    print("="*80)
-    plt.figure(figsize=(16,14))
-    from matplotlib.colors import LinearSegmentedColormap
+    print("\n" + "=" * 80)
+    print("PLOTTING HEATMAP (probability matrix)")
+    print("=" * 80)
+    plt.figure(figsize=(16, 14))
+    # Custom colormap: red (low) → yellow → green (high)
     colors = ["red", "yellow", "green"]
     cmap = LinearSegmentedColormap.from_list("red_green", colors, N=100)
     sns.heatmap(sim_df, cmap=cmap, center=0.5, square=True,
                 xticklabels=True, yticklabels=True,
-                cbar_kws={'shrink':0.8, 'label':'Similarity'})
-    plt.title("APT Similarity Matrix (Binary Vectors, No PCA)")
+                cbar_kws={'shrink': 0.8, 'label': 'Probability'})
+    plt.title("APT Probability Matrix (Model Output)")
     plt.xticks(rotation=90, fontsize=8)
     plt.yticks(rotation=0, fontsize=8)
     plt.tight_layout()
     plt.savefig('apt_similarity_matrix_nopca.png', dpi=300, bbox_inches='tight')
     plt.show()
 
+
 #####################################################################
 # MAIN
 #####################################################################
 
 def main():
-    print(" EFFICIENT XGBOOST APT SIMILARITY EVALUATION (NO PCA)")
+    print(" EFFICIENT XGBOOST APT EVALUATION (USING MODEL PROBABILITIES)")
     print("=" * 60)
     saved_data = load_efficient_xgboost_model()
     if saved_data is None:
         return
-    print(f"\nModel info:")
+
     ti = saved_data['training_info']
-    print(f"  APTs: {ti['unique_apts']}")
+    print(f"\nModel info:")
+    print(f"  APTs: {ti['num_apts']}")               # fixed key
     print(f"  Feature vector length: {ti['feature_vector_length']}")
     print(f"  Feature counts: {ti['feature_counts']}")
 
     verify_feature_ordering(saved_data)
     test_vector_consistency(saved_data)
 
-    sim_df, apt_names = create_similarity_matrix_efficient(saved_data)
-    if sim_df is not None:
-        print("\nSample 5x5:")
-        print(sim_df.iloc[:5, :5])
-        print(f"\nMatrix shape: {sim_df.shape}")
+    prob_df, apt_names = create_similarity_matrix_efficient(saved_data)
+    if prob_df is not None:
+        print("\nSample 5x5 of probability matrix:")
+        print(prob_df.iloc[:5, :5])
+        print(f"\nMatrix shape: {prob_df.shape}")
 
-        evaluate_similarity_matrix_efficient(sim_df, apt_names)
+        evaluate_similarity_matrix_efficient(prob_df, apt_names)
         evaluate_full_data_query(saved_data)
         evaluate_profile_division_efficient(saved_data, divider=2)
 
-        plot_similarity_heatmap(sim_df)
+        plot_similarity_heatmap(prob_df)
     else:
-        print("Failed to create similarity matrix.")
+        print("Failed to create probability matrix.")
 
 if __name__ == "__main__":
     main()
