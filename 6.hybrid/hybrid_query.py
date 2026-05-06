@@ -225,10 +225,42 @@ def remotequery(evidence_first_batch):
 
     result = hybrid_rank_aggregate(
         all_lists,
-        weight_xgboost=1, weight_gnn=1, weight_siamese=1,
-        weight_mil=1, weight_rf=1, weight_featureMatching=1,
-        weight_jaccard=1, weight_tvd=1
+        weight_xgboost=1, 
+        weight_gnn=1, 
+        weight_siamese=1,
+        weight_mil=1, 
+        weight_rf=1, 
+        weight_featureMatching=1,
+        weight_jaccard=1, 
+        weight_tvd=1
     )
+
+
+    #weight based only on self evaluation
+    # result = hybrid_rank_aggregate(
+    #         all_lists,
+    #         weight_jaccard=8/8,
+    #         weight_featureMatching=8/8,
+    #         weight_siamese=1/8,
+    #         weight_tvd=1/8,
+    #         weight_rf=1/8,
+    #         weight_xgboost=1/8,
+    #         weight_gnn=1/8,
+    #         weight_mil=1/8
+    #     )
+
+    #weight determined on precision evaluation through dataset and CTI eval testing
+    # result = hybrid_rank_aggregate(
+    #         all_lists,
+    #         weight_featureMatching=8/8,
+    #         weight_jaccard=7/8,
+    #         weight_xgboost=7/8,
+    #         weight_mil=6/8,
+    #         weight_gnn=1/8,
+    #         weight_tvd=3/8,
+    #         weight_siamese=1/8,
+    #         weight_rf=3/8
+    #     )
 
     final_result = [{'rank': rank, 'apt_name': name} for name, rank in result]
     return final_result
@@ -258,9 +290,14 @@ def main():
 
     result = hybrid_rank_aggregate(
         all_lists,
-        weight_xgboost=1, weight_gnn=1, weight_siamese=1,
-        weight_mil=1, weight_rf=1, weight_featureMatching=1,
-        weight_jaccard=1, weight_tvd=1
+        weight_xgboost=1, 
+        weight_gnn=1, 
+        weight_siamese=1,
+        weight_mil=1, 
+        weight_rf=1, 
+        weight_featureMatching=1,
+        weight_jaccard=1, 
+        weight_tvd=1
     )
 
     for name, rank in result:

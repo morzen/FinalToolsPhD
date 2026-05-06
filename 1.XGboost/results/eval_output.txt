@@ -1,0 +1,175 @@
+ EFFICIENT XGBOOST APT EVALUATION (USING MODEL PROBABILITIES)
+============================================================
+ LOADING EFFICIENT XGBOOST MODEL...
+ Loaded model (no PCA).
+
+Model info:
+  APTs: 181
+  Feature vector length: 10825
+  Feature counts: {'techniques': 548, 'software': 541, 'capec': 147, 'cwe': 80, 'cve': 7938, 'pulse': 1571}
+
+================================================================================
+FEATURE ORDERING VERIFICATION
+================================================================================
+
+Feature counts:
+  Techniques: 548
+  Software: 541
+  CAPEC: 147
+  CWE: 80
+  CVE: 7938
+  Pulse: 1571
+
+Offsets:
+  techniques_offset: 0
+  software_offset: 548
+  capec_offset: 1089
+  cwe_offset: 1236
+  cve_offset: 1316
+  pulse_offset: 9254
+
+✅ Feature mappings found.
+
+✅ Binary vectors saved – count: 181
+
+================================================================================
+VECTOR CONSISTENCY CHECK
+================================================================================
+ LOADING APT PROFILES FROM DATA...
+ Loaded profiles for 181 APTs
+
+Testing first 10 APTs...
+
+"No Problems" - OTX 2096 (ID: 1):
+  Stored vs New similarity: 1.000000
+  Reproducibility (v1 vs v2): 1.000000
+
+2MISP (ID: 2):
+  Stored vs New similarity: 1.000000
+  Reproducibility (v1 vs v2): 1.000000
+
+aavega (ID: 3):
+  Stored vs New similarity: 1.000000
+  Reproducibility (v1 vs v2): 1.000000
+
+admin@338 (ID: 4):
+  Stored vs New similarity: 1.000000
+  Reproducibility (v1 vs v2): 1.000000
+
+Agrius (ID: 5):
+  Stored vs New similarity: 1.000000
+  Reproducibility (v1 vs v2): 1.000000
+
+Ajax Security Team (ID: 6):
+  Stored vs New similarity: 1.000000
+  Reproducibility (v1 vs v2): 1.000000
+
+Akira (ID: 7):
+  Stored vs New similarity: 1.000000
+  Reproducibility (v1 vs v2): 1.000000
+
+ALLANITE (ID: 8):
+  Stored vs New similarity: 1.000000
+  Reproducibility (v1 vs v2): 1.000000
+
+Amateurs -Legitimately targeted individuals (ID: 9):
+  Stored vs New similarity: 1.000000
+  Reproducibility (v1 vs v2): 1.000000
+
+Andariel (ID: 10):
+  Stored vs New similarity: 1.000000
+  Reproducibility (v1 vs v2): 1.000000
+
+------------------------------------------------------------
+Summary: good >0.9: 10, partial 0.5‑0.9: 0, poor <0.5: 0
+
+Creating similarity matrix from model probabilities...
+ LOADING APT PROFILES FROM DATA...
+ Loaded profiles for 181 APTs
+Computing probability matrix for 181 APTs...
+  row 0/181
+  row 20/181
+  row 40/181
+  row 60/181
+  row 80/181
+  row 100/181
+  row 120/181
+  row 140/181
+  row 160/181
+  row 180/181
+
+Sample 5x5 of probability matrix:
+                          "No Problems" - OTX 2096  ...    Agrius
+"No Problems" - OTX 2096                  0.998344  ...  0.000007
+2MISP                                     0.000005  ...  0.000008
+aavega                                    0.000005  ...  0.000004
+admin@338                                 0.000005  ...  0.000005
+Agrius                                    0.000007  ...  0.998426
+
+[5 rows x 5 columns]
+
+Matrix shape: (181, 181)
+
+================================================================================
+EVALUATION 1: MODEL PROBABILITY MATRIX SELF‑RECOGNITION
+================================================================================
+  Top 1: 181/181 (100.00%)
+  Top 5: 181/181 (100.00%)
+  Top 10: 181/181 (100.00%)
+  Top 20: 181/181 (100.00%)
+
+================================================================================
+EVALUATION 2: FULL DATA QUERY (using model probabilities)
+================================================================================
+ LOADING APT PROFILES FROM DATA...
+ Loaded profiles for 181 APTs
+  Processing 0/181...
+  Processing 20/181...
+  Processing 40/181...
+  Processing 60/181...
+  Processing 80/181...
+  Processing 100/181...
+  Processing 120/181...
+  Processing 140/181...
+  Processing 160/181...
+  Processing 180/181...
+
+Results:
+  Top 1: 181/181 (100.00%)
+  Top 5: 181/181 (100.00%)
+  Top 10: 181/181 (100.00%)
+  Top 20: 181/181 (100.00%)
+  Average self‑rank: 1.00
+
+================================================================================
+EVALUATION 3: DIVIDED DATA (1/2 of features) – model probabilities
+================================================================================
+ LOADING APT PROFILES FROM DATA...
+ Loaded profiles for 181 APTs
+  Processing 0/181...
+  Processing 20/181...
+  Processing 40/181...
+  Processing 60/181...
+  Processing 80/181...
+  Processing 100/181...
+  Processing 120/181...
+  Processing 140/181...
+  Processing 160/181...
+  Processing 180/181...
+  Top 1, divider 2: 180/181 (99.45%)
+  Top 5, divider 2: 181/181 (100.00%)
+  Top 10, divider 2: 181/181 (100.00%)
+  Top 20, divider 2: 181/181 (100.00%)
+
+================================================================================
+PLOTTING HEATMAP (probability matrix)
+================================================================================
+
+==================================================
+RESOURCE USAGE REPORT../1.XGboost/eval.py
+==================================================
+Execution Time: 51.54 seconds
+Memory Usage: 0.00 MB
+Current Memory: 41.11 MB
+CPU Usage: 0.1%
+System CPU: 66.7%

@@ -1,0 +1,298 @@
+✓ Imported xgboost from /Users/morzen/Desktop/FinalToolsPhD/1.XGboost/query.py
+✓ Imported gnn from /Users/morzen/Desktop/FinalToolsPhD/2.GNN/query.py
+✓ Imported siamese from /Users/morzen/Desktop/FinalToolsPhD/3.SiameseNetwork/query.py
+✓ Imported mil from /Users/morzen/Desktop/FinalToolsPhD/4.Attention-Based_MIL/query.py
+✓ Imported rf from /Users/morzen/Desktop/FinalToolsPhD/5.RF_FeatureEngineering/query.py
+
+✓ Successfully imported 5 modules
+  - xgboost
+  - gnn
+  - siamese
+  - mil
+  - rf
+ LOADING MAPPING DATA...
+ Mappings loaded: 547 techniques, 540 software, 146 capec, 79 cwe, 7937 cve, 1570 pulse
+
+ CONVERSION RESULTS:
+   Input techniques: 114 items → Encoded: 114
+   Input software: 48 items → Encoded: 48
+   Input CAPEC: 54 items → Encoded: 54
+   Input CWE: 51 items → Encoded: 51
+   Input CVE: 1060 items → Encoded: 1060
+   Input Pulse: 1359 items → Encoded: 1359
+ LOADING EFFICIENT XGBOOST MODEL...
+ Loaded /Users/morzen/Desktop/FinalToolsPhD/1.XGboost/6feat_efficient_apt_similarity_nopca.pkl
+ Binary vectors loaded (not used for scoring).
+ Query vector created with length: 10825
+ LOADING APT PROFILES FROM DATA...
+ Loaded profiles for 181 APTs
+ USING EFFICIENT XGBOOST MODEL (CLASS PROBABILITIES)
+ Comparing query against 181 APT classes
+PREDICTING SIMILARITIES...
+ Raw similarity stats: min=0.0000, max=0.9964, mean=0.0055
+✓ Imported xgboost from /Users/morzen/Desktop/FinalToolsPhD/1.XGboost/query.py
+✓ Imported gnn from /Users/morzen/Desktop/FinalToolsPhD/2.GNN/query.py
+✓ Imported siamese from /Users/morzen/Desktop/FinalToolsPhD/3.SiameseNetwork/query.py
+✓ Imported mil from /Users/morzen/Desktop/FinalToolsPhD/4.Attention-Based_MIL/query.py
+✓ Imported rf from /Users/morzen/Desktop/FinalToolsPhD/5.RF_FeatureEngineering/query.py
+
+✓ Successfully imported 5 modules
+  - xgboost
+  - gnn
+  - siamese
+  - mil
+  - rf
+[GNN] Starting hybrid_query
+ LOADING MAPPING DATA...
+ Mappings loaded: 547 techniques, 540 software, 146 CAPEC, 79 cwe, 7937 cve, 1570 Pulse
+
+ CONVERSION RESULTS:
+   Input techniques: 114 → Encoded: 114
+   Input software: 48 → Encoded: 48
+   Input CAPEC: 54 → Encoded: 54
+   Input cwe: 51 → Encoded: 51
+   Input cve: 1060 → Encoded: 1060
+   Input Pulse: 1359 → Encoded: 1359
+[GNN] Evidence encoded, calling enhanced query...
+ LOADING ENHANCED TRAINED MODEL...
+[GNN] Query done, returning results
+✓ Model loaded successfully: 181 APTs in embedding space
+✓ Loaded profiles for 181 APTs
+  Sample APT 1: 51 techniques, 1 software, ...
+
+======================================================================
+ EVIDENCE PROCESSING RESULTS
+======================================================================
+
+▶ Processing TECHNIQUES:
+  Input: 114 items
+  → Successfully encoded: 114/114 items
+
+▶ Processing SOFTWARE:
+  Input: 48 items
+  → Successfully encoded: 48/48 items
+
+▶ Processing CAPEC:
+  Input: 54 items
+  → Successfully encoded: 54/54 items
+
+▶ Processing CWE:
+  Input: 51 items
+  → Successfully encoded: 51/51 items
+
+▶ Processing CVE:
+  Input: 1060 items
+  → Successfully encoded: 1060/1060 items
+
+▶ Processing PULSE:
+  Input: 1359 items
+  → Successfully encoded: 1359/1359 items
+
+======================================================================
+ PROCESSING SUMMARY:
+  Total evidence items: 2686
+  Successfully encoded: 2686
+  Encoding rate: 100.0%
+======================================================================
+
+ℹ No exact match – using sampling with 500 samples.
+Loading model from: ../4.Attention-Based_MIL/6feat_apt_similarity_model_complete.pth (ORIGINAL)
+✓ Loaded with pickle
+
+Initializing model weights...
+Weights initialized successfully
+Processing evidence...
+Evidence processed:
+{'technique': 114, 'software': 48, 'capec': 54, 'cwe': 51, 'cve': 1060, 'pulse': 1359}
+Calculating similarities...
+Model loaded successfully
+  APT29: 1
+  APT28: 2
+  APT41: 3
+  Lazarus Group: 4
+  Scattered Spider: 5
+  Ke3chang: 6
+  FIN7: 7
+  Sandworm Team: 8
+  Kimsuky: 9
+  FIN6: 10
+  Magic Hound: 11
+  FIN13: 12
+  Wizard Spider: 13
+  APT3: 14
+  RedCurl: 15
+  APT32: 16
+  GALLIUM: 17
+  Gamaredon Group: 18
+  Dragonfly: 19
+  menuPass: 20
+  Volt Typhoon: 21
+  Leviathan: 22
+  Star Blizzard: 23
+  APT38: 24
+  Threat Group-3390: 25
+  BRONZE BUTLER: 26
+  Mustang Panda: 27
+  Turla: 28
+  TA505: 29
+  Rocke: 30
+  ToddyCat: 31
+  Moonstone Sleet: 32
+  HEXANE: 33
+  APT37: 34
+  Inception: 35
+  LuminousMoth: 36
+  Moses Staff: 37
+  Patchwork: 38
+  BackdoorDiplomacy: 39
+  TeamTNT: 40
+  Fox Kitten: 41
+  OilRig: 42
+  Earth Lusca: 43
+  Evilnum: 44
+  FIN8: 45
+  Play: 46
+  APT39: 47
+  Winnti Group: 48
+  Ember Bear: 49
+  Orangeworm: 50
+  BITTER: 51
+  Chimera: 52
+  Carbanak: 53
+  Blue Mockingbird: 54
+  APT33: 55
+  PROMETHIUM: 56
+  FIN4: 57
+  Darkhotel: 58
+  LAPSUS$: 59
+  POLONIUM: 60
+  APT-C-36: 61
+  Windshift: 62
+  Gallmaker: 63
+  TA577: 64
+  APT5: 65
+  CopyKittens: 66
+  Agrius: 67
+  Molerats: 68
+  Threat Group-1314: 69
+  CyberThreats to Caribbean: 70
+  Deep Panda: 71
+  MuddyWater: 72
+  Cobalt Group: 73
+  BlackOasis: 74
+  PittyTiger: 75
+  Daggerfly: 76
+  Silence: 77
+  Mustard Tempest: 78
+  Saint Bear: 79
+  Egyptian Mind: 80
+  APT18: 81
+  Suckfly: 82
+  Thrip: 83
+  Gorgon Group: 84
+  Metador: 85
+  Axiom: 86
+  Winter Vivern: 87
+  Leafminer: 88
+  Aquatic Panda: 89
+  Dark Caracal: 90
+  PLATINUM: 91
+  ZIRCONIUM: 92
+  INC Ransom: 93
+  Akira: 94
+  Transparent Tribe: 95
+  Tropic Trooper: 96
+  MoustachedBouncer: 97
+  Cleaver: 98
+  APT1: 99
+  HAFNIUM: 100
+  Strider: 101
+  TA578: 102
+  EXOTIC LILY: 103
+  Cinnamon Tempest: 104
+  APT17: 105
+  Confucius: 106
+  GOLD SOUTHFIELD: 107
+  CURIUM: 108
+  Aoqin Dragon: 109
+  admin@338: 110
+  Moafee: 111
+  aavega: 112
+  Sowbug: 113
+  Putter Panda: 114
+  Silent Librarian: 115
+  Rancor: 116
+  Malteiro: 117
+  CYSE-610: 118
+  Machete: 119
+  Higaisa: 120
+  Indrik Spider: 121
+  Equation: 122
+  TEMP.Veles: 123
+  Amateurs -Legitimately targeted individuals: 124
+  CyAlly - Cyber Advisory Research Team (CART): 125
+  2MISP: 126
+  Stealth Falcon: 127
+  Elderwood: 128
+  MISP FEED: 129
+  APT: 130
+  Andariel: 131
+  Massive Pulses: 132
+  Lotus Blossom: 133
+  Volatile Cedar: 134
+  TA2541: 135
+  WIRTE: 136
+  Open-source Threat Intelligence Group: 137
+  APT12: 138
+  DarkVishnya: 139
+  TA459: 140
+  NEODYMIUM: 141
+  RTM: 142
+  TA551: 143
+  FIN5: 144
+  SilverTerrier: 145
+  Windigo: 146
+  StickTeam: 147
+  DragonOK: 148
+  FIN10: 149
+  Eyes On IOC's (AX): 150
+  Naikon: 151
+  APT19: 152
+  Ferocious Kitten: 153
+  LazyScripter: 154
+  APT30: 155
+  Poseidon Group: 156
+  Tonto Team: 157
+  GCMAN: 158
+  "No Problems" - OTX 2096: 159
+  DarkHydrus: 160
+  Sidewinder: 161
+  Test Group 3: 162
+  IndigoZebra: 163
+  APT-C-23: 164
+  Nomadic Octopus: 165
+  Linux IOCs: 166
+  SideCopy: 167
+  The White Company: 168
+  C&W Customers and Partners: 169
+  CyberAv3ngers: 170
+  APT16: 171
+  Group5: 172
+  Scarlet Mimic: 173
+  Whitefly: 174
+  ALLANITE: 175
+  HCINT: 176
+  Mofang: 177
+  UNC788: 178
+  BlackTech: 179
+  Ajax Security Team: 180
+  Bouncing Golf: 181
+
+==================================================
+RESOURCE USAGE REPORT../6.hybrid/hybrid_query.py
+==================================================
+Execution Time: 134.08 seconds
+Memory Usage: 0.00 MB
+Current Memory: 40.94 MB
+CPU Usage: 0.1%
+System CPU: 57.0%

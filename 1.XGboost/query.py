@@ -7,13 +7,10 @@ from collections import defaultdict
 from itertools import islice
 
 # ============================================================================
-# 🔽  ADD THIS WRAPPER CLASS (same as in train.py) so pickle can load the model
+# 🔽  PicklableXGBWrapper – MUST be defined here so pickle can load the model
 # ============================================================================
 class PicklableXGBWrapper:
-    """
-    Wraps a native xgb.Booster and provides predict_proba / predict
-    identical to XGBClassifier.
-    """
+    """Wrapper to mimic XGBClassifier for predict_proba."""
     def __init__(self, booster, num_classes, seed):
         self._Booster = booster
         self.n_classes_ = num_classes
@@ -23,13 +20,12 @@ class PicklableXGBWrapper:
 
     def predict_proba(self, X):
         dtest = xgb.DMatrix(X, missing=np.nan)
-        return self._Booster.predict(dtest)   # shape (n_samples, n_classes)
+        return self._Booster.predict(dtest)
 
     def predict(self, X):
         probas = self.predict_proba(X)
         return np.argmax(probas, axis=1)
 # ============================================================================
-
 
 #####################################################################
 # EFFICIENT XGBOOST PREDICTOR
@@ -183,14 +179,7 @@ def convert_evidence_to_encoded(evidence, mapping_file):
     print(f" Mappings loaded: {len(technique_mapping)} techniques, {len(software_mapping)} software, "
           f"{len(capec_mapping)} capec, {len(cwe_mapping)} cwe, {len(cve_mapping)} cve, {len(pulse_mapping)} pulse")
     
-    encoded_evidence = {
-        'techniques': [],
-        'software': [],
-        'capec': [],
-        'cwe': [],
-        'cve': [],
-        'pulse': []
-    }
+    encoded_evidence = {'techniques': [], 'software': [], 'capec': [], 'cwe': [], 'cve': [], 'pulse': []}
     
     for technique in evidence.get('techniques', []):
         if technique in technique_mapping:
@@ -339,14 +328,8 @@ def query_apt_similarity_efficient(evidence):
     pulse = evidence.get('pulse', [])
     
     query_vector = EfficientQueryModel.create_query_vector_from_evidence(
-        {
-            'techniques': techniques,
-            'software': software,
-            'capec': capec,
-            'cwe': cwe,
-            'cve': cve,
-            'pulse': pulse
-        },
+        {'techniques': techniques, 'software': software, 'capec': capec,
+         'cwe': cwe, 'cve': cve, 'pulse': pulse},
         feature_metadata
     )
     print(f" Query vector created with length: {len(query_vector)}")
@@ -517,24 +500,28 @@ def analyze_feature_matching_classification(encoded_evidence, results, profiles)
                 'cwe_score': cwe_score,
                 'cve_score': cve_score,
                 'pulse_score': pulse_score,
+
                 'tech_matches': tech_matches,
                 'soft_matches': soft_matches,
                 'capec_matches': capec_matches,
                 'cwe_matches': cwe_matches,
                 'cve_matches': cve_matches,
                 'pulse_matches': pulse_matches,
+
                 'tech_evidence_coverage': tech_evidence_coverage,
                 'soft_evidence_coverage': soft_evidence_coverage,
                 'capec_evidence_coverage': capec_evidence_coverage,
                 'cwe_evidence_coverage': cwe_evidence_coverage,
                 'cve_evidence_coverage': cve_evidence_coverage,
                 'pulse_evidence_coverage': pulse_evidence_coverage,
+
                 'tech_profile_coverage': tech_profile_coverage,
                 'soft_profile_coverage': soft_profile_coverage,
                 'capec_profile_coverage': capec_profile_coverage,
                 'cwe_profile_coverage': cwe_profile_coverage,
                 'cve_profile_coverage': cve_profile_coverage,
                 'pulse_profile_coverage': pulse_profile_coverage,
+
                 'total_matches': tech_matches + soft_matches + capec_matches + cwe_matches + cve_matches + pulse_matches
             })
     

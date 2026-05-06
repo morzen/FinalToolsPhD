@@ -1,0 +1,28 @@
+XGBOOST TRAINING PIPELINE – AUGMENTED APT PROFILES
+============================================================
+Loading encoded data...
+Data: 753970 records, 7 columns
+
+BUILDING APT PROFILES (FULL VECTORS)
+==================================================
+Feature vector length: 10825
+Number of APTs: 181
+Rows per APT – min: 1, avg: 4166, max: 46563
+
+TRAINING XGBOOST ON AUGMENTED APT PROFILES
+==================================================
+Generating augmented samples (200 per APT)...
+Training completed in 39.4 minutes.
+Accuracy on full APT profiles: 1.0000
+Accuracy on augmented training set: 0.9976
+
+Model saved to '6feat_efficient_apt_similarity_nopca.pkl'
+
+==================================================
+RESOURCE USAGE REPORT../1.XGboost/train.py
+==================================================
+Execution Time: 2375.23 seconds
+Memory Usage: -21.91 MB
+Current Memory: 19.36 MB
+CPU Usage: 0.1%
+System CPU: 24.8%
