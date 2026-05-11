@@ -48,7 +48,7 @@ class ResourceMonitor:
         except:
             print("\nGPU: Not available or not detected")
 
-scriptpath = "../1.XGboost/False_flag.py"
+# scriptpath = "../1.XGboost/False_flag.py"
 
 # scriptpath = "../2.GNN/False_flag.py"
 

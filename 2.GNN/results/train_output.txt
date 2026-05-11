@@ -28,44 +28,44 @@ Nodes: 9205
 Edges: 148680
 GNN TRAINING FOR 50 EPOCHS...
 Epoch 000, Loss: 0.4927, Self-sim: 1.0000
-Epoch 030, Loss: 0.2543, Self-sim: 1.0000
+Epoch 030, Loss: 0.2616, Self-sim: 1.0000
 
 GNN TRAINING COMPLETE!
 
 GNN MODEL DEBUG INFO
 ==================================================
 APT embeddings shape: torch.Size([181, 128])
-Embedding stats - Mean: -0.0084, Std: 0.0880
-Min: -0.2830, Max: 0.3903
+Embedding stats - Mean: 0.0049, Std: 0.0883
+Min: -0.3154, Max: 0.3705
 
 Cosine Similarity matrix stats:
 Self-similarity mean: 1.0000
-Cross-similarity mean: 0.5998
-Similarity range: -0.8174 to 1.0000
+Cross-similarity mean: 0.5419
+Similarity range: -0.4133 to 1.0000
 
 ANALYZING RANKING ANOMALIES
 ==================================================
 Top 10 APTs by Embedding Norm:
 APT Name                       Embed Norm Techniques Software CVE      Total 
 --------------------------------------------------------------------------------
-APT28                          1.0000     88         27       1017     1132  
-Ferocious Kitten               1.0000     6          2        150      158   
-FIN4                           1.0000     12         0        56       68    
-Gallmaker                      1.0000     6          0        603      609   
+Ajax Security Team             1.0000     6          2        5        13    
+APT39                          1.0000     53         11       527      591   
+Chimera                        1.0000     59         6        357      422   
 GOLD SOUTHFIELD                1.0000     9          2        29       40    
-HCINT                          1.0000     2          0        7        9     
-OilRig                         1.0000     61         22       657      740   
-Suckfly                        1.0000     5          1        552      558   
-Tonto Team                     1.0000     15         6        264      285   
+RTM                            1.0000     7          1        31       39    
 "No Problems" - OTX 2096       1.0000     50         0        6533     6583  
+2MISP                          1.0000     76         0        39       115   
+aavega                         1.0000     31         0        1        32    
+admin@338                      1.0000     12         7        287      306   
+Agrius                         1.0000     22         9        760      791   
 
 GNN model saved as '3feat_trained_apt_gnn_model.pkl' with graph structure
 
 ==================================================
 RESOURCE USAGE REPORT../2.GNN/train.py
 ==================================================
-Execution Time: 29.52 seconds
+Execution Time: 28.87 seconds
 Memory Usage: 0.00 MB
-Current Memory: 41.09 MB
+Current Memory: 41.14 MB
 CPU Usage: 0.1%
-System CPU: 46.0%
+System CPU: 76.9%

@@ -15,11 +15,11 @@ Testing with evidence:
   cve: ['faketest', 'CVE-2012-0433', 'CVE-2013-10007']
 
 Top 5 most similar APTs:
-  1. Threat Group-1314: 0.9959
-  2. GCMAN: 0.9923
-  3. CyAlly - Cyber Advisory Research Team (CART): 0.9864
-  4. Orangeworm: 0.9818
-  5. Group5: 0.9804
+  1. Threat Group-1314: 0.9900
+  2. APT17: 0.9899
+  3. GCMAN: 0.9833
+  4. Group5: 0.9804
+  5. Thrip: 0.9507
 
 ================================================================================
 CREATING SIMILARITY MATRIX
@@ -27,11 +27,11 @@ CREATING SIMILARITY MATRIX
 Creating similarity matrix using trained GNN model...
 Similarity DataFrame sample (first 5x5):
                           "No Problems" - OTX 2096  ...    Agrius
-"No Problems" - OTX 2096                  1.000000  ...  0.767304
-2MISP                                     0.911780  ...  0.748813
-aavega                                    0.519707  ...  0.484116
-admin@338                                 0.268535  ...  0.804845
-Agrius                                    0.767304  ...  1.000000
+"No Problems" - OTX 2096                  1.000000  ...  0.402565
+2MISP                                     0.985672  ...  0.536515
+aavega                                    0.640933  ...  0.589602
+admin@338                                 0.147336  ...  0.801591
+Agrius                                    0.402565  ...  1.000000
 
 [5 rows x 5 columns]
 
@@ -42,8 +42,8 @@ EVALUATING SIMILARITY MATRIX (FULL DATA)
 ================================================================================
 
 Settings: Top 1 (Full Data)
-Success/Failure: 180/1 Total: 181
-Success rate: 99.45%
+Success/Failure: 179/2 Total: 181
+Success rate: 98.90%
 
 Settings: Top 5 (Full Data)
 Success/Failure: 181/0 Total: 181
@@ -86,28 +86,28 @@ EVALUATING PROFILE DIVISION PERFORMANCE
 Evaluating with divider: 2 (using 50.0% of profile data)
 
 Settings: Top 1, Divider: 2
-Success/Failure: 10/171 Total: 181
-Success rate: 5.52%
+Success/Failure: 15/166 Total: 181
+Success rate: 8.29%
 
 Settings: Top 5, Divider: 2
-Success/Failure: 30/151 Total: 181
-Success rate: 16.57%
-
-Settings: Top 10, Divider: 2
 Success/Failure: 40/141 Total: 181
 Success rate: 22.10%
 
+Settings: Top 10, Divider: 2
+Success/Failure: 83/98 Total: 181
+Success rate: 45.86%
+
 Settings: Top 20, Divider: 2
-Success/Failure: 73/108 Total: 181
-Success rate: 40.33%
+Success/Failure: 141/40 Total: 181
+Success rate: 77.90%
 
 Plotting similarity heatmap...
 
 ==================================================
 RESOURCE USAGE REPORT../2.GNN/eval.py
 ==================================================
-Execution Time: 111.11 seconds
+Execution Time: 120.04 seconds
 Memory Usage: 0.00 MB
-Current Memory: 41.11 MB
+Current Memory: 41.17 MB
 CPU Usage: 0.1%
 System CPU: 0.0%

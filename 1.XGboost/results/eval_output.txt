@@ -1,4 +1,4 @@
- EFFICIENT XGBOOST APT SIMILARITY EVALUATION (NO PCA)
+ EFFICIENT XGBOOST APT EVALUATION (USING MODEL PROBABILITIES)
 ============================================================
  LOADING EFFICIENT XGBOOST MODEL...
  Loaded model (no PCA).
@@ -22,9 +22,9 @@ Offsets:
   software_offset: 548
   cve_offset: 1089
 
-✅ Feature mappings found – will use for consistent indexing.
+✅ Feature mappings found.
 
-✅ Binary vectors saved – number: 181
+✅ Binary vectors saved – count: 181
 
 ================================================================================
 VECTOR CONSISTENCY CHECK
@@ -33,7 +33,6 @@ VECTOR CONSISTENCY CHECK
  Loaded profiles for 181 APTs
 
 Testing first 10 APTs...
-------------------------------------------------------------
 
 "No Problems" - OTX 2096 (ID: 1):
   Stored vs New similarity: 1.000000
@@ -78,10 +77,10 @@ Andariel (ID: 10):
 ------------------------------------------------------------
 Summary: good >0.9: 10, partial 0.5‑0.9: 0, poor <0.5: 0
 
-Creating similarity matrix from stored binary vectors...
+Creating similarity matrix from model probabilities...
  LOADING APT PROFILES FROM DATA...
  Loaded profiles for 181 APTs
-Computing pairwise cosine similarities for 181 APTs...
+Computing probability matrix for 181 APTs...
   row 0/181
   row 20/181
   row 40/181
@@ -93,26 +92,28 @@ Computing pairwise cosine similarities for 181 APTs...
   row 160/181
   row 180/181
 
-Sample 5x5:
-             Axiom    Moafee   Cleaver  Ke3chang     APT12
-Axiom     1.000000  0.106904  0.042258  0.475519  0.134463
-Moafee    0.106904  1.000000  0.237171  0.028019  0.335410
-Cleaver   0.042258  0.237171  1.000000  0.038765  0.132583
-Ke3chang  0.475519  0.028019  0.038765  1.000000  0.015663
-APT12     0.134463  0.335410  0.132583  0.015663  1.000000
+Sample 5x5 of probability matrix:
+                          "No Problems" - OTX 2096  ...    Agrius
+"No Problems" - OTX 2096                  0.998258  ...  0.000009
+2MISP                                     0.000004  ...  0.000013
+aavega                                    0.000004  ...  0.000004
+admin@338                                 0.000005  ...  0.000004
+Agrius                                    0.000006  ...  0.998336
+
+[5 rows x 5 columns]
 
 Matrix shape: (181, 181)
 
 ================================================================================
-EVALUATION 1: STORED BINARY VECTORS SELF‑SIMILARITY
+EVALUATION 1: MODEL PROBABILITY MATRIX SELF‑RECOGNITION
 ================================================================================
-Top 1: 181/181 (100.00%)
-Top 5: 181/181 (100.00%)
-Top 10: 181/181 (100.00%)
-Top 20: 181/181 (100.00%)
+  Top 1: 181/181 (100.00%)
+  Top 5: 181/181 (100.00%)
+  Top 10: 181/181 (100.00%)
+  Top 20: 181/181 (100.00%)
 
 ================================================================================
-EVALUATION 2: FULL DATA QUERY (complete profile)
+EVALUATION 2: FULL DATA QUERY (using model probabilities)
 ================================================================================
  LOADING APT PROFILES FROM DATA...
  Loaded profiles for 181 APTs
@@ -135,7 +136,7 @@ Results:
   Average self‑rank: 1.00
 
 ================================================================================
-EVALUATION 3: DIVIDED DATA (1/2 of features)
+EVALUATION 3: DIVIDED DATA (1/2 of features) – model probabilities
 ================================================================================
  LOADING APT PROFILES FROM DATA...
  Loaded profiles for 181 APTs
@@ -149,20 +150,20 @@ EVALUATION 3: DIVIDED DATA (1/2 of features)
   Processing 140/181...
   Processing 160/181...
   Processing 180/181...
-Top 1, divider 2: 179/181 (98.90%)
-Top 5, divider 2: 181/181 (100.00%)
-Top 10, divider 2: 181/181 (100.00%)
-Top 20, divider 2: 181/181 (100.00%)
+  Top 1, divider 2: 177/181 (97.79%)
+  Top 5, divider 2: 181/181 (100.00%)
+  Top 10, divider 2: 181/181 (100.00%)
+  Top 20, divider 2: 181/181 (100.00%)
 
 ================================================================================
-PLOTTING HEATMAP
+PLOTTING HEATMAP (probability matrix)
 ================================================================================
 
 ==================================================
 RESOURCE USAGE REPORT../1.XGboost/eval.py
 ==================================================
-Execution Time: 50.53 seconds
+Execution Time: 53.47 seconds
 Memory Usage: 0.00 MB
-Current Memory: 40.72 MB
+Current Memory: 41.50 MB
 CPU Usage: 0.1%
-System CPU: 38.5%
+System CPU: 54.9%

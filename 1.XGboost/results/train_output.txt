@@ -1,35 +1,28 @@
-XGBOOST TRAINING PIPELINE (NO PCA)
+XGBOOST TRAINING PIPELINE – AUGMENTED APT PROFILES
 ============================================================
 Loading encoded data...
 Data: 753970 records, 7 columns
 
-CREATING MULTI-HOT ENCODING (NO PCA)
+BUILDING APT PROFILES (FULL VECTORS)
 ==================================================
 Feature vector length: 9027
 Number of APTs: 181
+Rows per APT – min: 1, avg: 4166, max: 46563
 
-Total features breakdown:
-  Techniques: 548
-  Software: 541
-  CVE: 7938
-
-TRAINING ON ALL APTs
-Total APTs: 181
-Feature vector length: 9027
-
-TRAINING XGBOOST CLASSIFIER ON BINARY VECTORS
+TRAINING XGBOOST ON AUGMENTED APT PROFILES
 ==================================================
-Training classifier on 181 samples, 9027 features...
-Training completed!
-Training accuracy: 0.0110
+Generating augmented samples (200 per APT)...
+Training completed in 30.3 minutes.
+Accuracy on full APT profiles: 1.0000
+Accuracy on augmented training set: 0.9959
 
 Model saved to '3feat_efficient_apt_similarity_nopca.pkl'
 
 ==================================================
 RESOURCE USAGE REPORT../1.XGboost/train.py
 ==================================================
-Execution Time: 77.75 seconds
+Execution Time: 1822.27 seconds
 Memory Usage: 0.00 MB
-Current Memory: 40.81 MB
+Current Memory: 40.89 MB
 CPU Usage: 0.1%
-System CPU: 85.7%
+System CPU: 27.6%

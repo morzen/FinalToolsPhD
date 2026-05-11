@@ -13,6 +13,7 @@ import torch.nn.functional as F
 from torch_geometric.data import Data
 from torch_geometric.nn import GCNConv
 import warnings
+import matplotlib.colors as mcolors
 
 warnings.filterwarnings('ignore')
 
@@ -41,7 +42,8 @@ def load_trained_gnn_model(path="3feat_trained_apt_gnn_model.pkl"):
     print(f" GNN model loaded successfully!")
     print(f"   APTs: {len(saved['apt_ids'])}")
     print(f"   Embedding dimension: {saved['apt_embeddings'].shape[1]}")
-    print(f"   Feature weights: TTP×{saved['feature_weights']['techniques']:.1f}, SW×{saved['feature_weights']['software']:.1f}, CVE×{saved['feature_weights']['cve']:.1f}")
+    print(f"   Feature weights: TTP×{saved['feature_weights']['techniques']:.1f}, "
+          f"SW×{saved['feature_weights']['software']:.1f}, CVE×{saved['feature_weights']['cve']:.1f}")
     print(f"   Available CPU cores: {mp.cpu_count()}")
     print("   Model uses: Pure GNN cosine similarity on 30/70 mixed evidence")
     return model, saved
@@ -129,7 +131,7 @@ def create_partial_mixed_evidence(attacker_profile, mimicked_profile, rng=None):
 def build_temp_graph_for_evidence(evidence, graph_info):
     num_apts = graph_info['num_apts']
     technique_offset = graph_info['technique_offset']
-    software_offset = graph_info['software_offset']
+    software_offset = graph_info['software_offset'] 
     cve_offset = graph_info['cve_offset']
     
     total_nodes = num_apts + graph_info['num_techniques'] + graph_info['num_software'] + graph_info['num_cve']
@@ -157,7 +159,7 @@ def build_temp_graph_for_evidence(evidence, graph_info):
             cve_idx = graph_info['cve_to_idx'][cve] + cve_offset
             edge_list.extend([[temp_apt_idx, cve_idx], [cve_idx, temp_apt_idx]])
             edge_weights.extend([fw['cve'], fw['cve']])
-    
+
     if edge_list:
         edge_index = torch.tensor(edge_list, dtype=torch.long).t().contiguous()
         edge_weight = torch.tensor(edge_weights, dtype=torch.float)
@@ -210,7 +212,7 @@ def process_single_false_flag_gnn(args):
 def evaluate_false_flag_attacks_gnn_parallel(model, saved_data, profiles, partial=False):
     print("=" * 80)
     scenario = "PARTIAL (50% volume from 30/70 mix)" if partial else "FULL (30/70 mixed evidence)"
-    print(f" FALSE-FLAG: 30% Attacker + 70% Mimicked features across techniques, software, and CVE")
+    print(f" FALSE-FLAG: 30% Attacker + 70% Mimicked features across ALL categories")
     print(f"({scenario})")
     print("=" * 80)
     
@@ -387,7 +389,7 @@ if __name__ == "__main__":
     print(" GNN FALSE-FLAG EVALUATION: 30/70 MIXED EVIDENCE")
     print("=" * 70)
     print("Pure GNN embeddings + cosine similarity")
-    print("30% attacker + 70% mimicked features across techniques, software, and CVE")
+    print("30% attacker + 70% mimicked features ACROSS ALL CATEGORIES")
     print("=" * 70)
     
     model, saved_data = load_trained_gnn_model()

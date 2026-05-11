@@ -2,9 +2,30 @@ import pickle
 import pandas as pd
 import numpy as np
 import os
+import xgboost as xgb
 from collections import defaultdict
 from itertools import islice
 
+# ============================================================================
+# 🔽  PicklableXGBWrapper – MUST be defined here so pickle can load the model
+# ============================================================================
+class PicklableXGBWrapper:
+    """Wrapper to mimic XGBClassifier for predict_proba."""
+    def __init__(self, booster, num_classes, seed):
+        self._Booster = booster
+        self.n_classes_ = num_classes
+        self.objective = 'multi:softprob'
+        self.seed = seed
+        self.classes_ = np.arange(num_classes)
+
+    def predict_proba(self, X):
+        dtest = xgb.DMatrix(X, missing=np.nan)
+        return self._Booster.predict(dtest)
+
+    def predict(self, X):
+        probas = self.predict_proba(X)
+        return np.argmax(probas, axis=1)
+# ============================================================================
 
 #####################################################################
 # EFFICIENT XGBOOST PREDICTOR
@@ -18,8 +39,12 @@ class EfficientXGBoostPredictor:
         self.apt_encoder = apt_encoder
         self.reverse_encoder = {v: k for k, v in apt_encoder.items()}
     
+    def predict_proba_vector(self, vector):
+        """Return class probabilities for a single binary vector using the XGBoost model."""
+        return self.model.predict_proba(vector.reshape(1, -1))[0]
+    
     def predict_vector_similarity(self, vector1, vector2):
-        """Predict similarity between two vectors using cosine similarity"""
+        """Cosine similarity on binary vectors (kept for compatibility)."""
         dot_product = np.dot(vector1, vector2)
         norm1 = np.linalg.norm(vector1)
         norm2 = np.linalg.norm(vector2)
@@ -31,19 +56,16 @@ class EfficientXGBoostPredictor:
     def _feature_overlap_similarity(self, features1, features2):
         """Calculate similarity based on feature overlap (kept for compatibility)"""
         overlap_score = 0.0
-        # Technique similarity
         if features1[0] == features2[0] and features1[0] != -1:
-            overlap_score += 0.6
-        # Software similarity  
+            overlap_score += 0.3
         if features1[1] == features2[1] and features1[1] != -1:
-            overlap_score += 0.5
-        # CVE similarity
-        if features1[2] == features2[2] and features1[2] != -1:
             overlap_score += 0.2
+        if features1[2] == features2[2] and features1[2] != -1:
+            overlap_score += 0.1
         return overlap_score
     
     def find_similar_apts(self, features, top_k=5):
-        """Find most similar APTs to given features"""
+        """Find most similar APTs to given features (not used in main query)."""
         if all(f == -1 for f in features):
             return []
         probabilities = self.model.predict_proba([features])[0]
@@ -71,12 +93,9 @@ class EfficientQueryModel:
         software = evidence.get('software', [])
         cve = evidence.get('cve', [])
         
-        total_len = (len(feature_metadata['all_techniques']) +
-                    len(feature_metadata['all_software']) +
-                    len(feature_metadata['all_cve']))
-        vector = np.zeros(total_len, dtype=np.float32)
+        vector = np.zeros(feature_metadata['cve_offset'] + 
+                  len(feature_metadata['all_cve']), dtype=np.float32)
         
-        # Mark all features from evidence
         for t in techniques:
             if t in feature_metadata['all_techniques']:
                 idx = feature_metadata['all_techniques'].index(t)
@@ -86,7 +105,6 @@ class EfficientQueryModel:
             if s in feature_metadata['all_software']:
                 idx = feature_metadata['all_software'].index(s) + feature_metadata['software_offset']
                 vector[idx] = 1.0
-        
         for v in cve:
             if v in feature_metadata['all_cve']:
                 idx = feature_metadata['all_cve'].index(v) + feature_metadata['cve_offset']
@@ -105,21 +123,17 @@ def convert_evidence_to_encoded(evidence, mapping_file):
     print(" LOADING MAPPING DATA...")
     df_mapping = pd.read_csv(mapping_file)
     
-    # Create mapping dictionaries
     technique_mapping = {}
     software_mapping = {}
     cve_mapping = {}
     
     for _, row in df_mapping.iterrows():
-        # Technique mapping
         if pd.notna(row['techniques_Origin']) and pd.notna(row['techniques_Encoded']):
             if row['techniques_Origin'] not in technique_mapping:
                 technique_mapping[row['techniques_Origin']] = row['techniques_Encoded']
-        # Software mapping
         if pd.notna(row['software_Origin']) and pd.notna(row['software_Encoded']):
             if row['software_Origin'] not in software_mapping:
                 software_mapping[row['software_Origin']] = row['software_Encoded']
-        # CVE mapping
         if pd.notna(row['CVE_ID_Origin']) and pd.notna(row['CVE_ID_Encoded']):
             if row['CVE_ID_Origin'] not in cve_mapping:
                 cve_mapping[row['CVE_ID_Origin']] = row['CVE_ID_Encoded']
@@ -127,12 +141,7 @@ def convert_evidence_to_encoded(evidence, mapping_file):
     print(f" Mappings loaded: {len(technique_mapping)} techniques, {len(software_mapping)} software, "
           f"{len(cve_mapping)} cve")
     
-    # Convert evidence
-    encoded_evidence = {
-        'techniques': [],
-        'software': [],
-        'cve': []
-    }
+    encoded_evidence = {'techniques': [], 'software': [], 'cve': []}
     
     for technique in evidence.get('techniques', []):
         if technique in technique_mapping:
@@ -175,10 +184,6 @@ def load_apt_profiles_from_data():
     print(f" Loaded profiles for {len(profiles)} APTs")
     return profiles
 
-# ============================================================================
-# The normalization function is kept but no longer used in the main query.
-# It can be removed if desired.
-# ============================================================================
 def normalize_similarities_by_profile(similarities, profiles, apt_ids, query_features_count,
                                       query_techniques, query_software, query_capec,
                                       query_cwe, query_cve, query_pulse):
@@ -224,10 +229,9 @@ def normalize_similarities_by_profile(similarities, profiles, apt_ids, query_fea
     return np.array(normalized_similarities)
 
 def query_apt_similarity_efficient(evidence):
-    """QUERY APT SIMILARITY USING EFFICIENT XGBOOST MODEL"""
+    """QUERY APT SIMILARITY USING EFFICIENT XGBOOST MODEL (NOW USES MODEL PROBABILITIES)"""
     print(" LOADING EFFICIENT XGBOOST MODEL...")
     
-    # Get the directory where this script resides
     script_dir = os.path.dirname(os.path.abspath(__file__))
     model_path = os.path.join(script_dir, '3feat_efficient_apt_similarity_nopca.pkl')
     
@@ -244,74 +248,58 @@ def query_apt_similarity_efficient(evidence):
     apt_encoder = saved_data['apt_encoder']
     feature_metadata = saved_data['feature_metadata']
     
-    # Get the stored vectors – try both keys
     if 'all_binary_vectors' in saved_data:
         stored_vectors = saved_data['all_binary_vectors']
-        print(" Using binary vectors (no PCA).")
+        print(" Binary vectors loaded (not used for scoring).")
     else:
         print(" No stored vectors found in saved data!")
         return [], {}
     
-    # CREATE QUERY VECTOR
     techniques = evidence.get('techniques', [])
     software = evidence.get('software', [])
     cve = evidence.get('cve', [])
     
     query_vector = EfficientQueryModel.create_query_vector_from_evidence(
-        {
-            'techniques': techniques,
-            'software': software,
-            'cve': cve
-        },
+        {'techniques': techniques, 'software': software, 'cve': cve},
         feature_metadata
     )
     print(f" Query vector created with length: {len(query_vector)}")
     
-    
-    # CREATE PREDICTOR
     predictor = EfficientXGBoostPredictor(model, apt_features, apt_encoder)
     
-    # LOAD APT PROFILES
     profiles = load_apt_profiles_from_data()
     apt_ids = list(profiles.keys())
     
-    print(f" USING EFFICIENT XGBOOST MODEL")
-    print(f" Features: Direct classification + Feature overlap")
-    print(f" Comparing query against {len(stored_vectors)} APT vectors")
+    print(f" USING EFFICIENT XGBOOST MODEL (CLASS PROBABILITIES)")
+    print(f" Comparing query against {len(apt_encoder)} APT classes")
     
-    # PREDICT SIMILARITIES
     print("PREDICTING SIMILARITIES...")
+    probs = predictor.predict_proba_vector(query_vector)
+    
     similarities = []
     valid_apt_ids = []
-    for apt_id, apt_vector in stored_vectors.items():
-        # Ensure same dimensions
-        if len(query_vector) != len(apt_vector):
-            # This shouldn't happen if we loaded correctly, but just in case
-            min_len = min(len(query_vector), len(apt_vector))
-            qv = query_vector[:min_len]
-            av = apt_vector[:min_len]
-            sim = predictor.predict_vector_similarity(qv, av)
+    for apt_id in apt_ids:
+        if apt_id in predictor.apt_encoder:
+            idx = predictor.apt_encoder[apt_id]
+            sim = probs[idx]
+            similarities.append(sim)
+            valid_apt_ids.append(apt_id)
         else:
-            sim = predictor.predict_vector_similarity(query_vector, apt_vector)
-        similarities.append(sim)
-        valid_apt_ids.append(apt_id)
+            similarities.append(0.0)
+            valid_apt_ids.append(apt_id)
     
     similarities = np.array(similarities)
     print(f" Raw similarity stats: min={similarities.min():.4f}, max={similarities.max():.4f}, mean={similarities.mean():.4f}")
     
-    
-    # SORT (using raw similarities)
     sorted_indices = np.argsort(similarities)[::-1]
     sorted_similarities = similarities[sorted_indices]
     sorted_apt_ids = [valid_apt_ids[i] for i in sorted_indices]
     
-    # LOAD APT NAME MAPPINGS
     df_mapping = pd.read_csv("../BaseData/comparison_Encoded_df.csv")
     apt_name_mapping = {}
     for _, row in df_mapping.iterrows():
         apt_name_mapping[row['APTnameEncoded']] = row['APTnameOrigin']
     
-    # PREPARE RESULTS
     results = []
     for i, (similarity, apt_id) in enumerate(zip(sorted_similarities, sorted_apt_ids)):
         apt_name = apt_name_mapping.get(apt_id, f"APT{apt_id}")
@@ -319,7 +307,7 @@ def query_apt_similarity_efficient(evidence):
         tech_matches = len(set(techniques) & profile['techniques'])
         soft_matches = len(set(software) & profile['software'])
         cve_matches = len(set(cve) & profile['cve'])
-        match_score = tech_matches + soft_matches  + cve_matches
+        match_score = tech_matches + soft_matches + cve_matches
         is_comprehensive = profile['total_features'] > 100
         results.append({
             'rank': i + 1,
@@ -345,7 +333,7 @@ def print_efficient_results_table(results, evidence):
     print(f"   Software: {len(evidence['software'])} items")
     print(f"   cve: {len(evidence['cve'])} items")
     print()
-    print(f" EFFICIENT XGBOOST SIMILARITY RANKINGS")
+    print(f" EFFICIENT XGBOOST SIMILARITY RANKINGS (USING MODEL PROBABILITIES)")
     print(f" SHOWING ALL {len(results)} APTs")
     print("=" * 130)
     
@@ -374,12 +362,10 @@ def analyze_feature_matching_classification(encoded_evidence, results, profiles)
     print(" FEATURE MATCHING CLASSIFICATION - TOP 5 BY CATEGORY")
     print("="*80)
     
-    # Extract encoded evidence
     techniques = encoded_evidence.get('techniques', [])
     software = encoded_evidence.get('software', [])
     cve = encoded_evidence.get('cve', [])
     
-    # Create mapping from APT name to profile key
     apt_name_to_profile = {}
     for result in results:
         apt_name = result['apt_name']
@@ -387,31 +373,23 @@ def analyze_feature_matching_classification(encoded_evidence, results, profiles)
         if apt_id in profiles:
             apt_name_to_profile[apt_name] = profiles[apt_id]
     
-    # Calculate feature matching scores for all APTs
     all_feature_scores = []
-    
     for result in results:
         apt_name = result['apt_name']
         profile = apt_name_to_profile.get(apt_name)
-        
         if profile:
-            # Calculate individual feature matches
             tech_matches = len(set(techniques) & profile['techniques'])
             soft_matches = len(set(software) & profile['software'])
             cve_matches = len(set(cve) & profile['cve'])
             
-            # Calculate normalized scores (0-1)
-            # Evidence coverage: how much of the evidence is covered by the APT profile
             tech_evidence_coverage = tech_matches / max(1, len(techniques))
             soft_evidence_coverage = soft_matches / max(1, len(software))
             cve_evidence_coverage = cve_matches / max(1, len(cve))
             
-            # Profile coverage: how much of the APT profile matches the evidence
             tech_profile_coverage = tech_matches / max(1, len(profile['techniques']))
             soft_profile_coverage = soft_matches / max(1, len(profile['software']))
             cve_profile_coverage = cve_matches / max(1, len(profile['cve']))
             
-            # Combined score: harmonic mean of both coverages
             def harmonic_mean(a, b):
                 if a + b == 0:
                     return 0
@@ -434,6 +412,7 @@ def analyze_feature_matching_classification(encoded_evidence, results, profiles)
                 'tech_evidence_coverage': tech_evidence_coverage,
                 'soft_evidence_coverage': soft_evidence_coverage,
                 'cve_evidence_coverage': cve_evidence_coverage,
+
                 'tech_profile_coverage': tech_profile_coverage,
                 'soft_profile_coverage': soft_profile_coverage,
                 'cve_profile_coverage': cve_profile_coverage,
@@ -448,7 +427,6 @@ def analyze_feature_matching_classification(encoded_evidence, results, profiles)
     print(header)
     print("-" * 85)
     
-    # Sort by TTP score
     ttp_sorted = sorted(all_feature_scores, key=lambda x: x['tech_score'], reverse=True)[:5]
     for i, score in enumerate(ttp_sorted, 1):
         total_techniques = len(apt_name_to_profile[score['apt_name']]['techniques'])
@@ -465,7 +443,6 @@ def analyze_feature_matching_classification(encoded_evidence, results, profiles)
     print(header)
     print("-" * 85)
     
-    # Sort by Software score
     sw_sorted = sorted(all_feature_scores, key=lambda x: x['soft_score'], reverse=True)[:5]
     for i, score in enumerate(sw_sorted, 1):
         total_software = len(apt_name_to_profile[score['apt_name']]['software'])
@@ -474,7 +451,7 @@ def analyze_feature_matching_classification(encoded_evidence, results, profiles)
               f"{score['soft_matches']:>2}/{total_software:<3} ({score['soft_profile_coverage']:.3f})  " \
               f"{score['soft_score']:.4f}"
         print(row)
-    
+
     # TABLE 5: TOP 5 CVE MATCHING
     print("\n TOP 5 APTs BY CVE MATCHING")
     print("-" * 85)
@@ -482,7 +459,6 @@ def analyze_feature_matching_classification(encoded_evidence, results, profiles)
     print(header)
     print("-" * 85)
     
-    # Sort by CVE score
     cve_sorted = sorted(all_feature_scores, key=lambda x: x['cve_score'], reverse=True)[:5]
     for i, score in enumerate(cve_sorted, 1):
         total_cve = len(apt_name_to_profile[score['apt_name']]['cve'])
@@ -496,7 +472,6 @@ def analyze_feature_matching_classification(encoded_evidence, results, profiles)
     print("\n FEATURE MATCHING SUMMARY")
     print("-" * 50)
     
-    # Calculate averages
     avg_tech = np.mean([s['tech_score'] for s in all_feature_scores])
     avg_soft = np.mean([s['soft_score'] for s in all_feature_scores])
     avg_cve = np.mean([s['cve_score'] for s in all_feature_scores])
@@ -505,7 +480,6 @@ def analyze_feature_matching_classification(encoded_evidence, results, profiles)
     print(f"Average Software matching score: {avg_soft:.4f}")
     print(f"Average CVE matching score: {avg_cve:.4f}")
     
-    # Identify most distinctive feature
     max_avg = max(avg_tech, avg_soft, avg_cve)
     if max_avg == avg_tech:
         distinctive = "TTPs"
@@ -522,15 +496,13 @@ def analyze_feature_matching_classification(encoded_evidence, results, profiles)
     print("\n FALSE FLAG DETECTION ANALYSIS")
     print("-" * 50)
     
-    # Check top APTs for inconsistent patterns
-    top_apts_feature_scores = all_feature_scores[:10]  # Top 10 by overall similarity
+    top_apts_feature_scores = all_feature_scores[:10]
     
     inconsistent_groups = []
     for score in top_apts_feature_scores:
         scores = [score['tech_score'], score['soft_score'], score['cve_score']]
         variance = np.var(scores)
         
-        # High variance might indicate false flag
         if variance > 0.05:
             inconsistent_groups.append({
                 'apt_name': score['apt_name'],
@@ -560,7 +532,7 @@ if __name__ == "__main__":
     with open('../query_input.json', 'r') as f:
         evidence_humanreadable = json.load(f)
 
-    print(" RUNNING EFFICIENT XGBOOST APT SIMILARITY QUERY")
+    print(" RUNNING EFFICIENT XGBOOST APT SIMILARITY QUERY (USING MODEL)")
     print("=" * 70)
     
     evidence = convert_evidence_to_encoded(evidence_humanreadable, "../BaseData/comparison_Encoded_df.csv")

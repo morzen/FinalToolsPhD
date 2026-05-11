@@ -1,7 +1,7 @@
 import json
 
 # Load the JSON data
-with open('3_feature_CTI_Eval.json', 'r') as file:
+with open('CTI_Eval.json', 'r') as file:
     data = json.load(file)
 
 # Function to calculate averages for a set of reports

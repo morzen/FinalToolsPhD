@@ -302,7 +302,10 @@ def test_sample_queries(saved_data):
     test_evidence =  {
         'techniques': ['faketest', 'T1001.002', 'T1003.002'],
         'software': ['faketest','S0002', 'S0029', 'S0037'],
-        'cve': ['faketest','CVE-2012-0433', 'CVE-2013-10007']
+        'capec': ['faketest','CAPEC-127', 'CAPEC-150'],
+        'cwe': ['faketest','CWE-1021', 'CWE-113'],
+        'cve': ['faketest','CVE-2012-0433', 'CVE-2013-10007'],
+        'pulse': ['faketest','5c88e255d5fbbe1cb7c54534', '5cb741fb29d3ac01c1ac01ea']
     }
 
     print("Testing with evidence:")
@@ -348,7 +351,7 @@ def evaluate_full_profile_queries(saved_data, top_x_values=[1, 5, 10, 20]):
         failure = 0
         for i, apt_id in enumerate(apt_ids):
             target_name = apt_names[i]
-            full_profile = profiles[apt_id]   # dict with keys: techniques, software, cve
+            full_profile = profiles[apt_id]   # dict with keys: techniques, software, capec, cwe, cve, pulse
 
             # Query with the full profile (original string IDs)
             similarities, result_apt_ids = query_apt_similarity(full_profile, saved_data)

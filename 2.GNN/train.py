@@ -129,9 +129,9 @@ class GNNDataProcessor:
 
         technique_offset = num_apts
         software_offset = technique_offset + num_techniques
-        cve_offset = software_offset + num_software   # define cve_offset properly
+        cve_offset = software_offset + num_software
 
-        total_nodes = num_apts + num_techniques + num_software + num_cve 
+        total_nodes = num_apts + num_techniques + num_software + num_cve
 
         print("Graph Structure:")
         print(f"  APT nodes: {num_apts}")
@@ -165,7 +165,6 @@ class GNNDataProcessor:
                 edge_list.append([cve_idx, apt_idx])
                 edge_weights.extend([fw["cve"], fw["cve"]])
 
-
         if edge_list:
             edge_index = torch.tensor(edge_list, dtype=torch.long).t().contiguous()
             edge_weight = torch.tensor(edge_weights, dtype=torch.float)
@@ -182,7 +181,6 @@ class GNNDataProcessor:
         graph_info = {
             "num_apts": num_apts,
             "apt_to_idx": apt_to_idx,
-
 
             "technique_to_idx": technique_to_idx,
             "software_to_idx": software_to_idx,
@@ -242,7 +240,7 @@ class GNNTrainer:
 
         for i, apt_i in enumerate(apt_ids):
             prof_i = profiles[apt_i]
-            T_i, S_i,Cv_i = prof_i["techniques"], prof_i["software"], prof_i["cve"]
+            T_i, S_i, Cv_i = prof_i["techniques"], prof_i["software"], prof_i["cve"]
 
             max_i = (
                 len(T_i) * TECHNIQUE_WEIGHT +
@@ -255,9 +253,7 @@ class GNNTrainer:
                     continue
 
                 prof_j = profiles[apt_j]
-                T_j = prof_j["techniques"]
-                S_j = prof_j["software"]
-                Cv_j = prof_j["cve"]
+                T_j, S_j, Cv_j = prof_j["techniques"], prof_j["software"], prof_j["cve"]
 
                 tech_overlap = len(T_i & T_j)
                 soft_overlap = len(S_i & S_j)
@@ -400,9 +396,7 @@ class GNNUtils:
         print("-" * 80)
         for item in embedding_norms[:10]:
             print(f"{item['apt_name']:<30} {item['embedding_norm']:<10.4f} "
-                  f"{item['techniques']:<10} {item['software']:<8} "
-                  f"{item['cve']:<8} "
-                  f"{item['profile_size']:<6}")
+                  f"{item['techniques']:<10} {item['software']:<8} {item['cve']:<8} {item['profile_size']:<6}")
 
 # ============================
 # 7. MODEL SAVING
