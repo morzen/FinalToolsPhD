@@ -50,8 +50,8 @@ NUM_APTS = None   # all 181
 # --------------------------------------------------------------------------
 # Suppress import output
 # --------------------------------------------------------------------------
-sys.stdout = open(os.devnull, 'w')
-sys.stderr = open(os.devnull, 'w')
+#sys.stdout = open(os.devnull, 'w')
+#sys.stderr = open(os.devnull, 'w')
 
 # Load external modules
 jaccard_dir = Path("..") / "Jaccards_Correlation"
@@ -107,8 +107,8 @@ siamese_query = modules.get("siamese")
 mil_query = modules.get("mil")
 rf_query = modules.get("rf")
 
-sys.stdout = sys.__stdout__
-sys.stderr = sys.__stderr__
+#sys.stdout = sys.__stdout__
+#sys.stderr = sys.__stderr__
 
 # ---------- Evidence mixing ----------
 def unified_full_mix(apt1, apt2, rng=None, attacker_fraction=0.3, max_count=10):

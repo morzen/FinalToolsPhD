@@ -593,6 +593,7 @@ def main():
     plt.tight_layout()
 
     # Show the plot
+    plt.savefig('./featureMatching_similarity_heatmap.png')  # adjust path as needed
     plt.show()
 
     # Also show a text version of the top 10x10 for verification
