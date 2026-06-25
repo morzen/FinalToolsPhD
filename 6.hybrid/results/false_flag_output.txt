@@ -1,0 +1,64 @@
+Total pairs: 32580
+Loaded 32580 processed pairs
+
+=== FULL RESULTS ===
+
+============================================================
+ FALSE-FLAG ATTACK ANALYSIS - RANKING RESULTS
+============================================================
+
+ Top-1:
+  Attacker (Detection): 4644/32580 (14.3%)
+  Mimicked (Deception): 17581/32580 (54.0%)
+  Both: 0/32580 (0.0%)
+  Neither: 10355/32580 (31.8%)
+
+ Top-5:
+  Attacker (Detection): 15569/32580 (47.8%)
+  Mimicked (Deception): 28306/32580 (86.9%)
+  Both: 13357/32580 (41.0%)
+  Neither: 2062/32580 (6.3%)
+
+ Top-10:
+  Attacker (Detection): 20638/32580 (63.3%)
+  Mimicked (Deception): 30779/32580 (94.5%)
+  Both: 19592/32580 (60.1%)
+  Neither: 755/32580 (2.3%)
+
+ Top-20:
+  Attacker (Detection): 25255/32580 (77.5%)
+  Mimicked (Deception): 31665/32580 (97.2%)
+  Both: 24760/32580 (76.0%)
+  Neither: 420/32580 (1.3%)
+
+=== SHUFFLED RESULTS ===
+
+============================================================
+ FALSE-FLAG ATTACK ANALYSIS - RANKING RESULTS
+============================================================
+
+ Top-1:
+  Attacker (Detection): 4113/32580 (12.6%)
+  Mimicked (Deception): 11868/32580 (36.4%)
+  Both: 0/32580 (0.0%)
+  Neither: 16599/32580 (50.9%)
+
+ Top-5:
+  Attacker (Detection): 11459/32580 (35.2%)
+  Mimicked (Deception): 24375/32580 (74.8%)
+  Both: 7575/32580 (23.3%)
+  Neither: 4321/32580 (13.3%)
+
+ Top-10:
+  Attacker (Detection): 16033/32580 (49.2%)
+  Mimicked (Deception): 28649/32580 (87.9%)
+  Both: 13621/32580 (41.8%)
+  Neither: 1519/32580 (4.7%)
+
+ Top-20:
+  Attacker (Detection): 20790/32580 (63.8%)
+  Mimicked (Deception): 30861/32580 (94.7%)
+  Both: 19630/32580 (60.3%)
+  Neither: 559/32580 (1.7%)
+
+🔥 CREATING FALSE-FLAG DECEPTION HEATMAP...
