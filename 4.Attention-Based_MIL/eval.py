@@ -410,9 +410,9 @@ def evaluate_profile_division(model, apt_profiles, apt_name_dict, df_mapping, ap
         # Create evidence with divided data for each feature type
         divided_evidence = {}
         
-        for feature_type, evidence_key in [('technique', 'techniques_str'),
-                                         ('software', 'software_str'), ('capec', 'CAPEC_ID'),
-                                         ('cwe', 'CWE_ID'), ('cve', 'CVE_ID'), ('pulse', 'Pulse_ID'),]:
+        for feature_type, evidence_key in [('technique', 'techniques'),
+                                         ('software', 'software'), ('capec', 'capec'),
+                                         ('cwe', 'cwe'), ('cve', 'cve'), ('pulse', 'pulse'),]:
             
             if feature_type in target_data and target_data[feature_type]:
                 feature_list = target_data[feature_type].copy()

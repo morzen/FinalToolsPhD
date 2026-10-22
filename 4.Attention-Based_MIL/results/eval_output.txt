@@ -57,23 +57,23 @@ Evaluating with divider: 2 (using 50.0% of profile data)
 
 Settings: TopX: 1 Divider: 2
 Attention MIL Model for this set had a success/failure rate of:
-1/180 Total: 181
-Success rate: 0.5524861878453038%
+165/16 Total: 181
+Success rate: 91.16022099447514%
 
 Settings: TopX: 5 Divider: 2
 Attention MIL Model for this set had a success/failure rate of:
-5/176 Total: 181
-Success rate: 2.7624309392265194%
+179/2 Total: 181
+Success rate: 98.89502762430939%
 
 Settings: TopX: 10 Divider: 2
 Attention MIL Model for this set had a success/failure rate of:
-10/171 Total: 181
-Success rate: 5.524861878453039%
+181/0 Total: 181
+Success rate: 100.0%
 
 Settings: TopX: 20 Divider: 2
 Attention MIL Model for this set had a success/failure rate of:
-20/161 Total: 181
-Success rate: 11.049723756906078%
+181/0 Total: 181
+Success rate: 100.0%
 
 Plotting similarity heatmap...
 Data statistics:
@@ -88,8 +88,8 @@ Color scale limits: 0.000142 to 0.999856
 ==================================================
 RESOURCE USAGE REPORT../4.Attention-Based_MIL/eval.py
 ==================================================
-Execution Time: 285.77 seconds
-Memory Usage: 0.00 MB
-Current Memory: 41.08 MB
+Execution Time: 428.34 seconds
+Memory Usage: -22.44 MB
+Current Memory: 18.78 MB
 CPU Usage: 0.1%
-System CPU: 43.0%
+System CPU: 11.9%

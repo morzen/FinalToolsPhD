@@ -54,11 +54,11 @@ class ResourceMonitor:
 
 # scriptpath = "../3.SiameseNetwork/False_flag.py"
 
-# scriptpath = "../4.Attention-Based_MIL/False_flag.py"
+scriptpath = "../4.Attention-Based_MIL/eval.py"
 
 # scriptpath = "../5.RF_FeatureEngineering/False_flag.py"
 
-scriptpath = "../6.hybrid/hybrid_eval.py"
+# scriptpath = "../6.hybrid/hybrid_eval.py"
 
 # scriptpath = "../featureMatching/false_flag.py"
 # scriptpath = "../Jaccards_Correlation/false_flag.py"
