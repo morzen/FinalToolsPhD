@@ -54,7 +54,7 @@ class ResourceMonitor:
 
 # scriptpath = "../3.SiameseNetwork/False_flag.py"
 
-# scriptpath = "../4.Attention-Based_MIL/False_flag.py"
+scriptpath = "../4.Attention-Based_MIL/eval.py"
 
 # scriptpath = "../5.RF_FeatureEngineering/False_flag.py"
 
