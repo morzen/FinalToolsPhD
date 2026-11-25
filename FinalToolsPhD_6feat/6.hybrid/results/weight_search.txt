@@ -1,0 +1,39 @@
+Hybrid weight search - 6-feature version
+weights tried for every approach: 1/8, 2/8, 3/8, 4/8, 5/8, 6/8, 7/8, 8/8 -> 16,777,216 combinations
+self-evaluation: 163 queries x 2 tests;  CTI: 29 reports;  false flag: not used
+
+SELF-EVALUATION WEIGHTS (sanity check + stress test only)
+  step 1: 2,617,721 of 16,777,216 combinations rank the correct APT first for all 326 queries (100% Top-1 in both tests)   [16 s]
+  step 2: largest mean lead of the correct APT over the runner-up: 16.506% (reached by 1 combination(s))   [31 s]
+  BEST SELF-EVALUATION WEIGHTS: XGB 1/8, GNN 2/8, Siamese 2/8, MIL 4/8, RF 5/8, FM 8/8, Jaccard 1/8, TVD 3/8
+  the 5 best:
+     lead 16.506%  (smallest 0.614%)   XGB 1/8, GNN 2/8, Siamese 2/8, MIL 4/8, RF 5/8, FM 8/8, Jaccard 1/8, TVD 3/8
+     lead 16.503%  (smallest 0.413%)   XGB 1/8, GNN 2/8, Siamese 2/8, MIL 4/8, RF 5/8, FM 8/8, Jaccard 1/8, TVD 2/8
+     lead 16.502%  (smallest 0.573%)   XGB 1/8, GNN 2/8, Siamese 2/8, MIL 3/8, RF 5/8, FM 8/8, Jaccard 1/8, TVD 3/8
+     lead 16.495%  (smallest 0.359%)   XGB 1/8, GNN 2/8, Siamese 2/8, MIL 3/8, RF 5/8, FM 8/8, Jaccard 1/8, TVD 2/8
+     lead 16.484%  (smallest 0.606%)   XGB 1/8, GNN 2/8, Siamese 2/8, MIL 4/8, RF 4/8, FM 8/8, Jaccard 1/8, TVD 3/8
+
+CTI WEIGHTS (CTI reports only)
+  best mean CTI score: 91.59 (mean rank 14.62), reached by 1 combination(s)   [33 s]
+  BEST CTI WEIGHTS: XGB 1/8, GNN 1/8, Siamese 1/8, MIL 1/8, RF 1/8, FM 8/8, Jaccard 1/8, TVD 1/8
+  check against luck - choice redone without the report(s) it is tested on:
+     leave one report out: CTI 91.40;  leave one APT group out: CTI 91.10
+  the 5 best:
+     CTI 91.59 (mean rank 14.62)   XGB 1/8, GNN 1/8, Siamese 1/8, MIL 1/8, RF 1/8, FM 8/8, Jaccard 1/8, TVD 1/8
+     CTI 91.49 (mean rank 14.79)   XGB 2/8, GNN 1/8, Siamese 1/8, MIL 1/8, RF 1/8, FM 8/8, Jaccard 1/8, TVD 1/8
+     CTI 91.46 (mean rank 14.83)   XGB 3/8, GNN 1/8, Siamese 1/8, MIL 1/8, RF 1/8, FM 8/8, Jaccard 1/8, TVD 1/8
+     CTI 91.44 (mean rank 14.86)   XGB 1/8, GNN 1/8, Siamese 1/8, MIL 1/8, RF 2/8, FM 8/8, Jaccard 1/8, TVD 1/8
+     CTI 91.36 (mean rank 15.00)   XGB 1/8, GNN 1/8, Siamese 3/8, MIL 1/8, RF 1/8, FM 8/8, Jaccard 1/8, TVD 1/8
+
+EXACT CHECK with common/protocol.py (wrrf_scores + midranks)
+  weights                            sanity Top-1 stress Top-1  CTI score  mean rank
+  found: self-evaluation                   100.00       100.00      85.76      24.07
+  found: CTI                               100.00       100.00      91.59      14.62
+  in protocol.py now: no_weights           100.00        99.39      72.05      46.28
+  in protocol.py now: self_eval_weights       100.00       100.00      86.61      22.69
+  in protocol.py now: CTI_boosting         100.00       100.00      90.25      16.79
+
+To use them, in common/protocol.py:
+    'self_eval_weights': {'xgboost': 1/8, 'gnn': 2/8, 'siamese': 2/8, 'mil': 4/8, 'rf': 5/8, 'jaccard': 1/8, 'tvd': 3/8, 'featureMatching': 8/8},
+    'CTI_boosting': {'xgboost': 1/8, 'gnn': 1/8, 'siamese': 1/8, 'mil': 1/8, 'rf': 1/8, 'jaccard': 1/8, 'tvd': 1/8, 'featureMatching': 8/8},
+total time 89 s

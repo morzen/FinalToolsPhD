@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Attribution explorer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <h1>Attribution explorer</h1>
+    <p class="sub">Data-Level Abstraction Attribution Framework and Hybrid Attribution Framework, run live on the thesis tools</p>
+  </div>
+  <div class="status" id="status">Loading the tools…</div>
+</header>
+
+<main class="layout">
+  <aside class="panel input-panel">
+    <section>
+      <h2><span class="step-no">1</span>Evidence</h2>
+      <p class="hint">Type IDs or names in a level, paste a whole report below, or load one of the thesis queries.</p>
+      <details class="presets" open>
+        <summary>Load a thesis query</summary>
+        <label class="field">CTI report (Section 4.6)
+          <select id="preset-cti"><option value="">Choose a report…</option></select>
+        </label>
+        <div class="field">
+          <span>Profile of a group</span>
+          <div class="row">
+            <select id="preset-group"><option value="">Choose a group…</option></select>
+          </div>
+          <div class="row buttons">
+            <button type="button" id="load-full" class="ghost" title="Sanity check: the complete profile">Full profile</button>
+            <button type="button" id="load-half" class="ghost" title="Stress test: one half of each level, seed 42">Half profile</button>
+          </div>
+        </div>
+        <div class="field">
+          <span>False flag (Section 6.1): 30% of the attacker + 70% of the imitated group</span>
+          <div class="row"><select id="ff-attacker"><option value="">True attacker…</option></select></div>
+          <div class="row"><select id="ff-imitated"><option value="">Imitated group…</option></select></div>
+          <div class="row buttons"><button type="button" id="load-ff" class="ghost">Load false flag</button></div>
+        </div>
+      </details>
+      <div id="levels"></div>
+      <label class="field paste">Paste text (IDs are picked out: T1566.001, S0154, CAPEC-112, CWE-79, CVE-2021-44228, OTX pulse IDs)
+        <textarea id="paste" rows="3" placeholder="Paste a report or a list of IDs"></textarea>
+      </label>
+      <div class="row buttons">
+        <button type="button" id="paste-add" class="ghost">Add pasted IDs</button>
+        <button type="button" id="clear" class="ghost">Clear all</button>
+      </div>
+      <label class="field">Group to follow (highlighted everywhere)
+        <select id="follow"><option value="">None</option></select>
+      </label>
+      <button type="button" id="run" class="primary">Attribute</button>
+      <p class="hint small" id="run-note"></p>
+    </section>
+  </aside>
+
+  <section class="main">
+    <nav class="pipeline" id="pipeline" aria-label="Steps"></nav>
+    <div id="empty" class="empty">
+      <h2>How to use it</h2>
+      <ol>
+        <li>Enter evidence on the left, or load one of the thesis queries (a CTI report, a group's profile or a false flag).</li>
+        <li>Press <b>Attribute</b>. Each of the eight approaches ranks all the groups with its own model, as in the thesis tools.</li>
+        <li>Open any approach to see how it produced its ranking, then see how the Hybrid Attribution Framework fuses the eight rankings with WRRF.</li>
+      </ol>
+    </div>
+    <div id="results" hidden>
+      <section class="block" id="sec-received">
+        <h2><span class="step-no">2</span>What the tools received</h2>
+        <div id="received"></div>
+      </section>
+      <section class="block" id="sec-approaches">
+        <h2><span class="step-no">3</span>Eight approaches rank every group</h2>
+        <p class="hint">Each card is one approach of Chapter 4 with its top five groups. Open a card to see how it produced its ranking.</p>
+        <div class="cards" id="cards"></div>
+      </section>
+      <section class="block" id="sec-detail">
+        <div id="detail"></div>
+      </section>
+      <section class="block" id="sec-hybrid">
+        <h2><span class="step-no">5</span>Hybrid Attribution Framework: WRRF fuses the eight rankings</h2>
+        <div id="hybrid"></div>
+      </section>
+    </div>
+  </section>
+</main>
+<div id="tip" class="tip" role="tooltip" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>

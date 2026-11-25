@@ -1,0 +1,26 @@
+[explorer] XGBoost           loaded in 1.6 s
+[explorer] GNN               loaded in 3.1 s
+[explorer] Siamese Network   loaded in 0.3 s
+[explorer] MIL               loaded in 7.9 s
+[explorer] Random Forest     loaded in 0.8 s
+[explorer] Jaccard           loaded in 0.7 s
+[explorer] TVD               loaded in 0.0 s
+[explorer] Feature Matching  loaded in 0.0 s
+loaded 8 approaches in 16 s; not loaded: none
+CTI sets: 34 (132 s)
+halved profiles: 20 (128 s)
+
+approach             = own hybrid_query   = thesis CTI ranks   panel max |diff|
+xgboost                   54 / 54              34 / 34                 0.00e+00
+gnn                       54 / 54              34 / 34                 0.00e+00
+siamese                   54 / 54              34 / 34                 0.00e+00
+mil                       54 / 54              34 / 34                 4.77e-07
+rf                        54 / 54              34 / 34                 0.00e+00
+jaccard                   54 / 54              34 / 34                 0.00e+00
+tvd                       54 / 54              34 / 34                 0.00e+00
+featureMatching           54 / 54              34 / 34                 0.00e+00
+hybrid no_weights : true-group rank equal to the thesis CTI results in 34 / 34 sets
+hybrid self_eval_weights: true-group rank equal to the thesis CTI results in 34 / 34 sets
+hybrid CTI_boosting: true-group rank equal to the thesis CTI results in 34 / 34 sets
+
+DIFFERENCES FOUND (see above)

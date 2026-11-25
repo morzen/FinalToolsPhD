@@ -1,0 +1,22 @@
+false-flag evidence                                        0 min 17 s
+1.XGboost/train.py                                        18 min 40 s
+check_uniform                                              0 min 58 s
+Jaccards_Correlation/Jaccards_correlation.py               0 min 28 s
+featureMatching/featureMatching.py                         0 min 25 s
+TVD_Total_Variation_Distance/TVD_featureIng.py             0 min 33 s
+1.XGboost/eval.py                                          0 min 38 s
+2.GNN/eval.py                                              1 min 18 s
+3.SiameseNetwork/eval.py                                   0 min 18 s
+4.Attention-Based_MIL/eval.py                              1 min 10 s
+5.RF_FeatureEngineering/eval.py                            0 min 13 s
+Jaccards_Correlation/false_flag.py                         3 min 48 s
+featureMatching/false_flag.py                              2 min 06 s
+TVD_Total_Variation_Distance/false_flag.py                 2 min 20 s
+1.XGboost/False_flag.py                                    6 min 23 s
+2.GNN/False_Flag.py                                       38 min 10 s
+3.SiameseNetwork/False_flag.py                             0 min 39 s
+4.Attention-Based_MIL/False_Flag.py                        3 min 08 s
+5.RF_FeatureEngineering/False_flag.py                      2 min 36 s
+6.hybrid/hybrid_eval.py                                    0 min 18 s
+6.hybrid/hybrid_false_flag.py                              0 min 26 s
+CTI_eval/CTI_eval.py                                       1 min 46 s

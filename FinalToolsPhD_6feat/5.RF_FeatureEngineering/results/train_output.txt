@@ -1,0 +1,92 @@
+RANDOM FOREST FOR APT SIMILARITY
+============================================================
+
+1. LOADING DATA
+Loading data files...
+Encoded data: 730910 records
+Mapping data: 730910 records
+
+Creating APT name mapping...
+Created mapping for 163 APTs
+
+2. CREATING APT PROFILES
+
+Creating APT profiles...
+
+Profile Statistics:
+==================================================
+Total APTs: 163
+Total techniques: 4059
+Total software: 1021
+Total capec: 2089
+Total cwe: 2129
+Total cve: 61995
+Total pulse: 85423
+
+Sample Profiles (first 3 APTs):
+
+Axiom:
+  techniques: 16 features, sample: [np.int64(446), np.int64(389), np.int64(455)]
+  software: 8 features, sample: [np.int64(8), np.int64(168), np.int64(10)]
+  capec: 10 features, sample: [np.int64(39), np.int64(11), np.int64(77)]
+  cwe: 15 features, sample: [np.int64(32), np.int64(6), np.int64(7)]
+  cve: 253 features, sample: [np.int64(7681), np.int64(7682), np.int64(7684)]
+  pulse: 359 features, sample: [np.int64(6), np.int64(7), np.int64(9)]
+
+Moafee:
+  techniques: 1 features, sample: [np.int64(70)]
+  software: 1 features, sample: [np.int64(10)]
+  capec: 2 features, sample: [np.int64(123), np.int64(92)]
+  cwe: 0 features, sample: []
+  cve: 0 features, sample: []
+  pulse: 0 features, sample: []
+
+Cleaver:
+  techniques: 5 features, sample: [np.int64(43), np.int64(459), np.int64(465)]
+  software: 4 features, sample: [np.int64(1), np.int64(3), np.int64(46)]
+  capec: 2 features, sample: [np.int64(9), np.int64(75)]
+  cwe: 4 features, sample: [np.int64(40), np.int64(41), np.int64(38)]
+  cve: 20 features, sample: [np.int64(7816), np.int64(4497), np.int64(2453)]
+  pulse: 29 features, sample: [np.int64(1282), np.int64(258), np.int64(132)]
+
+3. FEATURE ENGINEERING
+
+Preparing feature binarizers...
+  techniques: 521 unique features
+  software: 540 unique features
+  capec: 146 unique features
+  cwe: 79 unique features
+  cve: 1467 unique features
+  pulse: 1527 unique features
+
+Creating feature vectors...
+Created feature vectors for 163 APTs
+Feature vector length: 4280
+
+Feature Matrix Shape: (163, 4280)
+Target Vector Shape: (163,)
+
+4. MODEL TRAINING
+
+Training Random Forest model...
+  Number of estimators: 100
+  Number of features: 4280
+  Number of samples: 163
+  Training accuracy: 1.0000
+
+5. MODEL SAVING
+
+Saving model to '6feat_apt_similarity_model.joblib'...
+Model saved successfully!
+  APT profiles: 163
+  Feature matrix shape: (163, 4280)
+  Feature types: ['techniques', 'software', 'capec', 'cwe', 'cve', 'pulse']
+
+TRAINING SUMMARY
+============================================================
+• Model: Random Forest Classifier
+• Number of estimators: 100
+• Number of APTs: 163
+• Feature vector length: 4280
+• Training accuracy: 1.0000
+• Saved to: 6feat_apt_similarity_model.joblib

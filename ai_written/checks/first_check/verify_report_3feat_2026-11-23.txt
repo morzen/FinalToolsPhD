@@ -1,0 +1,29 @@
+Verification against the original code (original_code/FinalToolsPhD_3feat)
+Features: ['techniques', 'software', 'cve']; false-flag evidence fingerprint 8dab7e487e99
+Per method: 12 false-flag pairs x 2 scenarios + 12 APTs x 2 scenarios
+
+xgboost          OK   48 queries | max |score diff| 0.0e+00 | ranks of all APTs identical 48/48, same order up to ties < 1e-6 48/48 | top-1 identical 48/48 | saved results consistent 48/48 | original 11.91 s/query, new 20 ms/query  [630s]
+                 original evidence encoding identical on 3/3 (original encoding alone: 17.2 s per query)
+gnn              OK   48 queries | max |score diff| 0.0e+00 | ranks of all APTs identical 48/48, same order up to ties < 1e-6 48/48 | top-1 identical 48/48 | saved results consistent 48/48 | original 0.15 s/query, new 100 ms/query  [80s]
+                 original evidence encoding identical on 3/3 (original encoding alone: 20.1 s per query)
+siamese          OK   48 queries | max |score diff| 2.3e-01 | ranks of all APTs identical 0/48, same order up to ties < 1e-6 0/48 | top-1 identical 43/48 | saved results consistent 48/48 | original 0.29 s/query, new 1 ms/query  [34s]
+                 one fully original query (files re-read as in the original): 0.9 s
+                 cached original == uncached original
+                 rank correlation original vs new 0.987; original vs original with another seed 0.988 (sampling noise); original exact-match shortcut used in 0 queries
+mil              OK   48 queries | max |score diff| 1.3e-06 | ranks of all APTs identical 46/48, same order up to ties < 1e-6 48/48 | top-1 identical 48/48 | saved results consistent 48/48 | original 0.70 s/query, new 9 ms/query  [49s]
+                 one fully original query (files re-read as in the original): 3.5 s
+                 cached original == uncached original
+rf               OK   48 queries | max |score diff| 0.0e+00 | ranks of all APTs identical 48/48, same order up to ties < 1e-6 48/48 | top-1 identical 48/48 | saved results consistent 48/48 | original 0.44 s/query, new 13 ms/query  [28s]
+                 one fully original query (files re-read as in the original): 0.6 s
+                 cached original == uncached original
+jaccard          OK   48 queries | max |score diff| 0.0e+00 | ranks of all APTs identical 48/48, same order up to ties < 1e-6 48/48 | top-1 identical 48/48 | saved results consistent 48/48 | original 0.41 s/query, new 8 ms/query  [52s]
+                 one fully original query (files re-read as in the original): 12.9 s
+                 cached original == uncached original
+tvd              OK   48 queries | max |score diff| 2.2e-16 | ranks of all APTs identical 17/48, same order up to ties < 1e-6 48/48 | top-1 identical 48/48 | saved results consistent 48/48 | original 0.48 s/query, new 5 ms/query  [53s]
+                 one fully original query (files re-read as in the original): 12.3 s
+                 cached original == uncached original
+featureMatching  OK   48 queries | max |score diff| 0.0e+00 | ranks of all APTs identical 48/48, same order up to ties < 1e-6 48/48 | top-1 identical 48/48 | saved results consistent 48/48 | original 0.39 s/query, new 4 ms/query  [53s]
+                 one fully original query (files re-read as in the original): 13.5 s
+                 cached original == uncached original
+
+RESULT: every method gives the same results as the original code

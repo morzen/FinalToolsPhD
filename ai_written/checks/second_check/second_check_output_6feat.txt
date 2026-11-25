@@ -1,0 +1,18 @@
+=== second check of Appendix F, FinalToolsPhD_6feat, run on 2026-11-25 13:47 UTC
+FinalToolsPhD_6feat
+  163 APTs; hybrid weights checked: self_eval_weights featureMatching=8 rf=5 mil=4 tvd=3 gnn=2 siamese=2 xgboost=1 jaccard=1; CTI_boosting featureMatching=8 xgboost=1 gnn=1 siamese=1 mil=1 rf=1 jaccard=1 tvd=1
+  evidence fingerprint f3e93f0a9cda, 26406 pairs
+  xgboost          checked: attribution 2x163 rows, false flag 2x26406 rows
+  gnn              checked: attribution 2x163 rows, false flag 2x26406 rows
+  siamese          checked: attribution 2x163 rows, false flag 2x26406 rows
+  mil              checked: attribution 2x163 rows, false flag 2x26406 rows
+  rf               checked: attribution 2x163 rows, false flag 2x26406 rows
+  jaccard          checked: attribution 2x163 rows, false flag 2x26406 rows
+  tvd              checked: attribution 2x163 rows, false flag 2x26406 rows
+  featureMatching  checked: attribution 2x163 rows, false flag 2x26406 rows
+  hybrid no_weights         recomputed independently from the 8 methods: attribution + false flag
+  hybrid self_eval_weights  recomputed independently from the 8 methods: attribution + false flag
+  hybrid CTI_boosting       recomputed independently from the 8 methods: attribution + false flag
+  CTI: 29 reports, scores recomputed for 8 methods + 3 hybrids
+  summary.txt: 440 numbers match the independent recomputation; excel_blocks.csv checked
+  RESULT: ALL CONSISTENT

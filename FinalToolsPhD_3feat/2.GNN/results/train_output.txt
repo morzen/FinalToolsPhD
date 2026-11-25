@@ -1,0 +1,62 @@
+GNN APT SIMILARITY PIPELINE
+============================================================
+Loading training data...
+Training data: 730910 records
+
+CREATING APT PROFILES
+==================================================
+Found 163 unique APTs
+
+PROFILE STATISTICS
+==================================================
+Total APTs: 163
+Total techniques: 4059
+Total software: 1021
+Total cve: 61995
+
+BUILDING GRAPH STRUCTURE
+==================================================
+Graph Structure:
+  APT nodes: 163
+  Technique nodes: 521
+  Software nodes: 540
+  CVE nodes: 1467
+  TOTAL NODES: 2691
+
+ Graph built:
+Nodes: 2691
+Edges: 134150
+GNN TRAINING FOR 50 EPOCHS...
+Epoch 000, Loss: 0.4193, Self-sim: 1.0000
+Epoch 030, Loss: 0.2333, Self-sim: 1.0000
+
+GNN TRAINING COMPLETE!
+
+GNN MODEL DEBUG INFO
+==================================================
+APT embeddings shape: torch.Size([163, 128])
+Embedding stats - Mean: 0.0113, Std: 0.0877
+Min: -0.2314, Max: 0.2315
+
+Cosine Similarity matrix stats:
+Self-similarity mean: 1.0000
+Cross-similarity mean: 0.6969
+Similarity range: -0.7308 to 1.0000
+
+ANALYZING RANKING ANOMALIES
+==================================================
+Top 10 APTs by Embedding Norm:
+APT Name                       Embed Norm Techniques Software CVE      Total 
+--------------------------------------------------------------------------------
+APT38                          1.0000     43         6        859      908   
+GOLD SOUTHFIELD                1.0000     9          2        29       40    
+Magic Hound                    1.0000     79         13       543      635   
+PROMETHIUM                     1.0000     31         2        619      652   
+Sidewinder                     1.0000     30         1        310      341   
+admin@338                      1.0000     12         7        287      306   
+Agrius                         1.0000     22         9        760      791   
+Ajax Security Team             1.0000     6          2        5        13    
+Akira                          1.0000     11         6        196      213   
+ALLANITE                       1.0000     4          0        0        4     
+
+GNN model saved as '3feat_trained_apt_gnn_model.pkl' with graph structure

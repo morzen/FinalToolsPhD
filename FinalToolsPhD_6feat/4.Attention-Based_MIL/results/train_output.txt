@@ -1,0 +1,102 @@
+ATTENTION-BASED MIL FOR APT SIMILARITY
+============================================================
+
+1. DATA LOADING AND PREPROCESSING
+Loading data files...
+Encoded data: 730910 records
+Mapping data: 730910 records
+Created mapping for 163 APTs
+
+Creating APT profiles...
+Created profiles for 163 APTs
+
+Profile Statistics:
+==================================================
+  Total technique: 4059
+  Total software: 1021
+  Total capec: 2089
+  Total cwe: 2129
+  Total cve: 61995
+  Total pulse: 85423
+
+Sample Profiles (first 3):
+
+  Axiom:
+    technique: 16 features, sample: [np.int64(446), np.int64(389), np.int64(455)]
+    software: 8 features, sample: [np.int64(8), np.int64(168), np.int64(10)]
+    capec: 10 features, sample: [np.int64(39), np.int64(11), np.int64(77)]
+    cwe: 15 features, sample: [np.int64(32), np.int64(6), np.int64(7)]
+    cve: 253 features, sample: [np.int64(7681), np.int64(7682), np.int64(7684)]
+    pulse: 359 features, sample: [np.int64(6), np.int64(7), np.int64(9)]
+
+  Moafee:
+    technique: 1 features, sample: [np.int64(70)]
+    software: 1 features, sample: [np.int64(10)]
+    capec: 2 features, sample: [np.int64(123), np.int64(92)]
+    cwe: 0 features, sample: []
+    cve: 0 features, sample: []
+    pulse: 0 features, sample: []
+
+  Cleaver:
+    technique: 5 features, sample: [np.int64(43), np.int64(459), np.int64(465)]
+    software: 4 features, sample: [np.int64(1), np.int64(3), np.int64(46)]
+    capec: 2 features, sample: [np.int64(9), np.int64(75)]
+    cwe: 4 features, sample: [np.int64(40), np.int64(41), np.int64(38)]
+    cve: 20 features, sample: [np.int64(7816), np.int64(4497), np.int64(2453)]
+    pulse: 29 features, sample: [np.int64(1282), np.int64(258), np.int64(132)]
+
+2. MODEL INITIALIZATION
+
+Initializing Attention MIL Model...
+==================================================
+
+Initializing model weights...
+Weights initialized successfully
+
+Model Architecture:
+  Hidden dimension: 256
+  Embedding vocabulary size: 100000
+  Feature weights: {'technique': 1.0, 'software': 0.8333333333333334, 'capec': 0.6666666666666666, 'cwe': 0.5, 'cve': 0.3333333333333333, 'pulse': 0.16666666666666666}
+
+Parameter Count:
+  Total parameters: 157,686,290
+  Trainable parameters: 157,686,290
+
+3. MODEL TRAINING
+
+============================================================
+TRAINING THE MODEL
+============================================================
+
+Starting training for 50 epochs...
+Training on 325 pairs
+Using device: cpu
+Epoch   1/50 | Loss: 0.716816 | Avg Similarity: 0.5846
+Epoch  10/50 | Loss: 0.011407 | Avg Similarity: 0.4973
+Epoch  20/50 | Loss: 0.001447 | Avg Similarity: 0.5013
+Epoch  30/50 | Loss: 0.000586 | Avg Similarity: 0.5015
+Epoch  40/50 | Loss: 0.000361 | Avg Similarity: 0.5015
+Epoch  50/50 | Loss: 0.000257 | Avg Similarity: 0.5015
+
+Training completed!
+Final loss: 0.000257
+
+4. MODEL SAVING
+
+Saving model and data...
+Model saved to '6feat_apt_similarity_model_complete.pth'
+  APT profiles: 163
+  APT IDs: 163
+  File size: 1002.15 MB
+
+TRAINING SUMMARY
+============================================================
+• Model: Optimized Attention-based MIL
+• Hidden dimension: 256
+• Feature weights: {'technique': 1.0, 'software': 0.8333333333333334, 'capec': 0.6666666666666666, 'cwe': 0.5, 'cve': 0.3333333333333333, 'pulse': 0.16666666666666666}
+• APT profiles created: 163
+• Training epochs: 50
+• Learning rate: 0.001
+• Saved to: 6feat_apt_similarity_model_complete.pth
+
+Model is ready for similarity calculations!

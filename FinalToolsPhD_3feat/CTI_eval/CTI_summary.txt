@@ -1,0 +1,19 @@
+CTI evaluation: 29 reports, 5 APT groups, N = 163 APTs
+
+method                        CTI score  mean rank
+XGboost                          64.58%      58.38
+GNN                               8.90%     148.59
+Siamesenetwork                   46.70%      87.34
+MIL                              84.99%      25.31
+RF                               44.70%      90.59
+Jacccards                        74.52%      42.28
+TVD                              63.91%      59.47
+featureMatching                  94.81%       9.41
+hybrid_no_weights                74.58%      42.17
+hybrid_self_eval_weights         86.97%      22.10
+hybrid_CTI_boosting              91.44%      14.86
+
+Hybrid weights (common/protocol.py, HYBRID_WEIGHTS):
+  no_weights         xgboost 8/8, gnn 8/8, siamese 8/8, mil 8/8, rf 8/8, jaccard 8/8, tvd 8/8, featureMatching 8/8
+  self_eval_weights  featureMatching 8/8, rf 5/8, mil 4/8, tvd 3/8, gnn 2/8, siamese 2/8, xgboost 1/8, jaccard 1/8
+  CTI_boosting       featureMatching 8/8, xgboost 1/8, gnn 1/8, siamese 1/8, mil 1/8, rf 1/8, jaccard 1/8, tvd 1/8

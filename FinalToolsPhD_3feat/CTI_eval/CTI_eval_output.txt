@@ -1,0 +1,55 @@
+Loading the eight methods...
+APT29           recognised items   9 | XGboost:79 GNN:162 Siamesenetwork:44 MIL:43 RF:108.5 Jacccards:84 TVD:94 featureMatching:20 | hybrid no_weights:81 self_eval_weights:48 CTI_boosting:31
+APT29           recognised items  31 | XGboost:119 GNN:153 Siamesenetwork:70 MIL:41 RF:120.5 Jacccards:52 TVD:73 featureMatching:7 | hybrid no_weights:71 self_eval_weights:34 CTI_boosting:16
+APT29           recognised items   9 | XGboost:43 GNN:162 Siamesenetwork:93 MIL:40 RF:110.5 Jacccards:81 TVD:87 featureMatching:4 | hybrid no_weights:62 self_eval_weights:31 CTI_boosting:14
+APT29           recognised items   6 | XGboost:36 GNN:162 Siamesenetwork:121 MIL:36 RF:106.5 Jacccards:89 TVD:96 featureMatching:3 | hybrid no_weights:64 self_eval_weights:27 CTI_boosting:6
+APT29           recognised items  86 | XGboost:131 GNN:107 Siamesenetwork:55 MIL:48 RF:130.5 Jacccards:29 TVD:22 featureMatching:9.5 | hybrid no_weights:42 self_eval_weights:28 CTI_boosting:19
+APT29           recognised items  18 | XGboost:45 GNN:161 Siamesenetwork:68 MIL:7 RF:112 Jacccards:1 TVD:12 featureMatching:1 | hybrid no_weights:3 self_eval_weights:2 CTI_boosting:1
+APT29           recognised items  75 | XGboost:149 GNN:113 Siamesenetwork:57 MIL:84 RF:128.5 Jacccards:43 TVD:39 featureMatching:13.5 | hybrid no_weights:69 self_eval_weights:39 CTI_boosting:26
+APT29           recognised items  23 | XGboost:19 GNN:161 Siamesenetwork:53 MIL:36 RF:117.5 Jacccards:38 TVD:55 featureMatching:3.5 | hybrid no_weights:24 self_eval_weights:16 CTI_boosting:7
+APT29           recognised items  19 | XGboost:109 GNN:162 Siamesenetwork:54 MIL:144 RF:111 Jacccards:82 TVD:109 featureMatching:26.5 | hybrid no_weights:120 self_eval_weights:80 CTI_boosting:45
+APT29           COMBINED evidence | XGboost:85 GNN:63 Siamesenetwork:56 MIL:9 RF:130 Jacccards:2 TVD:4 featureMatching:1 | hybrid no_weights:11 self_eval_weights:8 CTI_boosting:2
+Lazarus Group   recognised items  18 | XGboost:30 GNN:159 Siamesenetwork:67 MIL:23 RF:55.5 Jacccards:31 TVD:70 featureMatching:1 | hybrid no_weights:21 self_eval_weights:5 CTI_boosting:3
+Lazarus Group   recognised items  39 | XGboost:13 GNN:127 Siamesenetwork:73 MIL:6 RF:31.5 Jacccards:1 TVD:8 featureMatching:1 | hybrid no_weights:1 self_eval_weights:1 CTI_boosting:1
+Lazarus Group   recognised items  18 | XGboost:13 GNN:159 Siamesenetwork:74 MIL:5 RF:41 Jacccards:10 TVD:36 featureMatching:1 | hybrid no_weights:7 self_eval_weights:1 CTI_boosting:1
+Lazarus Group   recognised items  32 | XGboost:48 GNN:123 Siamesenetwork:89 MIL:18 RF:115.5 Jacccards:25 TVD:53.5 featureMatching:2 | hybrid no_weights:26 self_eval_weights:15 CTI_boosting:4
+Lazarus Group   recognised items  21 | XGboost:81 GNN:159 Siamesenetwork:33 MIL:52 RF:112 Jacccards:67.5 TVD:97 featureMatching:38 | hybrid no_weights:88 self_eval_weights:64 CTI_boosting:47
+Lazarus Group   recognised items  13 | XGboost:66 GNN:159 Siamesenetwork:86 MIL:19 RF:105.5 Jacccards:62 TVD:79 featureMatching:1 | hybrid no_weights:54 self_eval_weights:14 CTI_boosting:6
+Lazarus Group   recognised items   8 | XGboost:88 GNN:159 Siamesenetwork:88 MIL:7 RF:50 Jacccards:66.5 TVD:82 featureMatching:1 | hybrid no_weights:43 self_eval_weights:5 CTI_boosting:3
+Lazarus Group   recognised items  18 | XGboost:37 GNN:159 Siamesenetwork:77 MIL:9 RF:59 Jacccards:18 TVD:55 featureMatching:1 | hybrid no_weights:16 self_eval_weights:2 CTI_boosting:2
+Lazarus Group   recognised items  12 | XGboost:69 GNN:159 Siamesenetwork:79 MIL:6 RF:113 Jacccards:19 TVD:45 featureMatching:1.5 | hybrid no_weights:23 self_eval_weights:6 CTI_boosting:3
+Lazarus Group   recognised items  20 | XGboost:28 GNN:159 Siamesenetwork:82 MIL:21 RF:111 Jacccards:20 TVD:43 featureMatching:1 | hybrid no_weights:16 self_eval_weights:10 CTI_boosting:4
+Lazarus Group   recognised items  19 | XGboost:15 GNN:159 Siamesenetwork:31 MIL:1 RF:54 Jacccards:9 TVD:52 featureMatching:1 | hybrid no_weights:6 self_eval_weights:1 CTI_boosting:1
+Lazarus Group   recognised items  20 | XGboost:85 GNN:150 Siamesenetwork:60 MIL:14 RF:113.5 Jacccards:35 TVD:57 featureMatching:1.5 | hybrid no_weights:28 self_eval_weights:13 CTI_boosting:4
+Lazarus Group   recognised items   1 | XGboost:77 GNN:159 Siamesenetwork:136 MIL:54 RF:102 Jacccards:106 TVD:114 featureMatching:106 | hybrid no_weights:139 self_eval_weights:128 CTI_boosting:139
+Lazarus Group   COMBINED evidence | XGboost:15 GNN:68 Siamesenetwork:34 MIL:1 RF:3.5 Jacccards:1 TVD:1 featureMatching:1 | hybrid no_weights:1 self_eval_weights:1 CTI_boosting:1
+PROMETHIUM      recognised items  19 | XGboost:1 GNN:49 Siamesenetwork:142 MIL:1 RF:22 Jacccards:1 TVD:1 featureMatching:1 | hybrid no_weights:2 self_eval_weights:2 CTI_boosting:1
+PROMETHIUM      COMBINED evidence | XGboost:1 GNN:49 Siamesenetwork:142 MIL:1 RF:22 Jacccards:1 TVD:1 featureMatching:1 | hybrid no_weights:2 self_eval_weights:2 CTI_boosting:1
+Sandworm Team   recognised items  20 | XGboost:95 GNN:163 Siamesenetwork:142 MIL:7 RF:109.5 Jacccards:84 TVD:93 featureMatching:6.5 | hybrid no_weights:72 self_eval_weights:23 CTI_boosting:15
+Sandworm Team   recognised items   5 | XGboost:16 GNN:163 Siamesenetwork:150 MIL:2 RF:40.5 Jacccards:2 TVD:5 featureMatching:1.5 | hybrid no_weights:2 self_eval_weights:2 CTI_boosting:2
+Sandworm Team   recognised items   2 | XGboost:48 GNN:163 Siamesenetwork:154 MIL:2 RF:105 Jacccards:65 TVD:84 featureMatching:12 | hybrid no_weights:46 self_eval_weights:20 CTI_boosting:15
+Sandworm Team   recognised items  12 | XGboost:86 GNN:163 Siamesenetwork:117 MIL:3 RF:110.5 Jacccards:51 TVD:87 featureMatching:3.5 | hybrid no_weights:51 self_eval_weights:12 CTI_boosting:6
+Sandworm Team   recognised items   9 | XGboost:65 GNN:163 Siamesenetwork:128 MIL:3 RF:108 Jacccards:52 TVD:71 featureMatching:1.5 | hybrid no_weights:44 self_eval_weights:10 CTI_boosting:7
+Sandworm Team   COMBINED evidence | XGboost:59 GNN:147 Siamesenetwork:156 MIL:10 RF:58.5 Jacccards:14 TVD:43 featureMatching:1 | hybrid no_weights:17 self_eval_weights:4 CTI_boosting:2
+Windshift       recognised items  11 | XGboost:2 GNN:112 Siamesenetwork:110 MIL:2 RF:22.5 Jacccards:2 TVD:5 featureMatching:2 | hybrid no_weights:2 self_eval_weights:2 CTI_boosting:2
+Windshift       COMBINED evidence | XGboost:2 GNN:112 Siamesenetwork:110 MIL:2 RF:22.5 Jacccards:2 TVD:5 featureMatching:2 | hybrid no_weights:2 self_eval_weights:2 CTI_boosting:2
+
+CTI evaluation: 29 reports, 5 APT groups, N = 163 APTs
+
+method                        CTI score  mean rank
+XGboost                          64.58%      58.38
+GNN                               8.90%     148.59
+Siamesenetwork                   46.70%      87.34
+MIL                              84.99%      25.31
+RF                               44.70%      90.59
+Jacccards                        74.52%      42.28
+TVD                              63.91%      59.47
+featureMatching                  94.81%       9.41
+hybrid_no_weights                74.58%      42.17
+hybrid_self_eval_weights         86.97%      22.10
+hybrid_CTI_boosting              91.44%      14.86
+
+Hybrid weights (common/protocol.py, HYBRID_WEIGHTS):
+  no_weights         xgboost 8/8, gnn 8/8, siamese 8/8, mil 8/8, rf 8/8, jaccard 8/8, tvd 8/8, featureMatching 8/8
+  self_eval_weights  featureMatching 8/8, rf 5/8, mil 4/8, tvd 3/8, gnn 2/8, siamese 2/8, xgboost 1/8, jaccard 1/8
+  CTI_boosting       featureMatching 8/8, xgboost 1/8, gnn 1/8, siamese 1/8, mil 1/8, rf 1/8, jaccard 1/8, tvd 1/8
